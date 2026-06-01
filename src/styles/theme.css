@@ -1,0 +1,16 @@
+/* Färgvariabler – ändra här för dark/light mode-stöd */
+:root {
+  --bg-app:    #070d18;
+  --bg-panel:  #0b1422;
+  --bg-card:   #091424;
+  --border:    #1a2d48;
+  --border-md: #1e3850;
+  --accent:    #4fc3f7;
+  --text:      #c8d8e8;
+  --text-dim:  #7090a8;
+  --text-faint:#6080a0;
+  --green:     #00ff88;
+  --orange:    #ff9900;
+  --red:       #ff5050;
+  --purple:    #ce93d8;
+}

@@ -44,7 +44,10 @@ export function saveUndo(label = "") {
 }
 
 export function undo() {
-  if (_undoStack.length === 0) return;
+  if (_undoStack.length === 0) {
+    if (_undoCb.showToast) _undoCb.showToast("Inget att ångra", "#7090a8");
+    return;
+  }
   const s = _undoStack.pop();
   setState({
     pts: s.pts,
@@ -54,6 +57,10 @@ export function undo() {
     simResult: null
   });
   updateUndoBtn();
+  // rad 385–387 i original: draw() + showToast() efter undo
+  if (_undoCb.showToast) _undoCb.showToast(`↩ Ångrade: ${s.label || "senaste åtgärd"}`, "#4fc3f7");
+  if (_undoCb.draw) _undoCb.draw();
+  if (_undoCb.updateQualityPanel) _undoCb.updateQualityPanel();
 }
 
 export function updateUndoBtn() {
@@ -66,6 +73,11 @@ export function updateUndoBtn() {
     ? `Ångra: ${_undoStack[_undoStack.length - 1].label}`
     : "Inget att ångra";
 }
+
+// ── Bugg 3-fix: UI-callbacks för draw/toast efter undo ──────────────────────
+// Samma callback-mönster som autoSim i store.js – registreras av main.js.
+const _undoCb = { draw: null, updateQualityPanel: null, showToast: null };
+export function setUndoCallbacks(cbs) { Object.assign(_undoCb, cbs); }
 
 // Exponerar stacken för UI (knappstatus etc.)
 export function getUndoStack() { return _undoStack; }

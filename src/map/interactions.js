@@ -2,6 +2,7 @@
 // Klick, dubbelklick, högerklick, drag – alla Leaflet map-events.
 // UI-callbacks (openEditPt, openMM, buildTools, setTab, showToast) registreras
 // via setInteractionCallbacks() av main.js i Fas 7.
+import L from 'leaflet';
 import { getState, setState } from '../state/store.js';
 import { INSTRUMENTS, PT } from '../core/constants.js';
 import { saveUndo } from '../state/undo.js';
