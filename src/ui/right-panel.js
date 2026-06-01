@@ -400,9 +400,16 @@ export function renderTab() {
 
   // ── RAPPORT ──
   if (atab === "rep") {
-    tc.innerHTML = `<div class="sl">RAPPORT</div>
-      <button onclick="window._exportRep()" style="width:100%;padding:8px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;border-radius:3px;cursor:pointer;margin-bottom:6px;">📄 Simuleringsrapport (.txt)</button>
-      <button onclick="window._openPM()" style="width:100%;padding:8px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:3px;cursor:pointer;">📐 Generera PM</button>`;
+    tc.innerHTML = `<div class="sl">RAPPORTER</div>
+      <button onclick="window._exportRep()" style="width:100%;padding:7px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;border-radius:3px;cursor:pointer;margin-bottom:4px;">📄 Simuleringsrapport (.txt)</button>
+      <button onclick="window._exportCalcRep()" style="width:100%;padding:7px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;border-radius:3px;cursor:pointer;margin-bottom:4px;">📊 Beräkningsrapport (.txt)</button>
+      <button onclick="window._exportSimPDF()" style="width:100%;padding:7px;font-size:12px;background:#ce93d818;border:1px solid #ce93d8;color:#ce93d8;border-radius:3px;cursor:pointer;margin-bottom:4px;">🖨 Simuleringsrapport (PDF)</button>
+      <div class="dv" style="margin:6px 0;"></div>
+      <div class="sl">FÄLTDOKUMENTATION</div>
+      <button onclick="window._openMeasBook()" style="width:100%;padding:7px;font-size:12px;background:#ffb74d18;border:1px solid #ffb74d;color:#ffb74d;border-radius:3px;cursor:pointer;margin-bottom:4px;">📋 Mätbok A4 (utskrift/PDF)</button>
+      <button onclick="window._exportMeasScheme()" style="width:100%;padding:7px;font-size:12px;background:#ffb74d18;border:1px solid #ffb74d;color:#ffb74d;border-radius:3px;cursor:pointer;margin-bottom:6px;">📝 Mätschema (.txt)</button>
+      <div class="dv" style="margin:6px 0;"></div>
+      <button onclick="window._openPM()" style="width:100%;padding:8px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:3px;cursor:pointer;">📐 Generera PM (Fas 7)</button>`;
     return;
   }
 }

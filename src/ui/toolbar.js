@@ -103,15 +103,25 @@ export function initToolbar() {
     draw();
   });
 
-  // Importera filhantering
+  // Importera filhantering – Fas 6 (fullständiga implementationer)
   document.getElementById("geo-fi")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(text => { import('../io/import-geo.js').then(m => m.importGeoFile(text, f.name)); });
+    f.text().then(text => import('../io/import-geo.js').then(m => m.importGeoFile(text, f.name)));
+    e.target.value = "";
+  });
+  document.getElementById("xl-fi")?.addEventListener("change", e => {
+    const f = e.target.files[0]; if (!f) return;
+    const ext = f.name.split(".").pop().toLowerCase();
+    if (ext === "csv") {
+      f.text().then(text => import('../io/import-csv.js').then(m => m.importPointsFromCSV(text)));
+    } else {
+      import('../io/import-csv.js').then(m => m.readXLSX(f));
+    }
     e.target.value = "";
   });
   document.getElementById("load-fi")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(text => { import('../io/export-project.js').then(m => m.loadProject(text)); });
+    f.text().then(text => import('../io/export-project.js').then(m => m.loadProject(text)));
     e.target.value = "";
   });
 
