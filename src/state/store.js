@@ -2,13 +2,35 @@
 // All state mutations must go through setState() so future refactors
 // (Zustand, Pinia, Redux) can be dropped in without touching call-sites.
 let _state = {
+  // ── Nätdata ──
   pts: [],
   meas: [],
   simResult: null,
   centerErr: 1.0,
   activeMatklass: null,
-  nMid: 1,   // mätnings-ID-räknare (behövs av undo)
-  nId: 1,    // punkt-ID-räknare (behövs av undo)
+  suggestedMeas: [],
+
+  // ── ID-räknare ──
+  nMid: 1,
+  nId: 1,
+
+  // ── Verktyg & selektion ──
+  tool: "station",
+  selId: null,
+  selMId: null,
+  measFrom: null,
+  defaultInstr: "ts16_1",
+
+  // ── Karta ──
+  activeCRS: "sweref99tm",
+  activeLayerKey: "osm",
+  mapLayerVisible: true,
+
+  // ── Renderingsparametrar ──
+  symSize: 10,
+  ellScale: 50,
+  ellipsMode: "1sig",   // "1sig" = 1σ (Geo Professional), "95" = 95%-konfidensellips
+  au: "grad",           // vinkelenhet: "grad" (gon) eller "dms"
 };
 
 const _listeners = [];
