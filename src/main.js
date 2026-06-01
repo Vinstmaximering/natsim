@@ -209,7 +209,19 @@ function cvSaveNewRow() {
 
 // ── 14. openPM – öppnar PM-popupen och skickar data via postMessage ─────────
 // Ersätter pmPopupHTML() helt – inga inline-scripts, inga escape-knep.
+
+function isMobilePhone() {
+  return window.innerWidth < 768;
+}
+
 async function openPM() {
+  if (isMobilePhone()) {
+    showToast(
+      "PM-modulen kräver tablet eller dator. Öppna sidan där för att generera ett mätningstekniskt PM.",
+      "#ff9900"
+    );
+    return;
+  }
   const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr } = getState();
   if (!simResult?.ok) { alert("Kör simuleringen först."); return; }
 
