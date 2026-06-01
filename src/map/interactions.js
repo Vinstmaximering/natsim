@@ -8,6 +8,10 @@ import { INSTRUMENTS, PT } from '../core/constants.js';
 import { saveUndo } from '../state/undo.js';
 import { ptPixel, latLngToEN, ENtoLatLng, draw } from './leaflet-setup.js';
 
+// Touch-detection – används för att lägga till touch-specifika gester
+export const isTouch = (typeof window !== 'undefined') &&
+  (('ontouchstart' in window) || navigator.maxTouchPoints > 0);
+
 // ── Callbacks för UI-funktioner (registreras i Fas 7 via setInteractionCallbacks) ──
 const cb = {
   openEditPt: null,   // rad 1362, 1369: dubbelklick + högerklick → openEditPt(id)
@@ -161,4 +165,60 @@ export function initInteractions(map) {
     const n  = near(px.x, px.y, 24);
     if (n) { e.originalEvent.preventDefault(); if (cb.openEditPt) cb.openEditPt(n.id); }
   });
+
+  // ── Touch-gester: double-tap → openEditPt, long-press → openEditPt ──────────
+  if (isTouch) {
+    const el = map.getContainer();
+    let _lpTimer   = null;   // long-press timer
+    let _lastTap   = 0;      // tidpunkt för förra tappet
+    let _lastTapXY = null;   // position för förra tappet (container-koordinater)
+    let _tMoved    = false;  // fingret har rört sig > 10 px
+
+    const _cancelLP = () => { clearTimeout(_lpTimer); _lpTimer = null; };
+
+    el.addEventListener("touchstart", e => {
+      if (e.touches.length !== 1) { _cancelLP(); return; }
+      const t    = e.touches[0];
+      const rect = el.getBoundingClientRect();
+      const cx   = t.clientX - rect.left;
+      const cy   = t.clientY - rect.top;
+      _tMoved = false;
+
+      // ── Long-press (500 ms) → openEditPt, ersätter högerklick/contextmenu ──
+      _cancelLP();
+      _lpTimer = setTimeout(() => {
+        if (_tMoved) return;
+        const n = near(cx, cy, 28);
+        if (n && cb.openEditPt) cb.openEditPt(n.id);
+      }, 500);
+
+      // ── Double-tap (< 300 ms, < 30 px) → openEditPt, ersätter dblclick ────
+      const now = Date.now();
+      if (_lastTapXY && (now - _lastTap) < 300) {
+        const dx = Math.abs(cx - _lastTapXY.cx);
+        const dy = Math.abs(cy - _lastTapXY.cy);
+        if (dx < 30 && dy < 30) {
+          _cancelLP();
+          const n = near(cx, cy, 28);
+          if (n && cb.openEditPt) cb.openEditPt(n.id);
+          _lastTapXY = null; _lastTap = 0;
+          return;
+        }
+      }
+      _lastTap   = now;
+      _lastTapXY = { cx, cy };
+    }, { passive: true });
+
+    el.addEventListener("touchmove", e => {
+      if (!_lastTapXY) return;
+      const t    = e.touches[0];
+      const rect = el.getBoundingClientRect();
+      const dx   = Math.abs(t.clientX - rect.left - _lastTapXY.cx);
+      const dy   = Math.abs(t.clientY - rect.top  - _lastTapXY.cy);
+      if (dx > 10 || dy > 10) { _tMoved = true; _cancelLP(); }
+    }, { passive: true });
+
+    el.addEventListener("touchend",    _cancelLP, { passive: true });
+    el.addEventListener("touchcancel", _cancelLP, { passive: true });
+  }
 }

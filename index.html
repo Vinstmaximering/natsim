@@ -2,7 +2,7 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>NätSim Beta 2 – Stomnätssimulator</title>
 </head>
@@ -10,10 +10,11 @@
 <div id="app">
 
 <!-- LEFT PANEL -->
-<div id="lp">
-  <div class="ph">
+<div id="lp" style="position:relative;">
+  <div class="ph" style="position:relative;">
     <div style="font-size:13px;font-weight:bold;color:#e8f4fd;letter-spacing:0.5px;">NätSim</div>
     <div style="font-size:11px;color:#6a90b0;margin-top:3px;">Skandimech Industries – Planering &amp; Nätanalys v4.0</div>
+    <button class="panel-close" onclick="window.togglePanel('lp')" aria-label="Stäng vänsterpanel">×</button>
   </div>
   <div class="sec">
     <div class="sl">LÄGG TILL PUNKT</div>
@@ -87,6 +88,11 @@
 
 <!-- CANVAS + MAP -->
 <div id="cw">
+  <!-- Backdrop: stänger öppen panel på phone -->
+  <div id="panel-backdrop" onclick="window._closeAllPanels()"></div>
+  <!-- FABs: visas bara på phone (<768px), öppnar/stänger panelerna -->
+  <button class="fab fab-l" onclick="window.togglePanel('lp')" aria-label="Öppna vänsterpanel">☰</button>
+  <button class="fab fab-r" onclick="window.togglePanel('rp')" aria-label="Öppna högerpanel">⊞</button>
   <div class="mtb" id="mtb"></div>
   <div id="map-container">
     <div id="leaflet-map"></div>
@@ -132,12 +138,13 @@
       </label>
     </div>
     <div id="qPanelBody" style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-family:monospace">
-      <span style="color:#7090a8">k</span><span id="qK">–</span>
-      <span style="color:#7090a8">n/u</span><span id="qNu">–</span>
-      <span style="color:#7090a8">f</span><span id="qF">–</span>
-      <span style="color:#7090a8">min r_i</span><span id="qRmin">–</span>
-      <span style="color:#7090a8">max σ_pos</span><span id="qSmax">–</span>
+      <span class="qpl" style="color:#7090a8" title="K-tal: global redundanskvot. ≥1.14 utmärkt, ≥0.5 bra, ≥0.3 godkänt." data-tip="K-tal: global redundanskvot. ≥1.14=utmärkt, ≥0.5=bra, ≥0.3=godkänt">k</span><span id="qK">–</span>
+      <span class="qpl" style="color:#7090a8" title="Antal mätningar (n) / antal okända (u)." data-tip="n/u: antal mätningar / antal okända">n/u</span><span id="qNu">–</span>
+      <span class="qpl" style="color:#7090a8" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
+      <span class="qpl" style="color:#7090a8" title="Minsta enskilda redundanstal r_i. ≥0.5 bra, <0.1 risk." data-tip="min r_i: minsta redundanstal ≥0.5=bra, <0.1=risk">min r_i</span><span id="qRmin">–</span>
+      <span class="qpl" style="color:#7090a8" title="Störst positionsosäkerhet σ_pos bland nya punkter." data-tip="max σ_pos: störst positionsosäkerhet bland nya punkter">max σ_pos</span><span id="qSmax">–</span>
     </div>
+    <div id="qTip" style="display:none;margin-top:5px;font-size:9px;color:#90b0c8;line-height:1.4;border-top:1px solid #1e3050;padding-top:4px;"></div>
   </div>
 
   <!-- Zoomknappar -->
@@ -156,7 +163,8 @@
 <div class="resize-handle" id="rrh" title="Dra för att ändra bredd"></div>
 
 <!-- RIGHT PANEL -->
-<div id="rp">
+<div id="rp" style="position:relative;">
+  <button class="panel-close" onclick="window.togglePanel('rp')" aria-label="Stäng högerpanel">×</button>
   <div class="tabs" id="tabs"></div>
   <div class="tc"   id="tc"></div>
 </div>

@@ -34,4 +34,20 @@ export function updateQualityPanel() {
 export function initQualityPanel() {
   const el = document.getElementById("autoSimToggle");
   if (el) el.addEventListener("change", e => setAutoSim(e.target.checked));
+
+  // Touch: tryck på etikett → visa data-tip i #qTip-div (ersätter title-hover)
+  if (('ontouchstart' in window) || navigator.maxTouchPoints > 0) {
+    const tip = document.getElementById("qTip");
+    if (!tip) return;
+    let _hideTimer = null;
+    document.querySelectorAll(".qpl[data-tip]").forEach(label => {
+      label.addEventListener("touchstart", e => {
+        e.stopPropagation();
+        clearTimeout(_hideTimer);
+        tip.textContent = label.dataset.tip;
+        tip.style.display = "block";
+        _hideTimer = setTimeout(() => { tip.style.display = "none"; }, 2800);
+      }, { passive: true });
+    });
+  }
 }

@@ -278,8 +278,8 @@ export function renderTab() {
         <th style="text-align:left;color:#6080a0;font-weight:normal;padding:2px 4px 4px 0;">Sträcka</th>
         <th style="text-align:left;color:#6080a0;font-weight:normal;">Typ</th>
         <th style="text-align:right;color:#6080a0;font-weight:normal;padding:2px 3px;">r</th>
-        <th style="text-align:right;color:#6080a0;font-weight:normal;padding:2px 3px;">MUF</th>
-        <th style="text-align:right;color:#4fc3f7;font-weight:normal;padding:2px 3px;">YT</th>
+        <th style="text-align:right;color:#6080a0;font-weight:normal;padding:2px 3px;" title="Minsta Urskiljbara Fel – minsta systematiskt fel som ger statistisk signifikans vid givet κ">MUF</th>
+        <th style="text-align:right;color:#4fc3f7;font-weight:normal;padding:2px 3px;" title="Yttre tillförlitlighet: MUF × (1 − r), påverkan i observationsdomänen">YT</th>
         <th style="text-align:right;color:#ffb74d;font-weight:normal;padding:2px 3px;">KP mm</th>
         <th style="text-align:right;color:#6080a0;font-weight:normal;">Klass</th>
       </tr>

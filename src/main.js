@@ -77,6 +77,12 @@ initLeftPanel();
 initQualityPanel();
 initOnboarding();
 
+// ── 6b. Mobil-initialisering: paneler dolda som default på phone ───────────
+if (window.innerWidth < 768) {
+  document.getElementById("lp")?.classList.add("hidden");
+  document.getElementById("rp")?.classList.add("hidden");
+}
+
 // ── 7. Initiera karta ──────────────────────────────────────────────────────
 initMap();
 

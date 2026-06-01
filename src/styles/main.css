@@ -1,6 +1,7 @@
 @import './theme.css';
 @import './panels.css';
 @import './map.css';
+@import './responsive.css';
 
 /* Globala resets */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -21,10 +22,4 @@ button, input, select { font-family: monospace; }
 #rp        { width: 380px; background: #0b1422; border-left: 1px solid #1a2d48; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; transition: width .2s; }
 #rp.hidden { width: 0; overflow: hidden; }
 
-/* Responsiv layout – mobil */
-@media (max-width: 700px) {
-  #lp { position: absolute; left: 0; top: 0; bottom: 0; z-index: 20; width: 210px; }
-  #lp.hidden { width: 0; }
-  #rp { position: absolute; right: 0; bottom: 0; left: 0; top: auto; width: 100% !important; max-height: 46vh; border-left: none; border-top: 1px solid #1a2d48; z-index: 15; }
-  #rp.hidden { max-height: 0; }
-}
+/* Responsiv layout hanteras i responsive.css */

@@ -28,10 +28,7 @@ canvas { display: block; touch-action: none; }
 .resize-handle:hover,.resize-handle.dragging { background:#1e4060; }
 .resize-handle::after { content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;background:#2a5070;border-radius:2px; }
 
-/* Mobile toolbar */
+/* Mobile toolbar (synlighet styrs av responsive.css) */
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:#0b1422dd;border-bottom:1px solid #1a2d48;padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid #1a2d48;background:transparent;color:#8aa8c0;border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
 .mtbb.act { border-color:var(--c,#4fc3f7);background:color-mix(in srgb,var(--c,#4fc3f7) 20%,transparent);color:var(--c,#4fc3f7); }
-@media(max-width:700px) {
-  .mtb { display:flex !important; }
-}

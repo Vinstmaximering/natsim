@@ -65,7 +65,22 @@ export function setTool(t) {
 
 export function togglePanel(id) {
   document.getElementById(id)?.classList.toggle("hidden");
+  _updateBackdrop();
   setTimeout(() => { import('../map/leaflet-setup.js').then(({ map: m }) => { if (m) m.invalidateSize(); resize(); }); }, 220);
+}
+
+export function closeAllPanels() {
+  ["lp", "rp"].forEach(id => document.getElementById(id)?.classList.add("hidden"));
+  _updateBackdrop();
+  setTimeout(() => { import('../map/leaflet-setup.js').then(({ map: m }) => { if (m) m.invalidateSize(); resize(); }); }, 220);
+}
+
+function _updateBackdrop() {
+  if (window.innerWidth >= 768) return;
+  const lpHidden = document.getElementById("lp")?.classList.contains("hidden") !== false;
+  const rpHidden = document.getElementById("rp")?.classList.contains("hidden") !== false;
+  const backdrop = document.getElementById("panel-backdrop");
+  if (backdrop) backdrop.classList.toggle("active", !lpHidden || !rpHidden);
 }
 
 export function clearAll() {
@@ -126,9 +141,10 @@ export function initToolbar() {
   });
 
   // Exponera på window för inline onclick i index.html
-  window._setTool      = setTool;
-  window._togglePanel  = togglePanel;
-  window._toggleAU     = toggleAU;
-  window._clearAll     = clearAll;
+  window._setTool        = setTool;
+  window._togglePanel    = togglePanel;
+  window._closeAllPanels = closeAllPanels;
+  window._toggleAU       = toggleAU;
+  window._clearAll       = clearAll;
   window._toggleMapLayer = toggleMapLayer;
 }
