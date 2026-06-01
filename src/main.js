@@ -2,7 +2,8 @@ import './styles/main.css';
 import 'leaflet/dist/leaflet.css';
 
 import { getState, setState, setAutoSimHandler, subscribe } from './state/store.js';
-import { autoSim, undo, setUndoCallbacks }     from './state/undo.js';
+// openPM definieras nedan (refererar till getState och map-imports)
+import { autoSim, undo, setUndoCallbacks, saveUndo } from './state/undo.js';
 import { loadAutosave, saveAutosave }           from './state/persistence.js';
 import { initMap, draw, setDrawCallbacks, resize, map as leafletMap } from './map/leaflet-setup.js';
 import { setInteractionCallbacks }              from './map/interactions.js';
@@ -34,7 +35,7 @@ window.toggleAU       = toggleAU;
 window.toggleMapLayer = toggleMapLayer;
 window.locateMe       = () => import('./map/leaflet-setup.js').then(m => m.locateMe());
 window.resetView      = () => import('./map/leaflet-setup.js').then(m => m.resetView());
-window.toggleCoordView = () => showToast("Koordinatlista tillgänglig i Fas 6.", "#4fc3f7");
+window.toggleCoordView = toggleCoordView;
 window.openMM         = openMM;
 window.openEditPt     = openEditPt;
 window.closeModal     = closeModal;
@@ -49,15 +50,15 @@ window._exportSimPDF     = () => import('./io/export-pdf.js').then(m => m.export
 window._exportCalcRep    = () => import('./reports/sim-report.js').then(m => m.exportCalcReport());
 window._openMeasBook     = () => import('./reports/meas-book.js').then(m => m.openMeasBook());
 window._exportMeasScheme = () => import('./reports/meas-book.js').then(m => m.exportMeasScheme());
-window.cvSaveNewRow   = () => {};
-window.cvAddRow       = () => {};
-window.cvImportGeo    = () => {};
-window.cvExportGeo    = () => {};
+window.cvSaveNewRow   = cvSaveNewRow;
+window.cvAddRow       = () => { document.getElementById("cv-newrow")?.scrollIntoView({ behavior:"smooth" }); };
+window.cvImportGeo    = () => document.getElementById("geo-fi")?.click();
+window.cvExportGeo    = () => import('./io/import-geo.js').then(m => m.exportGeoFile());
 window._applyMatklass = applyMatklass;
 window._showValidationDialog = () => import('./ui/validation.js').then(m => m.showValidationDialog());
-window._suggestMeas   = () => showToast("Föreslå mätningar: Fas 6", "#ffdc32");
-window._exportRep     = () => import('./reports/sim-report.js').then(m => m.exportSimReport()).catch(() => showToast("Rapport: Fas 6", "#ff9900"));
-window._openPM        = () => import('./pm/pm.js').then(m => m.openPM()).catch(() => showToast("PM-generering: Fas 7", "#00ff88"));
+window._suggestMeas   = () => { import('./ui/right-panel.js').then(m => { m.suggestMeasurements(); draw(); renderTab(); }); };
+window._exportRep     = () => import('./reports/sim-report.js').then(m => m.exportSimReport());
+window._openPM        = () => openPM();
 window._setTab        = setTab;
 window._runSim        = () => { import('./core/simulation.js').then(m => { m.runSimulation(); updateQualityPanel(); draw(); renderTab(); }); };
 window._mapZoomIn     = () => { const m = getState(); if (leafletMap) leafletMap.zoomIn(); };
@@ -103,3 +104,159 @@ if (getState().pts.length > 0) hideOnboarding();
 // ── 11. Globala events ─────────────────────────────────────────────────────
 window.addEventListener("resize", resize);
 window.addEventListener("beforeunload", saveAutosave);
+
+// ── 12. Koordinatlista – toggle + render ────────────────────────────────────
+let _coordViewOpen = false;
+
+function toggleCoordView() {
+  _coordViewOpen = !_coordViewOpen;
+  const cv  = document.getElementById("coordview");
+  const btn = document.getElementById("btn-coordview");
+  if (!cv) return;
+  cv.style.display = _coordViewOpen ? "flex" : "none";
+  if (btn) {
+    btn.style.background   = _coordViewOpen ? "#4fc3f744" : "#4fc3f722";
+    btn.style.borderColor  = "#4fc3f7";
+    btn.style.color        = "#4fc3f7";
+  }
+  if (_coordViewOpen) _renderCoordView();
+}
+
+function _renderCoordView() {
+  const { pts, meas, activeCRS } = getState();
+  const crsEl = document.getElementById("cv-crs-label");
+  if (crsEl) crsEl.textContent = activeCRS;
+
+  const tbody = document.getElementById("cv-tbody");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const typeLabels = { known:"Känd punkt", station:"Uppställning", new:"Ny punkt", detail:"Detaljpunkt", simstation:"Sim. uppst." };
+  const typeColors = { known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d", simstation:"#ff6090" };
+
+  pts.forEach((pt, i) => {
+    const mc = meas.filter(m => m.from === pt.id || m.to === pt.id).length;
+    const tr = document.createElement("tr");
+    tr.style.borderBottom = "1px solid #1a2d48";
+    tr.innerHTML = `
+      <td style="padding:5px 6px;color:#506070;font-size:11px;">${i + 1}</td>
+      <td style="padding:5px 6px;color:${typeColors[pt.type]||"#e8f4fd"};font-weight:bold;font-family:monospace;">${pt.id}</td>
+      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${typeLabels[pt.type]||pt.type}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.N.toFixed(4)}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.E.toFixed(4)}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.H ? pt.H.toFixed(3) : "–"}</td>
+      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${mc || ""}</td>
+      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${pt.markering || ""}</td>
+      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${pt.prisma || ""}</td>
+      <td style="padding:5px 6px;text-align:center;">
+        <button onclick="window.openEditPt('${pt.id}')" style="padding:2px 6px;font-size:10px;background:transparent;border:1px solid #2a4060;color:#4fc3f7;border-radius:2px;cursor:pointer;">✏</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Statistik
+  const total = pts.length;
+  const known = pts.filter(p => p.type === "known").length;
+  const stn   = pts.filter(p => p.type === "station").length;
+  const newPt = pts.filter(p => p.type === "new" || p.type === "detail").length;
+  const st = document.getElementById("cv-stat-total");   if (st) st.textContent = `Totalt: ${total} punkter`;
+  const sk = document.getElementById("cv-stat-known");   if (sk) sk.textContent = `Kända: ${known}`;
+  const ss = document.getElementById("cv-stat-station"); if (ss) ss.textContent = `Uppst: ${stn}`;
+  const sn = document.getElementById("cv-stat-new");     if (sn) sn.textContent = `Nya/Detalj: ${newPt}`;
+}
+
+function cvSaveNewRow() {
+  const idEl = document.getElementById("cv-new-id");
+  const eEl  = document.getElementById("cv-new-E");
+  const nEl  = document.getElementById("cv-new-N");
+  const hEl  = document.getElementById("cv-new-H");
+  const tEl  = document.getElementById("cv-new-type");
+  if (!idEl || !eEl || !nEl) return;
+
+  const id = idEl.value.trim();
+  const E  = parseFloat(eEl.value);
+  const N  = parseFloat(nEl.value);
+  const H  = parseFloat(hEl?.value || "0") || 0;
+  const tp = tEl?.value || "station";
+  const markering = document.getElementById("cv-new-markering")?.value.trim() || undefined;
+  const prisma    = document.getElementById("cv-new-prisma")?.value.trim()    || undefined;
+
+  if (!id) { showToast("Ange ett Punkt-ID.", "#ff5050"); return; }
+  if (isNaN(E) || isNaN(N)) { showToast("E och N måste vara tal.", "#ff5050"); return; }
+
+  const { pts } = getState();
+  if (pts.find(p => p.id === id)) { showToast(`Punkt ${id} finns redan.`, "#ff5050"); return; }
+
+  saveUndo(`Lägg till punkt ${id}`);
+  setState({ pts: [...pts, { id, type:tp, E, N, H, markering, prisma }], simResult: null });
+  showToast(`✓ Punkt ${id} tillagd.`, "#00ff88");
+
+  // Rensa formuläret
+  [idEl, eEl, nEl].forEach(el => { el.value = ""; });
+  if (hEl) hEl.value = "";
+  if (document.getElementById("cv-new-markering")) document.getElementById("cv-new-markering").value = "";
+  if (document.getElementById("cv-new-prisma"))    document.getElementById("cv-new-prisma").value    = "";
+
+  _renderCoordView();
+  draw();
+}
+
+// ── 14. openPM – öppnar PM-popupen och skickar data via postMessage ─────────
+// Ersätter pmPopupHTML() helt – inga inline-scripts, inga escape-knep.
+async function openPM() {
+  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr } = getState();
+  if (!simResult?.ok) { alert("Kör simuleringen först."); return; }
+
+  const popup = window.open(
+    new URL("/src/pm/pm.html", window.location.href).pathname,
+    "natsim-pm",
+    "width=1060,height=920,menubar=no,toolbar=no"
+  );
+  if (!popup) { alert("Popup blockerades – tillåt popups för denna sida."); return; }
+
+  const { CRS_DEFS, INSTRUMENTS, MATKLASSER } = await import('./core/constants.js').catch(() => ({}));
+  const sr   = simResult;
+  const mk   = activeMatklass ? MATKLASSER?.[activeMatklass] : null;
+  const crs  = CRS_DEFS?.[activeCRS]?.name || activeCRS;
+  const ins  = INSTRUMENTS?.[defaultInstr]?.l || defaultInstr;
+  const mHz  = meas[0]?.sigHz_mgon  ?? (mk?.sigHz_mgon  ?? 0.3);
+  const mDm  = meas[0]?.sigDist_mm  ?? (mk?.sigDist_mm  ?? 1.0);
+  const mDp  = meas[0]?.sigDist_ppm ?? (mk?.sigDist_ppm ?? 1.0);
+  const mSt  = meas[0]?.numSatser   ?? (mk?.numSatser   ?? 3);
+  const dag  = new Date().toISOString().slice(0, 10);
+  const knd  = pts.filter(p => p.type === "known");
+  const pRes = (sr.allPtResults || []).filter(r => r.type !== "known" && r.sigPos > 0);
+
+  const payload = {
+    sr: {
+      meas_n:sr.meas_n, unkn_n:sr.unkn_n, redundancy:sr.redundancy,
+      K_global:sr.K_global, rMean:sr.rMean, rMinDist:sr.rMinDist,
+      rMinHz:sr.rMinHz, kappa:sr.kappa, redundTotal:sr.redundTotal,
+      datumDesc:sr.datumDesc, nCoordUnkn:sr.nCoordUnkn, nOrientUnkn:sr.nOrientUnkn
+    },
+    redund: (sr.redund||[]).map(r => ({ ri:r.ri, type:r.type, measId:r.measId,
+      fromId:r.fromId, toId:r.toId, d:r.d, mdb:r.mdb, yt_m:r.yt_m })),
+    ptRes:    pRes.map(r => ({ id:r.id, type:r.type, sigE:r.sigE, sigN:r.sigN,
+              sigPos:r.sigPos, aSemi:r.aSemi, bSemi:r.bSemi })),
+    allPts:   pts.map(p => ({ id:p.id, type:p.type, N:p.N, E:p.E, H:p.H||0, markering:p.markering||"", prisma:p.prisma||"" })),
+    knownPts: knd.map(p => ({ id:p.id, N:p.N, E:p.E, H:p.H||0, markering:p.markering||"" })),
+    mk, mkKey:activeMatklass||"", crs, ins, mHz, mDm, mDp, mSt, dag, centerErr,
+    img: "",
+    projnamn: "", projnr: "", kravSp: ""
+  };
+
+  // Lyssna på 'ready' och 'save-draft' från popupen
+  const handleMsg = e => {
+    if (e.source !== popup) return;
+    if (e.data?.type === "ready") {
+      popup.postMessage({ type:"data", payload }, "*");
+    } else if (e.data?.type === "save-draft") {
+      try { localStorage.setItem("pm_draft", JSON.stringify({ vals: e.data.payload?.vals || {} })); } catch {}
+    }
+  };
+  window.addEventListener("message", handleMsg);
+  // Rensa lyssnaren när popupen stängs
+  const checkClosed = setInterval(() => {
+    if (popup.closed) { window.removeEventListener("message", handleMsg); clearInterval(checkClosed); }
+  }, 1000);
+}

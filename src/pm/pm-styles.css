@@ -1,0 +1,188 @@
+/* PM-popup – all CSS separerad från HTML per STRUCTURE.md-krav.
+   UI-stilar (mörkt tema) + rapport-stilar (vitt A4) i en fil.
+   @media print-blocket hanterar PDF-utskrift via window.print().
+*/
+
+/* ── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── UI – mörkt tema ─────────────────────────────────────────────────────── */
+body {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  background: #0d1520;
+  color: #d0e4f8;
+  line-height: 1.5;
+}
+
+.top {
+  background: linear-gradient(135deg, #091830, #0d1520);
+  border-bottom: 2px solid #00c87a;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.top h1 { font-size: 15px; font-weight: 700; color: #00c87a; }
+.top small { font-size: 11px; color: #506070; }
+
+/* Steg-navigation */
+.nav {
+  display: flex;
+  background: #111d2e;
+  border-bottom: 1px solid #1e3050;
+  overflow-x: auto;
+}
+.nb {
+  padding: 10px 14px;
+  font-size: 12px;
+  border: none;
+  background: transparent;
+  color: #506070;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.nb:hover { color: #d0e4f8; background: #0a1828; }
+.nb.on  { color: #00c87a; border-bottom-color: #00c87a; }
+.nb.was { color: #7ad4a0; }
+.nc {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #2a4060;
+  color: #506070;
+  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+.nb.on  .nc { background: #00c87a; color: #000; }
+.nb.was .nc { background: #2a6040; color: #7ad4a0; }
+
+/* App-yta */
+.app { padding: 18px; max-width: 900px; margin: 0 auto; }
+.pg  { display: none; }
+.pg.on { display: block; }
+
+/* Kort */
+.card { background: #111d2e; border: 1px solid #1e3050; border-radius: 6px; margin-bottom: 14px; overflow: hidden; }
+.ch   { padding: 10px 15px; border-bottom: 1px solid #1e3050; display: flex; align-items: center; gap: 9px; background: linear-gradient(135deg, #091830, #111d2e); }
+.ci   { font-size: 18px; }
+.ct   { font-size: 13px; font-weight: 700; }
+.cd   { font-size: 11px; color: #506070; }
+.cb   { padding: 14px; }
+
+/* Grid */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+.gw { grid-column: 1 / -1; }
+.lbl { font-size: 11px; color: #506070; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 3px; }
+
+/* Formulärelement */
+input, select, textarea {
+  width: 100%;
+  background: #0a1220;
+  border: 1px solid #2a4060;
+  color: #d0e4f8;
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-family: inherit;
+  margin-bottom: 2px;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: #00c87a; }
+
+/* Infobox */
+.hint {
+  background: #061428;
+  border: 1px solid #1e3050;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #8aaccc;
+  margin: 6px 0;
+}
+.hint b { color: #4fc3f7; }
+.hr { border: none; border-top: 1px solid #1e3050; margin: 10px 0; }
+.sec { font-size: 11px; color: #4fc3f7; font-weight: 700; text-transform: uppercase; letter-spacing: .8px; margin: 8px 0 4px; }
+
+/* Knappar */
+.br  { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.bp  { padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; background: #00c87a; color: #000; }
+.bp:hover { background: #00a060; }
+.bo  { padding: 8px 18px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; border: 1px solid #2a4060; background: transparent; color: #8aaccc; }
+.bpr { padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; border: none; background: #4fc3f7; color: #000; }
+
+/* Bilduppladdning */
+.ifup   { display: none; }
+.ifbtn  { padding: 4px 10px; font-size: 11px; background: #091424; border: 1px solid #1e3850; color: #7090a8; border-radius: 3px; cursor: pointer; }
+.irow   { display: flex; align-items: center; gap: 7px; margin-top: 3px; flex-wrap: wrap; }
+.iprev  { max-height: 50px; max-width: 160px; border: 1px solid #1e3050; border-radius: 3px; margin-top: 3px; display: block; }
+
+/* ── Rapport – vit A4 ────────────────────────────────────────────────────── */
+#rpt { font-family: Arial, sans-serif; font-size: 10pt; color: #111; background: #fff; margin-top: 12px; }
+
+/* Försättsblad */
+.rc {
+  width: 210mm;
+  min-height: 297mm;
+  background: #fff;
+  padding: 25mm 25mm 20mm;
+  display: flex;
+  flex-direction: column;
+  border-bottom: 4px solid #003366;
+  page-break-after: always;
+}
+.rbg  { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6mm; }
+.rtit { font-size: 22pt; font-weight: 900; color: #003366; line-height: 1.2; margin-bottom: 4mm; text-transform: uppercase; }
+.rsub { font-size: 13pt; color: #555; margin-bottom: 18mm; }
+.rmet { font-size: 10pt; line-height: 2.1; color: #333; margin-top: auto; border-top: 1px solid #ccc; padding-top: 7mm; }
+.rstd { font-size: 8pt; color: #aaa; margin-top: 3mm; }
+.rlogo { max-height: 48px; max-width: 170px; object-fit: contain; margin-bottom: 16mm; }
+
+/* Rapportsidor */
+.rb { width: 210mm; padding: 15mm 20mm; background: #fff; }
+h1.r {
+  font-size: 13pt; font-weight: 900; color: #003366;
+  text-transform: uppercase; letter-spacing: .7px;
+  margin: 8mm 0 3mm; border-bottom: 2px solid #003366; padding-bottom: 1.5mm;
+  page-break-before: always;
+}
+h1.r:first-child { page-break-before: avoid; }
+h2.r { font-size: 11pt; font-weight: 700; color: #222; margin: 4mm 0 2mm; }
+p.r  { font-size: 10pt; line-height: 1.55; margin-bottom: 2.5mm; text-align: justify; }
+
+/* Tabeller */
+table.r { width: 100%; border-collapse: collapse; margin: 2.5mm 0; font-size: 9pt; }
+table.r th { background: #003366; color: #fff; padding: 4px 7px; text-align: left; }
+table.r td { padding: 3px 7px; border: 1px solid #ccc; vertical-align: top; }
+table.r tr:nth-child(even) td { background: #f5f8fc; }
+table.rm { width: 100%; border-collapse: collapse; margin: 2.5mm 0; font-size: 9.5pt; }
+table.rm td { padding: 4px 8px; border-bottom: 1px solid #ddd; vertical-align: top; }
+table.rm td:first-child { font-weight: 700; color: #555; width: 52mm; }
+
+/* Infoboxar */
+.rbox { background: #f0f4f8; border-left: 3px solid #003366; padding: 3mm 4mm; font-size: 9pt; color: #333; margin: 2.5mm 0; line-height: 1.6; }
+.bok  { background: #f0faf5; border-left-color: #006600; }
+.bwrn { background: #fff8e0; border-left-color: #cc8800; }
+.berr { background: #fff0f0; border-left-color: #cc0000; }
+.rok  { color: #006600; font-weight: 700; }
+.rerr { color: #cc0000; font-weight: 700; }
+.rwrn { color: #884400; font-weight: 700; }
+
+/* Bilder */
+.fig { text-align: center; margin: 3mm 0; }
+.fig img { max-width: 100%; border: 1px solid #ccc; }
+.fcp { font-style: italic; font-size: 8pt; color: #555; margin-top: 1.5mm; }
+
+/* ── Print / PDF ─────────────────────────────────────────────────────────── */
+@media print {
+  body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .np  { display: none !important; }
+  @page { size: A4; margin: 0; }
+  h1.r { page-break-before: always; }
+  h1.r:first-child { page-break-before: avoid; }
+}

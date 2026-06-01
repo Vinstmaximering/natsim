@@ -2,14 +2,29 @@
 <html lang="sv">
 <head>
   <meta charset="UTF-8">
-  <title>NätSim – PM</title>
-  <style>body{background:#070d18;color:#c8d8e8;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mätningstekniskt PM – NätSim</title>
+  <link rel="stylesheet" href="./pm-styles.css">
 </head>
 <body>
-  <div style="text-align:center">
-    <div style="font-size:18px;color:#4fc3f7;margin-bottom:8px;">📐 NätSim PM</div>
-    <div style="font-size:12px;color:#7090a8;">PM-modulen implementeras i Fas 7.</div>
+  <div class="top">
+    <div>
+      <h1>📐 Mätningstekniskt PM</h1>
+      <small>SIS-TS 21143:2016 · HMK Stommätning 2024 · TDOK 2014:0571</small>
+    </div>
+    <div>
+      <button id="btn-draft" style="padding:5px 12px;font-size:11px;background:#091424;border:1px solid #2a4060;color:#7090a8;border-radius:3px;cursor:pointer;">💾 Spara utkast</button>
+    </div>
   </div>
+
+  <nav class="nav" id="nav"></nav>
+
+  <div class="app" id="app">
+    <div style="text-align:center;padding:40px;color:#506070;">
+      Väntar på data från NätSim…
+    </div>
+  </div>
+
   <script type="module" src="./pm.js"></script>
 </body>
 </html>

@@ -391,10 +391,43 @@ export function renderTab() {
     return;
   }
 
-  // ── POLÄR ──
+  // ── POLÄR – identisk med original rad 1746–1772 ──
   if (atab === "polar") {
-    tc.innerHTML = `<div class="sl">POLÄR BERÄKNING</div>
-      <div style="font-size:12px;color:#7090a8;padding:20px 0;text-align:center;">Polärberäkning tillgänglig i nästa fas.</div>`;
+    const { selId } = getState();
+    const sp = pts.find(p => p.id === selId);
+    if (!sp) {
+      tc.innerHTML = `<div class="sl">POLÄR BERÄKNING</div>
+        <div style="text-align:center;padding:24px 0;color:#7090a8;font-size:12px;">Välj en punkt i kartan</div>`;
+      return;
+    }
+    const myM = meas.filter(m => m.from === selId || m.to === selId);
+    const rows = pts.filter(p => p.id !== selId).map(p => {
+      const dc = Math.sqrt((p.E-sp.E)**2 + (p.N-sp.N)**2);
+      let bc = Math.atan2(p.E-sp.E, p.N-sp.N) * 180 / Math.PI;
+      if (bc < 0) bc += 360;
+      const hm = myM.find(m => (m.from===selId&&m.to===p.id)||(m.to===selId&&m.from===p.id));
+      const col = { known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d", simstation:"#ff6090" }[p.type] || "#e8f4fd";
+      return `<tr style="border-bottom:1px solid #1a2d48;">
+        <td style="padding:4px 0;color:${col}">${p.id}</td>
+        <td style="text-align:right;color:#e8f4fd;font-family:monospace">${dc.toFixed(4)}</td>
+        <td style="text-align:right;color:#00ff88;font-family:monospace;font-size:10px">${fmt(bc)}</td>
+        <td style="text-align:right">${hm ? '<span style="color:#ff9900">●</span>' : '<span style="color:#2a4060">○</span>'}</td>
+      </tr>`;
+    }).join("");
+    tc.innerHTML = `<div class="sl">POLÄR FRÅN: ${sp.id}</div>
+      <div style="background:${({ known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d" }[sp.type]||"#888")}18;border:1px solid ${({ known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d" }[sp.type]||"#888")}44;border-radius:3px;padding:5px 8px;margin-bottom:8px;font-size:12px;">
+        <span style="font-weight:bold">${sp.id}</span>
+        <span style="color:#7090a8;margin-left:6px">${({ known:"Känd punkt", station:"Uppställning", new:"Ny punkt", detail:"Detaljpunkt" }[sp.type]||sp.type)}</span>
+      </div>
+      <table style="width:100%;font-size:11px;border-collapse:collapse;">
+        <thead><tr style="color:#7090a8;border-bottom:1px solid #1a2d48;">
+          <th style="text-align:left;padding:2px 0;font-weight:normal;">Till</th>
+          <th style="text-align:right;font-weight:normal;">Dist (m)</th>
+          <th style="text-align:right;font-weight:normal;">Riktning</th>
+          <th style="text-align:right;font-weight:normal;">M</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
     return;
   }
 
@@ -409,7 +442,7 @@ export function renderTab() {
       <button onclick="window._openMeasBook()" style="width:100%;padding:7px;font-size:12px;background:#ffb74d18;border:1px solid #ffb74d;color:#ffb74d;border-radius:3px;cursor:pointer;margin-bottom:4px;">📋 Mätbok A4 (utskrift/PDF)</button>
       <button onclick="window._exportMeasScheme()" style="width:100%;padding:7px;font-size:12px;background:#ffb74d18;border:1px solid #ffb74d;color:#ffb74d;border-radius:3px;cursor:pointer;margin-bottom:6px;">📝 Mätschema (.txt)</button>
       <div class="dv" style="margin:6px 0;"></div>
-      <button onclick="window._openPM()" style="width:100%;padding:8px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:3px;cursor:pointer;">📐 Generera PM (Fas 7)</button>`;
+      <button onclick="window._openPM()" style="width:100%;padding:8px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:3px;cursor:pointer;">📐 Generera Mätningstekniskt PM</button>`;
     return;
   }
 }
@@ -466,8 +499,7 @@ export function initRightPanel() {
   window._setEllipsMode    = mode => { setState({ ellipsMode: mode }); draw(); renderTab(); };
   window._setSigReq        = val  => { setState({ sigReq: val }); renderTab(); };
   window._showValidationDialog = showValidationDialog;
-  window._exportRep        = () => import('../reports/sim-report.js').then(m => m.exportSimReport()).catch(() => alert("Rapport-export tillgänglig i Fas 6."));
-  window._openPM           = () => import('../pm/pm.js').then(m => m.openPM()).catch(() => alert("PM-generering tillgänglig i Fas 7."));
+  // _exportRep och _openPM sätts av main.js – sätt INTE om dem här (skulle overrida med stubs).
 
   // Exponera setState/draw för inline onclick i renderTab-HTML
   window.setState_ = partial => { setState(partial); };
