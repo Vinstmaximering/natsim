@@ -13,6 +13,7 @@ import { initQualityPanel, updateQualityPanel } from './ui/quality-panel.js';
 import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleAU, toggleMapLayer } from './ui/toolbar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
+import { initResize }                           from './ui/panel-resize.js';
 import { openEditPt, openMM, closeModal }       from './ui/modals.js';
 
 // ── 1. AutoSim ──────────────────────────────────────────────────────────────
@@ -100,6 +101,8 @@ if (!loaded) {
 
 // ── 9. Initiera höger-panel och rendera ────────────────────────────────────
 initRightPanel();
+initResize('lp', 'right');
+initResize('rp', 'left');
 buildTools();
 updatePtList();
 renderTab();

@@ -13,9 +13,9 @@ export function render(D, container, vals) {
           <div><div class="lbl">Totalstation</div><input id="v_instr" placeholder="fabrikat/typ" value="${D.ins}"></div>
           <div><div class="lbl">Serienummer</div><input id="v_serienr" placeholder="ex. 890562"></div>
           <div><div class="lbl">Kalibrering / verifikat</div><input id="v_kalib" placeholder="ex. 2024-03-15"></div>
-          <div><div class="lbl">Tvångscentriering</div><input id="v_tvang" placeholder="ex. Leica GZR3"></div>
-          <div><div class="lbl">Fältprogramvara</div><input id="v_swfalt" placeholder="ex. Leica Captivate 7.0"></div>
-          <div><div class="lbl">Beräkningsprogramvara</div><input id="v_swber" placeholder="ex. NätSim Beta 2" value="NätSim Beta 2"></div>
+          <div><div class="lbl">Tvångscentriering</div><input id="v_tvang" placeholder="fabrikat/modell"></div>
+          <div><div class="lbl">Fältprogramvara</div><input id="v_swfalt" placeholder="fabrikat/version"></div>
+          <div><div class="lbl">Beräkningsprogramvara</div><input id="v_swber" placeholder="programvara/version"></div>
         </div>
         <div><div class="lbl">Mätmetod och genomförande</div><textarea id="v_metod" rows="4" placeholder="Beskriv mätmetod, antal helsatser..."></textarea></div>
         <div><div class="lbl">Korrektioner</div><textarea id="v_korr" rows="2" placeholder="ex. Höjdreduktion, atmosfärisk korrektion..."></textarea></div>

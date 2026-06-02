@@ -7,10 +7,10 @@ export function render(D, container, vals) {
       <div class="ch"><div class="ci">📋</div><div><div class="ct">Projekt och personal</div><div class="cd">Grunduppgifter och R2 – Personal</div></div></div>
       <div class="cb">
         <div class="g2">
-          <div><div class="lbl">Projektnamn *</div><input id="v_proj" placeholder="t.ex. Järnvägsstation Kungsängen"></div>
+          <div><div class="lbl">Projektnamn *</div><input id="v_proj" placeholder="t.ex. Projektets namn"></div>
           <div><div class="lbl">Projektnummer</div><input id="v_projnr" placeholder="t.ex. 2024-1234"></div>
-          <div><div class="lbl">Beställare</div><input id="v_best" placeholder="t.ex. Trafikverket"></div>
-          <div><div class="lbl">Utförare</div><input id="v_utf" placeholder="t.ex. KO Mätteknik AB"></div>
+          <div><div class="lbl">Beställare</div><input id="v_best" placeholder="t.ex. Beställarens organisation"></div>
+          <div><div class="lbl">Utförare</div><input id="v_utf" placeholder="t.ex. Utförarens organisation"></div>
           <div><div class="lbl">Ansvarig mätingenjör</div><input id="v_ans" placeholder="Förnamn Efternamn"></div>
           <div><div class="lbl">Uppdragstyp</div>
             <select id="v_nats">

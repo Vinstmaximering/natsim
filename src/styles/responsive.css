@@ -89,6 +89,9 @@
   #rp { width: 280px !important; }
   #rp.hidden { width: 0 !important; }
 
+  /* Resize-handles: fasta bredder gäller på tablet */
+  .resize-handle { display: none; }
+
   /* Modaler: centrerade, lite bredare än desktop */
   .mo { width: min(480px, 90vw); }
 

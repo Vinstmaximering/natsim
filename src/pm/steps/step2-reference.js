@@ -50,7 +50,7 @@ export function render(D, container, vals) {
             ${kpRows}
           </table>
         </div>
-        <div><div class="lbl">Koordinatkälla (R3.4)</div><input id="v_kordkalla" placeholder="t.ex. Riksnätet, Lantmäteriets geodatatjänst"></div>
+        <div><div class="lbl">Koordinatkälla (R3.4)</div><input id="v_kordkalla" placeholder="t.ex. Riksnätet, kommunens geodatatjänst"></div>
         <div style="margin-top:8px"><div class="lbl">Bedömning koordinatkvalitet</div><textarea id="v_kordkval" rows="2"></textarea></div>
         <div class="br">
           <button class="bo" id="btn-back2">← Tillbaka</button>
