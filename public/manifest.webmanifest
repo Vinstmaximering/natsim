@@ -1,0 +1,16 @@
+{
+  "name": "NätSim",
+  "short_name": "NätSim",
+  "description": "Stomnätssimulator – Planering & Nätanalys",
+  "display": "standalone",
+  "background_color": "#1a2030",
+  "theme_color": "#1a2030",
+  "start_url": ".",
+  "icons": [
+    {
+      "src": "./favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ]
+}

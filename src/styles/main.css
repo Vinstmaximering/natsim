@@ -5,21 +5,21 @@
 
 /* Globala resets */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body   { background: #070d18; color: #c8d8e8; font-family: monospace; overflow: hidden; height: 100vh; width: 100vw; }
+body   { background: #070d18; color: #c8d8e8; font-family: monospace; overflow: hidden; height: 100vh; height: 100dvh; width: 100vw; }
 button, input, select { font-family: monospace; }
 
 /* App-layout */
-#app { display: flex; height: 100vh; width: 100vw; overflow: hidden; }
+#app { display: flex; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
 
 /* Vänsterpanel */
-#lp        { width: 310px; background: #0b1422; border-right: 1px solid #1a2d48; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; transition: width .2s; }
+#lp        { width: 310px; background: #0b1422; border-right: 1px solid #1a2d48; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100vh; max-height: 100dvh; flex-shrink: 0; transition: width .2s; }
 #lp.hidden { width: 0; overflow: hidden; }
 
 /* Kartruta */
 #cw { flex: 1; position: relative; overflow: hidden; }
 
 /* Högerpanel */
-#rp        { width: 380px; background: #0b1422; border-left: 1px solid #1a2d48; display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; transition: width .2s; }
+#rp        { width: 380px; background: #0b1422; border-left: 1px solid #1a2d48; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100vh; max-height: 100dvh; flex-shrink: 0; transition: width .2s; }
 #rp.hidden { width: 0; overflow: hidden; }
 
 /* Responsiv layout hanteras i responsive.css */
