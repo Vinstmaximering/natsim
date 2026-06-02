@@ -142,4 +142,13 @@ describe('buildReport – rapport-generator', () => {
     expect(() => buildReport(minData)).not.toThrow();
   });
 
+  it('PM URL-konstruktion: BASE_URL + relativ path, ingen dubbel slash', () => {
+    // import.meta.env.BASE_URL = '/' i test-env, '/natsim/' i prod
+    const base = import.meta.env.BASE_URL;
+    const url = `${base}src/pm/pm.html`;
+    expect(url).toMatch(/\/src\/pm\/pm\.html$/);
+    expect(url).not.toContain('//src');
+    expect(url.startsWith(base)).toBe(true);
+  });
+
 });

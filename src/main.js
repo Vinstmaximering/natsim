@@ -229,7 +229,7 @@ async function openPM() {
   if (!simResult?.ok) { alert("Kör simuleringen först."); return; }
 
   const popup = window.open(
-    new URL("/src/pm/pm.html", window.location.href).pathname,
+    `${import.meta.env.BASE_URL}src/pm/pm.html`,
     "natsim-pm",
     "width=1060,height=920,menubar=no,toolbar=no"
   );
