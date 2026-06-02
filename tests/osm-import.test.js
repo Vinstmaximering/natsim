@@ -2,7 +2,7 @@
 // fetchOSMBuildings och parseOSMtoObstacles importeras direkt (inga DOM-beroenden).
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchOSMBuildings, parseOSMtoObstacles } from '../src/io/osm-import.js';
+import { fetchOSMBuildings, fetchOSMBuildingsWithRetry, parseOSMtoObstacles } from '../src/io/osm-import.js';
 
 // ─── Exempeldata från Overpass ────────────────────────────────────────────────
 // Simulerar ett svar med 2 byggnader nära Stockholm (WGS84-koordinater)
@@ -212,5 +212,81 @@ describe('parseOSMtoObstacles', () => {
   it('obstacle har osmId som nummer', () => {
     const obs = parseOSMtoObstacles(SAMPLE_OSM, 'sweref99tm');
     expect(typeof obs[0].osmId).toBe('number');
+  });
+});
+
+// ─── fetchOSMBuildingsWithRetry ───────────────────────────────────────────────
+
+describe('fetchOSMBuildingsWithRetry', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('lyckat första försök → returnerar data utan retry', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => SAMPLE_OSM,
+    });
+    const onRetrying = vi.fn();
+    const delayFn    = vi.fn().mockResolvedValue();
+
+    const result = await fetchOSMBuildingsWithRetry(SAMPLE_BOUNDS, { onRetrying, delayFn });
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(onRetrying).not.toHaveBeenCalled();
+    expect(delayFn).not.toHaveBeenCalled();
+    expect(result).toEqual(SAMPLE_OSM);
+  });
+
+  it('första 429 → onRetrying kallas → delay → andra lyckas', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429 })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => SAMPLE_OSM });
+
+    const onRetrying = vi.fn();
+    const delayFn    = vi.fn().mockResolvedValue();
+
+    const result = await fetchOSMBuildingsWithRetry(SAMPLE_BOUNDS, { onRetrying, delayFn });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(onRetrying).toHaveBeenCalledOnce();
+    expect(delayFn).toHaveBeenCalledWith(3000);
+    expect(result).toEqual(SAMPLE_OSM);
+  });
+
+  it('båda försöken ger 429 → kastar Error', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 429 });
+    const delayFn = vi.fn().mockResolvedValue();
+
+    await expect(
+      fetchOSMBuildingsWithRetry(SAMPLE_BOUNDS, { delayFn })
+    ).rejects.toThrow('429');
+
+    expect(fetch).toHaveBeenCalledTimes(2); // försökte två gånger
+  });
+
+  it('icke-429-fel (500) → ingen retry, kastar direkt', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    const onRetrying = vi.fn();
+    const delayFn    = vi.fn().mockResolvedValue();
+
+    await expect(
+      fetchOSMBuildingsWithRetry(SAMPLE_BOUNDS, { onRetrying, delayFn })
+    ).rejects.toThrow('500');
+
+    expect(fetch).toHaveBeenCalledOnce(); // inget retry för 500
+    expect(onRetrying).not.toHaveBeenCalled();
+    expect(delayFn).not.toHaveBeenCalled();
+  });
+
+  it('nätverksfel → ingen retry, kastar direkt', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    const onRetrying = vi.fn();
+    const delayFn    = vi.fn().mockResolvedValue();
+
+    await expect(
+      fetchOSMBuildingsWithRetry(SAMPLE_BOUNDS, { onRetrying, delayFn })
+    ).rejects.toThrow(/Nätverksfel|Failed to fetch/);
+
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(onRetrying).not.toHaveBeenCalled();
   });
 });
