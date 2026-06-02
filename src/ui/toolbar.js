@@ -105,8 +105,13 @@ function _updateBackdrop() {
 }
 
 export function clearAll() {
-  if (confirm("Rensa alla punkter och mätningar?")) {
-    setState({ pts: [], meas: [], selId: null, selMId: null, measFrom: null, simResult: null, suggestedMeas: [] });
+  if (confirm("Rensa alla punkter, mätningar och hinder?")) {
+    setState({
+      pts: [], meas: [], obstacles: [],
+      selId: null, selMId: null, selObsId: null,
+      measFrom: null, simResult: null,
+      suggestedMeas: [], blockedSuggestions: [],
+    });
     draw();
   }
 }

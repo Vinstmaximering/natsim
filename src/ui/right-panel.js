@@ -19,6 +19,8 @@ export function suggestMeasurements() {
   const { pts, meas, obstacles = [] } = getState();
   const stations = pts.filter(p => p.type === "station");
   const known    = pts.filter(p => p.type === "known");
+  // Fix: inkludera new, detail och simstation som mätmål (var ofrivilligt borttaget)
+  const unknowns = pts.filter(p => ["new", "detail", "simstation"].includes(p.type));
   const suggested = [];
   const blocked   = []; // [{from, to, blockedBy}]
   if (!stations.length) { setState({ suggestedMeas: [], blockedSuggestions: [] }); return; }
@@ -26,9 +28,10 @@ export function suggestMeasurements() {
   stations.forEach(s => {
     const existing    = meas.filter(m => m.from === s.id || m.to === s.id);
     const existingIds = new Set(existing.map(m => m.from === s.id ? m.to : m.from));
+
+    // Bakåtsikter till kända punkter (upp till 3 saknade)
     const missingKnown = known.filter(k => !existingIds.has(k.id));
     missingKnown.sort((a, b) => d2EN(s, a) - d2EN(s, b));
-
     const currentKnownCount = known.filter(k => existingIds.has(k.id)).length;
     const needed = Math.max(0, 3 - currentKnownCount);
     missingKnown.slice(0, needed).forEach(k => {
@@ -40,6 +43,17 @@ export function suggestMeasurements() {
       }
     });
 
+    // Mätningar till obekanta punkter (new, detail, simstation)
+    unknowns.filter(u => !existingIds.has(u.id)).forEach(u => {
+      const los = hasLineOfSight(s, u, obstacles);
+      if (!los.visible) {
+        blocked.push({ from: s.id, to: u.id, blockedBy: los.blockedBy });
+      } else {
+        suggested.push({ from: s.id, to: u.id, reason: "Mätning till obekant punkt" });
+      }
+    });
+
+    // Korsförbindelser mellan uppställningar
     if (stations.length > 1) {
       stations.filter(s2 => s2.id !== s.id && !existingIds.has(s2.id)).forEach(s2 => {
         const already = suggested.find(sg =>
@@ -111,6 +125,14 @@ export function renderTab() {
     </div>
     <div class="sl">FÖRESLÅ MÄTNINGAR</div>
     <button onclick="window._suggestMeas()" style="width:100%;padding:7px;font-size:12px;background:#ffdc3218;border:1px solid #ffdc3266;color:#ffdc32;border-radius:3px;cursor:pointer;margin-bottom:4px;">⚡ Analysera och föreslå mätningar</button>
+    ${(() => {
+      const sg = getState().suggestedMeas || [];
+      if (!sg.length) return '';
+      return `<button onclick="window._importAllSugg()"
+        style="width:100%;padding:6px;font-size:12px;background:#00ff8818;border:1px solid #00ff8866;color:#00ff88;border-radius:3px;cursor:pointer;margin-bottom:4px;">
+        ✓ Importera alla ${sg.length} förslag som mätningar
+      </button>`;
+    })()}
     ${(() => {
       const bl = getState().blockedSuggestions || [];
       if (!bl.length) return '';
@@ -536,6 +558,31 @@ export function initRightPanel() {
     setState({ simResult: null }); draw();
   };
   window._suggestMeas      = () => { suggestMeasurements(); draw(); renderTab(); };
+  window._importAllSugg   = () => {
+    const { suggestedMeas, meas, defaultInstr, nMid } = getState();
+    if (!suggestedMeas.length) return;
+    if (suggestedMeas.length > 5 && !confirm(`Importera ${suggestedMeas.length} förslag som mätningar?`)) return;
+    const pr = INSTRUMENTS[defaultInstr] || INSTRUMENTS['ts16_1'];
+    saveUndo(`Importera ${suggestedMeas.length} föreslagna mätningar`);
+    let nextId = nMid;
+    const newMeas = [
+      ...meas,
+      ...suggestedMeas.map(sg => ({
+        id: `M${nextId++}`,
+        from: sg.from, to: sg.to,
+        obsType: 'both',
+        instrPreset: defaultInstr,
+        sigDist_mm: pr.sigDmm, sigDist_ppm: pr.sigDppm,
+        sigHz_mgon: pr.sigHz, numSatser: 3,
+        measDist: null, measHz: null,
+      })),
+    ];
+    const n = suggestedMeas.length;
+    setState({ meas: newMeas, nMid: nextId, suggestedMeas: [] });
+    import('./toast.js').then(m => m.showToast(`✓ ${n} mätningar importerade`, '#00ff88'));
+    draw();
+    renderTab();
+  };
   window._setEllipsMode    = mode => { setState({ ellipsMode: mode }); draw(); renderTab(); };
   window._setSigReq        = val  => { setState({ sigReq: val }); renderTab(); };
   window._showValidationDialog = showValidationDialog;
