@@ -29,3 +29,14 @@ export function updateObstacle(id, changes) {
 export function getObstacles() {
   return getState().obstacles || [];
 }
+
+// Synkar den interna ID-räknaren efter att obstacles laddats från fil.
+// Förhindrar ID-kollision mellan laddade hinder och framtida addObstacle-anrop.
+export function _syncObstacleCounter(obstacles) {
+  if (!obstacles || obstacles.length === 0) { _nObs = 1; return; }
+  const max = obstacles.reduce((m, o) => {
+    const hit = /^obs_(\d+)$/.exec(o.id || '');
+    return hit ? Math.max(m, parseInt(hit[1], 10)) : m;
+  }, 0);
+  _nObs = max + 1;
+}

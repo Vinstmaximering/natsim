@@ -1,27 +1,31 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 3538–3643 (getState + applyState + saveProject).
-// JSON-format ver:2 – bakåtkompatibelt med ver:1 (gamla .json-filer).
+// JSON-format ver:3 – bakåtkompatibelt med ver:1 och ver:2.
+//   ver:3 (Fas 5): lägger till obstacles-array
+//   ver:2/1:       obstacles sätts till [] vid laddning
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
+import { _syncObstacleCounter } from '../state/obstacles.js';
 
-// ── Serialisera state till spara-objekt – rad 3538–3551 ─────────────────────
-function buildSnapshot() {
+// ── Serialisera state till spara-objekt ──────────────────────────────────────
+// Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
+export function _buildSnapshot() {
   const s = getState();
   return {
-    ver: 2,
-    pts:  JSON.parse(JSON.stringify(s.pts)),
-    meas: JSON.parse(JSON.stringify(s.meas)),
-    activeCRS:    s.activeCRS    || "sweref99tm",
+    ver: 3,
+    pts:       JSON.parse(JSON.stringify(s.pts)),
+    meas:      JSON.parse(JSON.stringify(s.meas)),
+    obstacles: JSON.parse(JSON.stringify(s.obstacles || [])),
+    activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
-    centerErr:    s.centerErr    ?? 1.0,
-    defaultInstr: s.defaultInstr || "ts16_1",
-    symSize:      s.symSize      ?? 10,
-    ellScale:     s.ellScale     ?? 50,
-    ellipsMode:   s.ellipsMode   || "1sig",
-    au:           s.au           || "grad",
-    nMid:         s.nMid         ?? 1,
-    // Kartläge sparas i mån av tillgång (används vid öppning)
+    centerErr:      s.centerErr      ?? 1.0,
+    defaultInstr:   s.defaultInstr   || "ts16_1",
+    symSize:        s.symSize        ?? 10,
+    ellScale:       s.ellScale       ?? 50,
+    ellipsMode:     s.ellipsMode     || "1sig",
+    au:             s.au             || "grad",
+    nMid:           s.nMid           ?? 1,
     mapCenter: (() => {
       try {
         const m = document.getElementById("leaflet-map")?._leaflet_map;
@@ -39,9 +43,42 @@ function buildSnapshot() {
   };
 }
 
+// ── Applicera snapshot till state – ren funktion utan DOM/leaflet ─────────────
+// Exporteras för tester. loadProject() anropar denna och sköter sedan
+// DOM-sliders och kartvy separat.
+export function _applySnapshot(s) {
+  // Strip v1-format x/y-pixelkoordinater – rad 3557–3558 exakt
+  const pts  = (s.pts  || []).map(p => { const { x, y, ...rest } = p; return rest; });
+  const meas = s.meas || [];
+
+  // Fas 5: ver:3 → läs obstacles; ver:1/2 → bakåtkompatibel tom array
+  const obstacles = s.ver >= 3 ? (s.obstacles || []) : [];
+
+  // Synka ID-räknare i obstacles.js för att undvika kollision vid nästa addObstacle
+  _syncObstacleCounter(obstacles);
+
+  setState({
+    pts,
+    meas,
+    obstacles,
+    activeCRS:      s.activeCRS      || "sweref99tm",
+    activeLayerKey: s.activeLayerKey || "osm",
+    centerErr:      s.centerErr  != null ? s.centerErr : 1.0,
+    defaultInstr:   s.defaultInstr   || "ts16_1",
+    symSize:        s.symSize        ?? 10,
+    ellScale:       s.ellScale       ?? 50,
+    ellipsMode:     s.ellipsMode     || "1sig",
+    au:             s.au             || "grad",
+    nMid:           s.nMid           ?? 1,
+    simResult:      null,
+    selObsId:       null,
+    blockedSuggestions: [],
+  });
+}
+
 // ── Spara projekt – rad 3616–3624 exakt ─────────────────────────────────────
 export function saveProject() {
-  const snapshot = buildSnapshot();
+  const snapshot = _buildSnapshot();
   const name = `stomnät_${new Date().toISOString().slice(0,16).replace("T","_").replace(":","-")}.json`;
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type:"application/json" }));
@@ -51,34 +88,16 @@ export function saveProject() {
   if (el) el.textContent = `Sparad som ${name}`;
 }
 
-// ── Ladda projekt från JSON-text – bakåtkompatibelt med ver:1 och ver:2 ────
-// Bakåtkompatibilitet: ver:1-filer hade samma fältnamn som ver:2 – rad 3553–3587 exakt.
+// ── Ladda projekt från JSON-text – bakåtkompatibelt med ver:1, 2 och 3 ────────
 export function loadProject(text) {
   let s;
   try { s = JSON.parse(text); } catch (e) { alert("Felaktig JSON-fil: " + e.message); return false; }
-  if (!s || (s.ver !== 2 && s.ver !== 1)) {
-    alert("Kunde inte läsa projektfilen – fel format eller version.\n\nFilen måste vara skapad av NätSim v1 eller v2.");
+  if (!s || (s.ver !== 3 && s.ver !== 2 && s.ver !== 1)) {
+    alert("Kunde inte läsa projektfilen – fel format eller version.\n\nFilen måste vara skapad av NätSim v1, v2 eller v3.");
     return false;
   }
 
-  // Strip v1-format x/y-fält (pixelkoordinater som inte längre används) – rad 3557–3558
-  const pts  = (s.pts  || []).map(p => { const { x, y, ...rest } = p; return rest; });
-  const meas = s.meas || [];
-
-  setState({
-    pts,
-    meas,
-    activeCRS:    s.activeCRS     || "sweref99tm",
-    activeLayerKey: s.activeLayerKey || "osm",
-    centerErr:    s.centerErr  != null ? s.centerErr  : 1.0,
-    defaultInstr: s.defaultInstr   || "ts16_1",
-    symSize:      s.symSize        ?? 10,
-    ellScale:     s.ellScale       ?? 50,
-    ellipsMode:   s.ellipsMode     || "1sig",
-    au:           s.au             || "grad",
-    nMid:         s.nMid           ?? 1,
-    simResult:    null,
-  });
+  _applySnapshot(s);
 
   // Synka UI-sliders om de finns
   const symSlider = document.getElementById("sym-size");
@@ -94,7 +113,7 @@ export function loadProject(text) {
     setMapLayer(s.activeLayerKey || "osm");
     if (s.mapCenter && leafletMap) {
       leafletMap.setView([s.mapCenter.lat, s.mapCenter.lng], s.mapZoom || 14);
-    } else if (pts.length > 0) {
+    } else if (getState().pts.length > 0) {
       setTimeout(resetView, 200);
     }
     import('../map/leaflet-setup.js').then(({ draw }) => draw());
