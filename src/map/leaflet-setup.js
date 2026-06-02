@@ -11,6 +11,8 @@ import { d2EN, brgEN, calcM, fG, fD } from '../core/designmatrix.js';
 import { rColor } from '../core/redundancy.js';
 import { getState, setState } from '../state/store.js';
 import { initInteractions } from './interactions.js';
+import { drawObstacles } from './obstacles-canvas.js';
+import { drawPreview } from './obstacle-drawing.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
@@ -226,7 +228,7 @@ export function draw() {
 
   const state = getState();
   const { pts, meas, simResult, suggestedMeas, selId, selMId, measFrom,
-          ellScale, ellipsMode, au } = state;
+          ellScale, ellipsMode, au, obstacles = [], selObsId, symSize } = state;
 
   const showA = document.getElementById("tga")?.checked ?? true;
   const showD = document.getElementById("tgd")?.checked ?? true;
@@ -362,6 +364,10 @@ export function draw() {
       ctx.strokeStyle = "#ff9900"; ctx.lineWidth = 2; ctx.setLineDash([5,4]); ctx.stroke(); ctx.setLineDash([]);
     }
   }
+
+  // ── Hinder (under punkter) ──
+  drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10 });
+  drawPreview(ctx);
 
   // ── Punkter ──
   pts.forEach(pt => {

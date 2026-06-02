@@ -5,10 +5,14 @@ let _state = {
   // ── Nätdata ──
   pts: [],
   meas: [],
+  obstacles: [],
   simResult: null,
   centerErr: 1.0,
   activeMatklass: null,
   suggestedMeas: [],
+
+  // ── Hinder-selektion ──
+  selObsId: null,
 
   // ── ID-räknare ──
   nMid: 1,

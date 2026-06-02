@@ -2,6 +2,7 @@
 import { getState, setState } from '../state/store.js';
 import { PT, INSTRUMENTS } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
+import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
 
 export { toggleMapLayer };
 
@@ -37,10 +38,24 @@ export function buildTools() {
     `<button class="mtbb${tool==="pan"?" act":""}" style="--c:#a0b8d0" onclick="window._setTool('pan')">🖐</button>` +
     `<button class="mtbb${tool==="measure"?" act":""}" style="--c:#ff9900" onclick="window._setTool('measure')">📏</button>`;
 
+  // Uppdatera hinder-verktygsknappar
+  const obsPolBtn = document.getElementById('btn-obs-polygon');
+  if (obsPolBtn) {
+    obsPolBtn.className = 'tb' + (tool === 'obstacle-polygon' ? ' act' : '');
+    obsPolBtn.style.cssText = '--c:#ff9900;margin-top:2px;' + (tool === 'obstacle-polygon' ? 'border-color:#ff9900;background:rgba(255,153,0,0.15);color:#ff9900' : '');
+  }
+  const obsLineBtn = document.getElementById('btn-obs-line');
+  if (obsLineBtn) {
+    obsLineBtn.className = 'tb' + (tool === 'obstacle-line' ? ' act' : '');
+    obsLineBtn.style.cssText = '--c:#8aa8c0;margin-top:2px;' + (tool === 'obstacle-line' ? 'border-color:#8aa8c0;background:rgba(160,184,208,0.15);color:#8aa8c0' : '');
+  }
+
   const hints = { pan:"🖐 Dra kartan | Dubbelklick på punkt: redigera", known:"➕ Klicka: lägg Känd punkt | Dra: flytta",
     station:"➕ Klicka: lägg Uppställning | Dra: flytta", detail:"➕ Klicka: lägg Detaljpunkt | Dra: flytta",
     new:"➕ Klicka: lägg Ny punkt | Dra: flytta", simstation:"🔴 Klicka: lägg Simulerad uppställning",
-    measure:"📏 Klicka FRÅN-punkt → klicka TILL-punkt" };
+    measure:"📏 Klicka FRÅN-punkt → klicka TILL-punkt",
+    'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
+    'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)" };
   const hint = document.getElementById("hint");
   if (hint) hint.textContent = hints[tool] || "";
 
@@ -52,10 +67,16 @@ export function buildTools() {
 }
 
 export function setTool(t) {
-  const { map } = window; // map is set globally in main.js for legacy inline onclick
+  // Avbryt pågående hinder-ritning om verktyget byts
+  if (isDrawing()) cancelDraw();
+
   if (t !== "measure") setState({ measFrom: null });
   setState({ tool: t });
-  // Import map dynamically to avoid circular at module level
+
+  // Starta ritläge direkt
+  if (t === 'obstacle-polygon') startPolygonDraw();
+  else if (t === 'obstacle-line') startLineDraw();
+
   import('../map/leaflet-setup.js').then(({ map: m }) => {
     if (m) { m.dragging.enable(); m.getContainer().style.cursor = t === "pan" ? "grab" : "crosshair"; }
   });

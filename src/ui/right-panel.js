@@ -9,6 +9,7 @@ import { saveUndo } from '../state/undo.js';
 import { draw } from '../map/leaflet-setup.js';
 import { openMM, delM } from './modals.js';
 import { showValidationDialog } from './validation.js';
+import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
 
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
 // Läser ENBART pts/meas från state – kräver INTE att simResult är satt.
@@ -44,13 +45,14 @@ export function suggestMeasurements() {
 }
 
 const TABS = [
-  { k:"net",   l:"NÄT" },
-  { k:"meas",  l:"MÄTNINGAR" },
-  { k:"polar", l:"POLÄR" },
-  { k:"sim",   l:"SIMULERING" },
-  { k:"instr", l:"INSTRUMENT" },
-  { k:"aprior",l:"A PRIORI σ" },
-  { k:"rep",   l:"RAPPORT" },
+  { k:"net",    l:"NÄT" },
+  { k:"meas",   l:"MÄTNINGAR" },
+  { k:"polar",  l:"POLÄR" },
+  { k:"sim",    l:"SIMULERING" },
+  { k:"hinder", l:"HINDER" },
+  { k:"instr",  l:"INSTRUMENT" },
+  { k:"aprior", l:"A PRIORI σ" },
+  { k:"rep",    l:"RAPPORT" },
 ];
 
 export function buildTabs() {
@@ -121,6 +123,12 @@ export function renderTab() {
         <div style="color:#8aa8c0;">Avst: <span style="color:${m.measDist!=null?"#ff9900":"#e8f4fd"}">${md.dist.toFixed(4)} m</span> &nbsp; Riktn: ${fmt(md.hz)}${riStr?` &nbsp;<span style="color:${riCol}">${riStr}</span>`:""}</div>
       </div>`;
     }).join("")}`;
+    return;
+  }
+
+  // ── HINDER ──
+  if (atab === "hinder") {
+    renderObstaclePanel();
     return;
   }
 
@@ -481,6 +489,8 @@ export function applyMatklass(key) {
 export function initRightPanel() {
   buildTabs();
   renderTab();
+
+  initObstaclePanel();
 
   window._setTab           = setTab;
   window._openMM           = openMM;

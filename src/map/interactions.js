@@ -7,6 +7,7 @@ import { getState, setState } from '../state/store.js';
 import { INSTRUMENTS, PT } from '../core/constants.js';
 import { saveUndo } from '../state/undo.js';
 import { ptPixel, latLngToEN, ENtoLatLng, draw } from './leaflet-setup.js';
+import { isDrawing, handleMapClick, completeDraw, cancelDraw, updateMousePos } from './obstacle-drawing.js';
 
 // Touch-detection – används för att lägga till touch-specifika gester
 export const isTouch = (typeof window !== 'undefined') &&
@@ -38,6 +39,7 @@ export function initInteractions(map) {
 
   // ── Drag – rad 1254–1290 ──
   map.on("mousedown", e => {
+    if (isDrawing()) return; // hindra punkt-drag under ritläge
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 18);
     const { tool } = getState();
@@ -50,6 +52,12 @@ export function initInteractions(map) {
   });
 
   map.on("mousemove", e => {
+    // Uppdatera förhandsvisning under hinder-ritning
+    if (isDrawing()) {
+      const px = map.latLngToContainerPoint(e.latlng);
+      updateMousePos(e.latlng, px);
+      draw();
+    }
     if (!dragPt) return;
     if (!dragMoved) {
       const { meas } = getState();
@@ -78,6 +86,18 @@ export function initInteractions(map) {
   // ── Klick – rad 1293–1356 ──
   map.on("click", e => {
     if (dragMoved) { dragMoved = false; return; }
+
+    // Hinder-ritning: intercepta klick
+    if (isDrawing()) {
+      const result = handleMapClick(e.latlng);
+      if (result.done) {
+        // Linje-ritning klar efter 2:a punkt
+        setState({ tool: 'pan' });
+        if (cb.buildTools) cb.buildTools();
+      }
+      draw();
+      return;
+    }
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 18);
     const { tool, measFrom, meas, pts, defaultInstr, nMid, nId, simResult } = getState();
@@ -152,8 +172,17 @@ export function initInteractions(map) {
     draw();
   });
 
-  // ── Dubbelklick → openEditPt – rad 1359–1363 exakt ──
+  // ── Dubbelklick → avsluta polygon-ritning eller openEditPt ──
   map.on("dblclick", e => {
+    if (isDrawing()) {
+      const ok = completeDraw();
+      if (ok) {
+        setState({ tool: 'pan' });
+        if (cb.buildTools) cb.buildTools();
+      }
+      draw();
+      return;
+    }
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 24);
     if (n && cb.openEditPt) cb.openEditPt(n.id);
@@ -161,9 +190,25 @@ export function initInteractions(map) {
 
   // ── Högerklick → openEditPt – rad 1365–1370 exakt ──
   map.on("contextmenu", e => {
+    if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 24);
     if (n) { e.originalEvent.preventDefault(); if (cb.openEditPt) cb.openEditPt(n.id); }
+  });
+
+  // ── Tangentbord: Esc avbryter, Enter slutför hinder-ritning ──
+  document.addEventListener('keydown', e => {
+    if (!isDrawing()) return;
+    if (e.key === 'Escape') {
+      cancelDraw();
+      setState({ tool: 'pan' });
+      if (cb.buildTools) cb.buildTools();
+      draw();
+    } else if (e.key === 'Enter') {
+      const ok = completeDraw();
+      if (ok) { setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+      draw();
+    }
   });
 
   // ── Touch-gester: double-tap → openEditPt, long-press → openEditPt ──────────
