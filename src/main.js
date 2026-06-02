@@ -16,6 +16,7 @@ import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './u
 import { initResize }                           from './ui/panel-resize.js';
 import { openEditPt, openMM, closeModal }       from './ui/modals.js';
 import { setMapRef }                             from './reports/net-image.js';
+import { initImageBridge }                       from './main-image-bridge.js';
 
 // ── 1. AutoSim ──────────────────────────────────────────────────────────────
 setAutoSimHandler(autoSim);
@@ -88,6 +89,7 @@ if (window.innerWidth < 768) {
 // ── 7. Initiera karta ──────────────────────────────────────────────────────
 initMap();
 setMapRef(leafletMap);
+initImageBridge();
 
 // ── 8. Ladda sparad data eller visa demo-data ──────────────────────────────
 const loaded = loadAutosave();
@@ -227,7 +229,7 @@ async function openPM() {
     );
     return;
   }
-  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr } = getState();
+  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr, obstacles, activeLayerKey } = getState();
   if (!simResult?.ok) { alert("Kör simuleringen först."); return; }
 
   const popup = window.open(
@@ -265,6 +267,21 @@ async function openPM() {
     knownPts: knd.map(p => ({ id:p.id, N:p.N, E:p.E, H:p.H||0, markering:p.markering||"" })),
     mk, mkKey:activeMatklass||"", crs, ins, mHz, mDm, mDp, mSt, dag, centerErr,
     img: "",
+    meas:      meas.map(m => ({ id:m.id, from:m.from, to:m.to })),
+    activeCRS,
+    activeLayerKey,
+    obstacles: obstacles || [],
+    imgSimResult: {
+      ok: true,
+      allPtResults: (sr.allPtResults || []).map(r => ({
+        id:r.id, type:r.type, N:r.N, E:r.E,
+        aSemi:r.aSemi, bSemi:r.bSemi, theta:r.theta,
+      })),
+      simStationResults: (sr.simStationResults || []).map(ss => ({
+        ok:ss.ok, N:ss.N, E:ss.E,
+        aSemi:ss.aSemi, bSemi:ss.bSemi, theta:ss.theta,
+      })),
+    },
     projnamn: "", projnr: "", kravSp: ""
   };
 

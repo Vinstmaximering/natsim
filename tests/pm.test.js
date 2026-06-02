@@ -142,6 +142,24 @@ describe('buildReport – rapport-generator', () => {
     expect(() => buildReport(minData)).not.toThrow();
   });
 
+  it('imgs.r34 visas i sektion 5.4 Mätgeometri', () => {
+    const html = buildReport({ ...testData, imgs: { r34: 'data:image/png;base64,AAAA' } });
+    expect(html).toContain('5.4 Mätgeometri');
+    expect(html).toContain('data:image/png;base64,AAAA');
+  });
+
+  it('imgs.r312 visas alltid i 5.6, oavsett om pbTab är tom', () => {
+    // allPts utan markering/prisma → pbTab är tom → R3.12 ska ändå visas
+    const noPbData = {
+      ...testData,
+      allPts: testData.allPts.map(p => ({ ...p, markering: '', prisma: '' })),
+      imgs: { r312: 'data:image/png;base64,BBBB' },
+    };
+    const html = buildReport(noPbData);
+    expect(html).toContain('5.6 Lägesosäkerheter');
+    expect(html).toContain('data:image/png;base64,BBBB');
+  });
+
   it('PM URL-konstruktion: BASE_URL + relativ path, ingen dubbel slash', () => {
     // import.meta.env.BASE_URL = '/' i test-env, '/natsim/' i prod
     const base = import.meta.env.BASE_URL;

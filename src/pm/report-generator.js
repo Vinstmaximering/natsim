@@ -36,6 +36,7 @@ export function buildReport(data) {
   const leverans  = v("leverans");
   const r32txt    = v("r32txt");
   const r33txt    = v("r33txt");
+  const r34txt    = v("r34txt");
   const r312txt   = v("r312txt");
   const kravStr   = v("krav");
   const kravSP    = parseFloat(kravStr) || 999;
@@ -112,7 +113,6 @@ export function buildReport(data) {
 
   const netImg  = imgs.r32 || img;
   const nätImg  = imgs.r33 || img;
-  const kpImg   = imgs.r34  ? `<div class="fig"><img src="${imgs.r34}"></div>` : "";
   const logoEl  = imgs.logo ? `<img class="rlogo" src="${imgs.logo}" alt="Logo">` : `<div style="height:10mm"></div>`;
 
   let h = "";
@@ -205,23 +205,27 @@ export function buildReport(data) {
   h += `<div class="rb"><h1 class="r">5. Nätutformning (R3.1–R3.4)</h1>`;
   h += `<h2 class="r">5.1 Redogörelse</h2>
         <div class="rbox">Observationer: ${sr.meas_n} | Obekanta: ${sr.unkn_n} | Redundans f=${sr.redundancy} | k=${sr.K_global.toFixed(3)}</div>`;
-  h += `<h2 class="r">5.2 Översiktskarta (R3.2)</h2>`;
+  h += `<h2 class="r">5.2 Översikt av nätet (R3.2)</h2>`;
   if (r32txt) h += `<p class="r">${esc(r32txt)}</p>`;
   if (netImg) h += `<div class="fig"><img src="${netImg}" style="max-width:155mm"><div class="fcp">Figur. Nätets utbredning.</div></div>`;
-  h += `<h2 class="r">5.3 Nätkarta (R3.3)</h2>`;
+  h += `<h2 class="r">5.3 Kända anslutningspunkter (R3.3)</h2>`;
   if (r33txt) h += `<p class="r">${esc(r33txt)}</p>`;
-  if (nätImg) h += `<div class="fig"><img src="${nätImg}" style="max-width:155mm"><div class="fcp">Figur. Planerad nätutformning.</div></div>`;
-  h += `<h2 class="r">5.4 Planerade punkter</h2>
+  if (nätImg) h += `<div class="fig"><img src="${nätImg}" style="max-width:155mm"><div class="fcp">Figur. Kända anslutningspunkter.</div></div>`;
+  h += `<h2 class="r">5.4 Mätgeometri och planerade observationer (R3.4)</h2>`;
+  if (r34txt) h += `<p class="r">${esc(r34txt)}</p>`;
+  if (imgs.r34) h += `<div class="fig"><img src="${imgs.r34}" style="max-width:155mm"><div class="fcp">Figur. Planerad mätgeometri och observationer.</div></div>`;
+  h += `<h2 class="r">5.5 Planerade punkter</h2>
         <table class="r">
           <tr><th>Punkt</th><th>Typ</th><th>N (m)</th><th>E (m)</th><th>H (m)</th><th>Markering</th><th>Prisma</th></tr>
           ${ptTab}
         </table>`;
+  h += `<h2 class="r">5.6 Lägesosäkerheter (R3.12)</h2>`;
+  if (r312txt) h += `<p class="r">${esc(r312txt)}</p>`;
+  if (imgs.r312) h += `<div class="fig"><img src="${imgs.r312}" style="max-width:155mm"><div class="fcp">Figur. Lägesosäkerheter (1σ felellipser).</div></div>`;
   if (pbTab) {
-    h += `<h2 class="r">5.5 Punktbeskrivningar (R3.12)</h2>`;
-    if (r312txt) h += `<p class="r">${esc(r312txt)}</p>`;
-    if (imgs.r312) h += `<div class="fig"><img src="${imgs.r312}" style="max-width:120mm"></div>`;
-    h += `<table class="r">
-      <tr><th>Punkt</th><th>Typ</th><th>Markering</th><th>Prisma</th></tr>${pbTab}</table>`;
+    h += `<h2 class="r">5.7 Punktbeskrivningar</h2>
+          <table class="r">
+            <tr><th>Punkt</th><th>Typ</th><th>Markering</th><th>Prisma</th></tr>${pbTab}</table>`;
   }
   h += `</div>`;
 
