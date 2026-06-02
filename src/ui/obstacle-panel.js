@@ -51,8 +51,8 @@ export function renderObstaclePanel() {
 export function initObstaclePanel() {
   window._startObsPolygon = () => { setTool('obstacle-polygon'); };
   window._startObsLine    = () => { setTool('obstacle-line'); };
-  window._obsFromOSM      = () => {
-    import('./toast.js').then(m => m.showToast('📡 OSM-import tillgänglig i Fas 4', '#6080a0'));
+  window._obsFromOSM = () => {
+    import('../io/osm-import.js').then(m => m.importOSMForCurrentView());
   };
   window._selObs = id => {
     setState({ selObsId: id });
