@@ -17,10 +17,12 @@ import { drawBlockedSuggestions } from './lines.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
+  // OBS: Lantmäteriets WMS-lager saknar CORS-stöd för externa domäner – canvas-export
+  // faller tillbaka på koordinatrutnät när dessa lager är aktiva. Kan ej åtgärdas från klienten.
   lm_orto:  { name:"Ortofoto (Lantmäteriet)",   url:"https://minkarta.lantmateriet.se/map/ortofoto/?",  type:"wms", layers:"Ortofoto_0.5,Ortofoto_0.4,Ortofoto_0.25,Ortofoto_0.16", format:"image/png", transparent:false },
   lm_topo:  { name:"Topografisk (Lantmäteriet)", url:"https://minkarta.lantmateriet.se/map/topowebb/?", type:"wms", layers:"topowebbkartan", format:"image/png", transparent:false },
-  osm:      { name:"OpenStreetMap",   url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", type:"tile", attribution:"© OpenStreetMap" },
-  satellite:{ name:"Esri Satellit",   url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", type:"tile", attribution:"© Esri" },
+  osm:      { name:"OpenStreetMap",   url:"https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", type:"tile", attribution:"© OpenStreetMap", crossOrigin:"anonymous" },
+  satellite:{ name:"Esri Satellit",   url:"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", type:"tile", attribution:"© Esri", crossOrigin:"anonymous" },
 };
 
 // Registrera alla SWEREF99-projektioner i proj4
@@ -75,7 +77,10 @@ export function setMapLayer(key) {
       version: "1.1.1", attribution: "© Lantmäteriet", maxZoom: 28, maxNativeZoom: 20
     });
   } else {
-    activeLayer = L.tileLayer(L_.url, { attribution: L_.attribution, maxZoom: 28, maxNativeZoom: 19 });
+    activeLayer = L.tileLayer(L_.url, {
+      attribution: L_.attribution, maxZoom: 28, maxNativeZoom: 19,
+      ...(L_.crossOrigin ? { crossOrigin: L_.crossOrigin } : {}),
+    });
   }
   const { mapLayerVisible } = getState();
   if (mapLayerVisible) activeLayer.addTo(map);

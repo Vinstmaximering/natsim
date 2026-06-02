@@ -15,6 +15,7 @@ import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
 import { initResize }                           from './ui/panel-resize.js';
 import { openEditPt, openMM, closeModal }       from './ui/modals.js';
+import { setMapRef }                             from './reports/net-image.js';
 
 // ── 1. AutoSim ──────────────────────────────────────────────────────────────
 setAutoSimHandler(autoSim);
@@ -86,6 +87,7 @@ if (window.innerWidth < 768) {
 
 // ── 7. Initiera karta ──────────────────────────────────────────────────────
 initMap();
+setMapRef(leafletMap);
 
 // ── 8. Ladda sparad data eller visa demo-data ──────────────────────────────
 const loaded = loadAutosave();
