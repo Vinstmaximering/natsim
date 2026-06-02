@@ -2,6 +2,7 @@
 // Bevaras exakt per krav
 import { getState } from '../state/store.js';
 import { setAutoSim } from '../state/undo.js';
+import { hasLineOfSight } from '../core/visibility.js';
 
 export { setAutoSim };
 
@@ -29,6 +30,24 @@ export function updateQualityPanel() {
   document.getElementById("qSmax").innerHTML = sigPosVals.length
     ? `<span style="color:${sCol}">${sMax.toFixed(1)} mm</span>`
     : "–";
+
+  // Mätningar utan sikt (visas bara när hinder finns)
+  const { meas = [], pts: ptList = [], obstacles = [] } = getState();
+  const sightEl = document.getElementById("qSight");
+  if (sightEl) {
+    if (obstacles.length === 0) {
+      sightEl.textContent = "–";
+    } else {
+      let blocked = 0;
+      for (const m of meas) {
+        const p1 = ptList.find(p => p.id === m.from);
+        const p2 = ptList.find(p => p.id === m.to);
+        if (p1 && p2 && !hasLineOfSight(p1, p2, obstacles).visible) blocked++;
+      }
+      const col = blocked > 0 ? "#ff5050" : "#00ff88";
+      sightEl.innerHTML = `<span style="color:${col}">${blocked}</span>`;
+    }
+  }
 }
 
 export function initQualityPanel() {

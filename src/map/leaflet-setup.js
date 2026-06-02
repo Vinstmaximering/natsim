@@ -13,6 +13,7 @@ import { getState, setState } from '../state/store.js';
 import { initInteractions } from './interactions.js';
 import { drawObstacles } from './obstacles-canvas.js';
 import { drawPreview } from './obstacle-drawing.js';
+import { drawBlockedSuggestions } from './lines.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
@@ -228,7 +229,8 @@ export function draw() {
 
   const state = getState();
   const { pts, meas, simResult, suggestedMeas, selId, selMId, measFrom,
-          ellScale, ellipsMode, au, obstacles = [], selObsId, symSize } = state;
+          ellScale, ellipsMode, au, obstacles = [], selObsId, symSize,
+          blockedSuggestions = [] } = state;
 
   const showA = document.getElementById("tga")?.checked ?? true;
   const showD = document.getElementById("tgd")?.checked ?? true;
@@ -260,6 +262,10 @@ export function draw() {
       ctx.fillText("⚡", (px1.x+px2.x)/2, (px1.y+px2.y)/2);
     });
   }
+
+  // ── Blockerade förslag (röd streckad linje, toggle tgb) ──
+  const showB = document.getElementById("tgb")?.checked ?? false;
+  if (showB) drawBlockedSuggestions(ctx, blockedSuggestions, pts, ptPixel);
 
   // ── Mätningslinjer ──
   if (showC) {

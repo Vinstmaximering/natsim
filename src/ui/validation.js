@@ -1,9 +1,10 @@
 // D7: Validera nät – rad 824–866 exakt
 import { getState } from '../state/store.js';
 import { MATKLASSER } from '../core/constants.js';
+import { hasLineOfSight } from '../core/visibility.js';
 
 export function validateNetwork() {
-  const { simResult, pts, activeMatklass } = getState();
+  const { simResult, pts, meas = [], activeMatklass, obstacles = [] } = getState();
   if (!simResult || !simResult.ok) {
     return { ok: false, issues: ["Simulering har inte körts ännu – tryck på \"Kör simulering\" eller aktivera auto-sim."] };
   }
@@ -24,6 +25,26 @@ export function validateNetwork() {
   const knownN = pts.filter(p => p.type === "known").length;
   if (knownN < 1) issues.push("Inga kända punkter – nätet saknar absolut anslutning.");
   if (knownN < 3) warnings.push(`Endast ${knownN} känd(a) punkt(er) – ≥3 rekommenderas.`);
+
+  // Siktlinje-kontroll mot hinder (körs bara om hinder finns)
+  if (obstacles.length > 0) {
+    const blockedMeas = [];
+    for (const m of meas) {
+      const p1 = pts.find(p => p.id === m.from);
+      const p2 = pts.find(p => p.id === m.to);
+      if (p1 && p2) {
+        const los = hasLineOfSight(p1, p2, obstacles);
+        if (!los.visible) {
+          blockedMeas.push(`${m.from}→${m.to} (${los.blockedBy || 'hinder'})`);
+        }
+      }
+    }
+    if (blockedMeas.length > 0) {
+      issues.push(`${blockedMeas.length} mätning(ar) saknar siktlinje: ` +
+        blockedMeas.slice(0, 3).join(', ') +
+        (blockedMeas.length > 3 ? ' m.fl.' : ''));
+    }
+  }
 
   return { ok: issues.length === 0, issues, warnings };
 }

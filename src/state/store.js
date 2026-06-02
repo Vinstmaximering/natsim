@@ -10,6 +10,7 @@ let _state = {
   centerErr: 1.0,
   activeMatklass: null,
   suggestedMeas: [],
+  blockedSuggestions: [], // [{from, to, blockedBy}] – siktlinje blockerad av hinder
 
   // ── Hinder-selektion ──
   selObsId: null,

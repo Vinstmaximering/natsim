@@ -10,15 +10,18 @@ import { draw } from '../map/leaflet-setup.js';
 import { openMM, delM } from './modals.js';
 import { showValidationDialog } from './validation.js';
 import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
+import { hasLineOfSight } from '../core/visibility.js';
 
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
 // Läser ENBART pts/meas från state – kräver INTE att simResult är satt.
+// Fas 3: siktlinje-kontroll mot obstacles (tom array = identiskt beteende som innan).
 export function suggestMeasurements() {
-  const { pts, meas } = getState();
+  const { pts, meas, obstacles = [] } = getState();
   const stations = pts.filter(p => p.type === "station");
   const known    = pts.filter(p => p.type === "known");
   const suggested = [];
-  if (!stations.length) { setState({ suggestedMeas: [] }); return; }
+  const blocked   = []; // [{from, to, blockedBy}]
+  if (!stations.length) { setState({ suggestedMeas: [], blockedSuggestions: [] }); return; }
 
   stations.forEach(s => {
     const existing    = meas.filter(m => m.from === s.id || m.to === s.id);
@@ -29,7 +32,12 @@ export function suggestMeasurements() {
     const currentKnownCount = known.filter(k => existingIds.has(k.id)).length;
     const needed = Math.max(0, 3 - currentKnownCount);
     missingKnown.slice(0, needed).forEach(k => {
-      suggested.push({ from: s.id, to: k.id, reason: `Bakåtsikt till känd punkt (${currentKnownCount + 1}/3 min. rekommenderat)` });
+      const los = hasLineOfSight(s, k, obstacles);
+      if (!los.visible) {
+        blocked.push({ from: s.id, to: k.id, blockedBy: los.blockedBy });
+      } else {
+        suggested.push({ from: s.id, to: k.id, reason: `Bakåtsikt till känd punkt (${currentKnownCount + 1}/3 min. rekommenderat)` });
+      }
     });
 
     if (stations.length > 1) {
@@ -37,11 +45,21 @@ export function suggestMeasurements() {
         const already = suggested.find(sg =>
           (sg.from === s.id && sg.to === s2.id) || (sg.from === s2.id && sg.to === s.id)
         );
-        if (!already) suggested.push({ from: s.id, to: s2.id, reason: "Korsförbindelse mellan uppställningar (stärker geometrin)" });
+        const alreadyBlocked = blocked.find(b =>
+          (b.from === s.id && b.to === s2.id) || (b.from === s2.id && b.to === s.id)
+        );
+        if (!already && !alreadyBlocked) {
+          const los = hasLineOfSight(s, s2, obstacles);
+          if (!los.visible) {
+            blocked.push({ from: s.id, to: s2.id, blockedBy: los.blockedBy });
+          } else {
+            suggested.push({ from: s.id, to: s2.id, reason: "Korsförbindelse mellan uppställningar (stärker geometrin)" });
+          }
+        }
       });
     }
   });
-  setState({ suggestedMeas: suggested });
+  setState({ suggestedMeas: suggested, blockedSuggestions: blocked });
 }
 
 const TABS = [
@@ -92,7 +110,19 @@ export function renderTab() {
       ${Object.entries(MATKLASSER).map(([k,v])=>`<button class="tb" onclick="window._applyMatklass('${k}')" style="font-size:12px;${getState().activeMatklass===k?"border-color:#00ff88;color:#00ff88;":""}">${k}</button>`).join("")}
     </div>
     <div class="sl">FÖRESLÅ MÄTNINGAR</div>
-    <button onclick="window._suggestMeas()" style="width:100%;padding:7px;font-size:12px;background:#ffdc3218;border:1px solid #ffdc3266;color:#ffdc32;border-radius:3px;cursor:pointer;margin-bottom:8px;">⚡ Analysera och föreslå mätningar</button>
+    <button onclick="window._suggestMeas()" style="width:100%;padding:7px;font-size:12px;background:#ffdc3218;border:1px solid #ffdc3266;color:#ffdc32;border-radius:3px;cursor:pointer;margin-bottom:4px;">⚡ Analysera och föreslå mätningar</button>
+    ${(() => {
+      const bl = getState().blockedSuggestions || [];
+      if (!bl.length) return '';
+      const on = document.getElementById('tgb')?.checked ?? false;
+      return `<div style="font-size:11px;color:#ff7070;padding:4px 6px;background:#1e0808;border-radius:3px;margin-bottom:6px;">
+        ⛔ ${bl.length} förslag blockerade av hinder
+        <span style="cursor:pointer;color:#4fc3f7;text-decoration:underline;margin-left:4px;"
+              onclick="window._toggleBlockedSugg()">
+          ${on ? 'dölj' : 'visa'}
+        </span>
+      </div>`;
+    })()}
     <div class="sl">VALIDERING</div>
     <button onclick="window._showValidationDialog()" style="width:100%;padding:7px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;border-radius:3px;cursor:pointer;">🔍 Validera nät</button>`;
     return;
@@ -509,6 +539,10 @@ export function initRightPanel() {
   window._setEllipsMode    = mode => { setState({ ellipsMode: mode }); draw(); renderTab(); };
   window._setSigReq        = val  => { setState({ sigReq: val }); renderTab(); };
   window._showValidationDialog = showValidationDialog;
+  window._toggleBlockedSugg = () => {
+    const cb = document.getElementById('tgb');
+    if (cb) { cb.checked = !cb.checked; draw(); renderTab(); }
+  };
   // _exportRep och _openPM sätts av main.js – sätt INTE om dem här (skulle overrida med stubs).
 
   // Exponera setState/draw för inline onclick i renderTab-HTML

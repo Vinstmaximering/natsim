@@ -121,7 +121,7 @@ export function toggleAU() {
 }
 
 export function initToolbar() {
-  ["tgc","tga","tgd","tgl","tge","tgs","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
+  ["tgc","tga","tgd","tgl","tge","tgs","tgb","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
     .forEach(id => document.getElementById(id)?.addEventListener("change", () => draw()));
 
   const symSlider = document.getElementById("sym-size");
