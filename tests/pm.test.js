@@ -169,4 +169,73 @@ describe('buildReport – rapport-generator', () => {
     expect(url.startsWith(base)).toBe(true);
   });
 
+  it('Race condition: ready-meddelande som anländer innan payload byggs skickas ändå', () => {
+    // Simulerar scenariot där pm.js postar 'ready' medan openPM väntar på
+    // await import('./core/constants.js'). handleMsg måste vara registrerad
+    // INNAN await-punkten, annars tappas ready och pm-popupen fastnar.
+    const sent = [];
+    const mockPopup = {
+      closed: false,
+      postMessage: (msg) => sent.push(msg),
+    };
+
+    let readyFired = false;
+    let pendingPayload = null;
+
+    // Replikerar den korrigerade handleMsg-logiken från openPM
+    const handleMsg = (e) => {
+      if (e.source !== mockPopup) return;
+      if (e.data?.type === 'ready') {
+        readyFired = true;
+        if (pendingPayload) mockPopup.postMessage({ type: 'data', payload: pendingPayload });
+      }
+    };
+
+    // Simulera att 'ready' anländer INNAN payload är klar (race condition)
+    handleMsg({ source: mockPopup, data: { type: 'ready' } });
+    expect(readyFired).toBe(true);
+    expect(sent).toHaveLength(0); // payload finns inte ännu → inget skickat
+
+    // Simulera att await resolvar och payload byggs
+    const payload = { sr: {}, pts: [] };
+    pendingPayload = payload;
+    if (readyFired && !mockPopup.closed) {
+      mockPopup.postMessage({ type: 'data', payload });
+    }
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({ type: 'data', payload });
+  });
+
+  it('Race condition: ready anländer efter payload – data skickas direkt i handleMsg', () => {
+    const sent = [];
+    const mockPopup = {
+      closed: false,
+      postMessage: (msg) => sent.push(msg),
+    };
+
+    let readyFired = false;
+    let pendingPayload = null;
+
+    const handleMsg = (e) => {
+      if (e.source !== mockPopup) return;
+      if (e.data?.type === 'ready') {
+        readyFired = true;
+        if (pendingPayload) mockPopup.postMessage({ type: 'data', payload: pendingPayload });
+      }
+    };
+
+    // Payload byggs innan ready anländer
+    const payload = { sr: {}, pts: [] };
+    pendingPayload = payload;
+    expect(sent).toHaveLength(0);
+
+    // Nu anländer ready
+    handleMsg({ source: mockPopup, data: { type: 'ready' } });
+
+    expect(readyFired).toBe(true);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({ type: 'data', payload });
+  });
+
 });

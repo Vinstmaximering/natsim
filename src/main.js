@@ -239,6 +239,25 @@ async function openPM() {
   );
   if (!popup) { alert("Popup blockerades – tillåt popups för denna sida."); return; }
 
+  // Lyssnaren MÅSTE registreras innan await-punkten nedan.
+  // pm.js postar 'ready' direkt vid modulstart – om handleMsg läggs till efter
+  // await kan 'ready' ha kommit och gått (race condition på produktion).
+  let pendingPayload = null;
+  let readyFired     = false;
+  const handleMsg = e => {
+    if (e.source !== popup) return;
+    if (e.data?.type === "ready") {
+      readyFired = true;
+      if (pendingPayload) popup.postMessage({ type: "data", payload: pendingPayload }, "*");
+    } else if (e.data?.type === "save-draft") {
+      try { localStorage.setItem("pm_draft", JSON.stringify({ vals: e.data.payload?.vals || {} })); } catch {}
+    }
+  };
+  window.addEventListener("message", handleMsg);
+  const checkClosed = setInterval(() => {
+    if (popup.closed) { window.removeEventListener("message", handleMsg); clearInterval(checkClosed); }
+  }, 1000);
+
   const { CRS_DEFS, INSTRUMENTS, MATKLASSER } = await import('./core/constants.js').catch(() => ({}));
   const sr   = simResult;
   const mk   = activeMatklass ? MATKLASSER?.[activeMatklass] : null;
@@ -285,18 +304,9 @@ async function openPM() {
     projnamn: "", projnr: "", kravSp: ""
   };
 
-  // Lyssna på 'ready' och 'save-draft' från popupen
-  const handleMsg = e => {
-    if (e.source !== popup) return;
-    if (e.data?.type === "ready") {
-      popup.postMessage({ type:"data", payload }, "*");
-    } else if (e.data?.type === "save-draft") {
-      try { localStorage.setItem("pm_draft", JSON.stringify({ vals: e.data.payload?.vals || {} })); } catch {}
-    }
-  };
-  window.addEventListener("message", handleMsg);
-  // Rensa lyssnaren när popupen stängs
-  const checkClosed = setInterval(() => {
-    if (popup.closed) { window.removeEventListener("message", handleMsg); clearInterval(checkClosed); }
-  }, 1000);
+  pendingPayload = payload;
+  // Om 'ready' anlände under await (race condition) skickar vi data nu
+  if (readyFired && !popup.closed) {
+    popup.postMessage({ type: "data", payload }, "*");
+  }
 }
