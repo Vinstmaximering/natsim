@@ -3,32 +3,32 @@ canvas { display: block; touch-action: none; }
 #map-container { position: relative; width: 100%; height: 100%; }
 #leaflet-map   { position: absolute; inset: 0; z-index: 1; }
 #cv            { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.leaflet-container { background: #080e1a !important; }
+.leaflet-container { background: var(--bg-surface) !important; }
 .leaflet-tile-pane { filter: brightness(0.82) saturate(0.9); }
 
 /* Kartkontroller */
-.lm-ctrl { position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:#0b1422ee;border:1px solid #1e3850;border-radius:5px;padding:5px 8px;display:flex;gap:5px;align-items:center; }
-.lm-ctrl select { font-family:monospace;font-size:12px;background:#060c18;border:1px solid #1e3850;color:#e8f4fd;padding:3px 5px;border-radius:3px; }
-.lm-ctrl button { font-family:monospace;font-size:11px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;padding:3px 8px;border-radius:3px;cursor:pointer;white-space:nowrap; }
-.lm-ctrl button:hover { background:#4fc3f733; }
+.lm-ctrl { position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:color-mix(in srgb,var(--bg-panel) 93%,transparent);border:1px solid var(--border-strong);border-radius:5px;padding:5px 8px;display:flex;gap:5px;align-items:center; }
+.lm-ctrl select { font-family:monospace;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);padding:3px 5px;border-radius:3px; }
+.lm-ctrl button { font-family:monospace;font-size:11px;background:color-mix(in srgb,var(--accent) 9%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);padding:3px 8px;border-radius:3px;cursor:pointer;white-space:nowrap; }
+.lm-ctrl button:hover { background:color-mix(in srgb,var(--accent) 20%,transparent); }
 
 /* Overlays */
-.hint { position:absolute;top:8px;left:8px;background:#0b142299;padding:5px 10px;border-radius:3px;font-size:15px;color:#80a0b8;border:1px solid #1a2d48;pointer-events:none;max-width:55%; }
-.zb   { position:absolute;top:8px;right:8px;background:#0b142299;padding:4px 9px;border-radius:3px;font-size:13px;color:#4fc3f7;border:1px solid #1a2d48;pointer-events:none; }
+.hint { position:absolute;top:8px;left:8px;background:color-mix(in srgb,var(--bg-panel) 60%,transparent);padding:5px 10px;border-radius:3px;font-size:15px;color:var(--text-secondary);border:1px solid var(--border-default);pointer-events:none;max-width:55%; }
+.zb   { position:absolute;top:8px;right:8px;background:color-mix(in srgb,var(--bg-panel) 60%,transparent);padding:4px 9px;border-radius:3px;font-size:13px;color:var(--accent);border:1px solid var(--border-default);pointer-events:none; }
 .tpb  { position:absolute;bottom:12px;right:12px;display:flex;gap:4px;z-index:10; }
-.tpb button { padding:8px 13px;font-size:15px;background:#0b1422cc;border:1px solid #1a2d48;color:#4fc3f7;border-radius:4px;cursor:pointer; }
-.mfb  { position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:#ff990022;border:1px solid #ff9900;color:#ff9900;padding:7px 18px;border-radius:20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap; }
+.tpb button { padding:8px 13px;font-size:15px;background:color-mix(in srgb,var(--bg-panel) 80%,transparent);border:1px solid var(--border-default);color:var(--accent);border-radius:4px;cursor:pointer; }
+.mfb  { position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:color-mix(in srgb,var(--color-measure) 13%,transparent);border:1px solid var(--color-measure);color:var(--color-measure);padding:7px 18px;border-radius:20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap; }
 .map-zoom-ctrl { position:absolute;bottom:55px;right:12px;display:flex;flex-direction:column;gap:3px;z-index:10; }
-.map-zoom-ctrl button { width:36px;height:36px;font-size:18px;font-weight:bold;background:#0b1422cc;border:1px solid #1e3850;color:#4fc3f7;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1; }
-.map-zoom-ctrl button:hover { background:#1a2e48cc; }
+.map-zoom-ctrl button { width:36px;height:36px;font-size:18px;font-weight:bold;background:color-mix(in srgb,var(--bg-panel) 80%,transparent);border:1px solid var(--border-strong);color:var(--accent);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1; }
+.map-zoom-ctrl button:hover { background:color-mix(in srgb,var(--bg-selected) 80%,transparent); }
 .sug-line { position:absolute;pointer-events:none;z-index:2; }
 
 /* Resize-handles */
 .resize-handle { background:transparent;cursor:col-resize;flex-shrink:0;position:relative;z-index:30; }
-.resize-handle:hover,.resize-handle.dragging { background:#1e4060; }
-.resize-handle::after { content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;background:#2a5070;border-radius:2px; }
+.resize-handle:hover,.resize-handle.dragging { background:var(--border-emphasis); }
+.resize-handle::after { content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;background:color-mix(in srgb,var(--border-emphasis) 60%,var(--border-strong));border-radius:2px; }
 
 /* Mobile toolbar (synlighet styrs av responsive.css) */
-.mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:#0b1422dd;border-bottom:1px solid #1a2d48;padding:4px 6px;gap:3px;overflow-x:auto; }
-.mtbb { padding:5px 8px;font-size:12px;border:1px solid #1a2d48;background:transparent;color:#8aa8c0;border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
-.mtbb.act { border-color:var(--c,#4fc3f7);background:color-mix(in srgb,var(--c,#4fc3f7) 20%,transparent);color:var(--c,#4fc3f7); }
+.mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
+.mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
+.mtbb.act { border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 20%,transparent);color:var(--c,var(--accent)); }

@@ -1,6 +1,10 @@
 import './styles/main.css';
 import 'leaflet/dist/leaflet.css';
 
+import { initTheme, toggleTheme } from './ui/theme.js';
+initTheme();
+window.toggleTheme = toggleTheme;
+
 import { getState, setState, setAutoSimHandler, subscribe } from './state/store.js';
 // openPM definieras nedan (refererar till getState och map-imports)
 import { autoSim, undo, setUndoCallbacks, saveUndo } from './state/undo.js';

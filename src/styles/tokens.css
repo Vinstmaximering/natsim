@@ -1,0 +1,85 @@
+/* NätSim – Centralt färgsystem. Light = default, dark via [data-theme="dark"]. */
+
+:root {
+  /* Bakgrunder */
+  --bg-primary:          #f7f8fa;
+  --bg-surface:          #ffffff;
+  --bg-panel:            #ffffff;
+  --bg-card:             #f8f9fa;
+  --bg-header:           #f0f4f8;
+  --bg-input:            #f0f2f5;
+  --bg-selected:         #e3f2fd;
+  --bg-hover:            #edf2f7;
+
+  /* Borders */
+  --border-default:      #e1e5eb;
+  --border-strong:       #d4dae1;
+  --border-emphasis:     #c8d0da;
+  --color-cancel-border: #d4dae1;
+
+  /* Accent */
+  --accent:              #0277bd;
+
+  /* Text */
+  --text-primary:        #2c3e50;
+  --text-value:          #1a2733;
+  --text-secondary:      #6c7a89;
+  --color-cancel-text:   #6c7a89;
+  --text-muted:          #b0bac5;
+
+  /* Semantiska färger */
+  --color-warning-text:  #b06900;
+  --color-measure:       #b06900;
+  --color-danger:        #d32f2f;
+  --color-success:       #2e7d32;
+
+  /* Overlay & skuggor */
+  --overlay-bg:          rgba(0, 0, 0, 0.42);
+  --shadow-modal:        0 20px 60px rgba(0, 0, 0, 0.12);
+
+  /* Scrollbar */
+  --scrollbar-track:     #f0f2f5;
+  --scrollbar-thumb:     #d4dae1;
+}
+
+[data-theme="dark"] {
+  /* Bakgrunder */
+  --bg-primary:          #070d18;
+  --bg-surface:          #1a2030;
+  --bg-panel:            #0b1422;
+  --bg-card:             #091424;
+  --bg-header:           #0c1e38;
+  --bg-input:            #060c18;
+  --bg-selected:         #152030;
+  --bg-hover:            rgba(26, 46, 72, 0.95);
+
+  /* Borders */
+  --border-default:      #1a2d48;
+  --border-strong:       #1e3850;
+  --border-emphasis:     #1e4060;
+  --color-cancel-border: #2a4060;
+
+  /* Accent */
+  --accent:              #4fc3f7;
+
+  /* Text */
+  --text-primary:        #c8d8e8;
+  --text-value:          #e8f4fd;
+  --text-secondary:      #90b0c8;
+  --color-cancel-text:   #8aa8c0;
+  --text-muted:          #7090a8;
+
+  /* Semantiska färger */
+  --color-warning-text:  #ff7040;
+  --color-measure:       #ff9900;
+  --color-danger:        #ff4444;
+  --color-success:       #00ff88;
+
+  /* Overlay & skuggor */
+  --overlay-bg:          rgba(0, 0, 0, 0.6);
+  --shadow-modal:        0 20px 60px rgba(0, 0, 0, 0.67);
+
+  /* Scrollbar */
+  --scrollbar-track:     #060c18;
+  --scrollbar-thumb:     #1e3850;
+}

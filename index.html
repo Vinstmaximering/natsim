@@ -8,6 +8,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <title>NätSim Beta 2 – Stomnätssimulator</title>
+  <script>(function(){var t=localStorage.getItem('natsim_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body>
 <div id="app">
@@ -113,6 +114,7 @@
     <button onclick="window.locateMe()"       title="Gå till min plats">📍 Visa mig</button>
     <button onclick="window.resetView()"      title="Återställ vy">⌂ Hem</button>
     <button id="btn-coordview" onclick="window.toggleCoordView()" style="background:#4fc3f722;border-color:#4fc3f7;color:#4fc3f7;">📋 Koordinatlista</button>
+    <button id="btn-theme" onclick="window.toggleTheme()" title="Växla ljust/mörkt tema">☾</button>
   </div>
 
   <div class="hint" id="hint">➕ Tryck för att lägga punkt</div>
