@@ -30,6 +30,10 @@ export function getObstacles() {
   return getState().obstacles || [];
 }
 
+export function clearObstacleSelection() {
+  setState({ selObsId: null });
+}
+
 // Synkar den interna ID-räknaren efter att obstacles laddats från fil.
 // Förhindrar ID-kollision mellan laddade hinder och framtida addObstacle-anrop.
 export function _syncObstacleCounter(obstacles) {

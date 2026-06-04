@@ -14,6 +14,7 @@ import { initInteractions } from './interactions.js';
 import { drawObstacles } from './obstacles-canvas.js';
 import { drawPreview } from './obstacle-drawing.js';
 import { drawBlockedSuggestions } from './lines.js';
+import { getDragSnapTarget } from './obstacle-editing.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
@@ -377,7 +378,7 @@ export function draw() {
   }
 
   // ── Hinder (under punkter) ──
-  drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10 });
+  drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10, dragSnapTarget: getDragSnapTarget() });
   drawPreview(ctx);
 
   // ── Punkter ──

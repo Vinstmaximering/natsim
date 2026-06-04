@@ -9,7 +9,7 @@
  * @param {{map, ENtoLatLng, mppAtCenter, symSize: number}} helpers
  */
 export function drawObstacles(ctx, obstacles, selObsId, helpers) {
-  const { map, ENtoLatLng, mppAtCenter, symSize } = helpers;
+  const { map, ENtoLatLng, mppAtCenter, symSize, dragSnapTarget } = helpers;
   if (!map || !obstacles || obstacles.length === 0) return;
 
   // Skala handleradius och linjebredd som drawPt (sym-lock ignoreras för hinder)
@@ -58,5 +58,19 @@ export function drawObstacles(ctx, obstacles, selObsId, helpers) {
         ctx.stroke();
       }
     }
+  }
+
+  // Snap-indikator under hörn-drag (grön ring + punkt, identisk med ritnings-preview)
+  if (dragSnapTarget) {
+    const p = map.latLngToContainerPoint(ENtoLatLng(dragSnapTarget.E, dragSnapTarget.N));
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+    ctx.strokeStyle = '#00ff88';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = '#00ff88';
+    ctx.fill();
   }
 }

@@ -1,7 +1,7 @@
 // Hinder-flik i högerpanelen: lista, lägg till, ta bort.
 // Knapparna "🏢 Byggnad" och "━ Vägg" sätter ritverktyg via setTool().
 import { getState, setState } from '../state/store.js';
-import { removeObstacle }     from '../state/obstacles.js';
+import { removeObstacle, clearObstacleSelection } from '../state/obstacles.js';
 import { draw }               from '../map/leaflet-setup.js';
 import { setTool }            from './toolbar.js';
 
@@ -17,8 +17,8 @@ export function renderObstaclePanel() {
       <button class="tb" onclick="window._startObsLine()"
         style="font-size:11px;--c:#8aa8c0;color:#8aa8c0;">━ Vägg</button>
       <button class="tb" onclick="window._obsFromOSM()"
-        style="font-size:11px;--c:#6080a0;color:#6080a0;opacity:0.5;"
-        title="OSM-import tillgänglig i Fas 4">📡 OSM</button>
+        style="font-size:11px;--c:#4fc3f7;color:#4fc3f7;"
+        title="Importera byggnader från OpenStreetMap">📡 OSM</button>
     </div>
     ${obstacles.length === 0
       ? `<div style="color:#7090a8;font-size:12px;text-align:center;padding:24px 0;line-height:1.8;">
@@ -55,7 +55,9 @@ export function initObstaclePanel() {
     import('../io/osm-import.js').then(m => m.importOSMForCurrentView());
   };
   window._selObs = id => {
-    setState({ selObsId: id });
+    const { selObsId } = getState();
+    if (selObsId === id) { clearObstacleSelection(); }
+    else { setState({ selObsId: id }); }
     draw();
     renderObstaclePanel();
   };
