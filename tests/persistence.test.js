@@ -2,7 +2,7 @@
 // Testar _applySnapshot (ren funktion) och _buildSnapshot (läser state + DOM-fallback).
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { _applySnapshot, _buildSnapshot } from '../src/io/export-project.js';
+import { _applySnapshot, _buildSnapshot, _generateDefaultFilename, _sanitizeFilename } from '../src/io/export-project.js';
 import { getState, setState } from '../src/state/store.js';
 import { addObstacle } from '../src/state/obstacles.js';
 
@@ -197,6 +197,56 @@ describe('ID-räknare synkas efter laddning', () => {
     // Ska vara obs_3 eller senare
     const numPart = parseInt(newId.replace('obs_', ''), 10);
     expect(numPart).toBeGreaterThan(2);
+  });
+});
+
+// ─── _generateDefaultFilename ─────────────────────────────────────────────────
+
+describe('_generateDefaultFilename', () => {
+  it('returnerar sträng på formatet stomnät_YYYY-MM-DD_HH-mm', () => {
+    expect(_generateDefaultFilename()).toMatch(/^stomnät_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}$/);
+  });
+
+  it('innehåller inte .json-suffix', () => {
+    expect(_generateDefaultFilename().endsWith('.json')).toBe(false);
+  });
+});
+
+// ─── _sanitizeFilename ────────────────────────────────────────────────────────
+
+describe('_sanitizeFilename', () => {
+  const DEF = 'stomnät_2025-01-01_12-00';
+
+  it('tar bort otillåtna tecken \\ / : * ? " < > |', () => {
+    expect(_sanitizeFilename('fil\\/:*?"<>|namn', DEF)).toBe('filnamn');
+  });
+
+  it('trimmar whitespace', () => {
+    expect(_sanitizeFilename('  mitt projekt  ', DEF)).toBe('mitt projekt');
+  });
+
+  it('tomt input → default-namn', () => {
+    expect(_sanitizeFilename('', DEF)).toBe(DEF);
+  });
+
+  it('bara otillåtna tecken → default-namn', () => {
+    expect(_sanitizeFilename('//\\\\', DEF)).toBe(DEF);
+  });
+
+  it('tar bort .json suffix (lowercase)', () => {
+    expect(_sanitizeFilename('mitt projekt.json', DEF)).toBe('mitt projekt');
+  });
+
+  it('tar bort .JSON suffix (uppercase)', () => {
+    expect(_sanitizeFilename('mitt projekt.JSON', DEF)).toBe('mitt projekt');
+  });
+
+  it('klipper av vid 100 tecken', () => {
+    expect(_sanitizeFilename('a'.repeat(110), DEF)).toHaveLength(100);
+  });
+
+  it('bevarar normalt filnamn oförändrat', () => {
+    expect(_sanitizeFilename('mätning_2024', DEF)).toBe('mätning_2024');
   });
 });
 

@@ -76,16 +76,64 @@ export function _applySnapshot(s) {
   });
 }
 
-// ── Spara projekt – rad 3616–3624 exakt ─────────────────────────────────────
+// ── Generera standard-filnamn (utan .json) – exporteras för tester ──────────
+export function _generateDefaultFilename() {
+  return `stomnät_${new Date().toISOString().slice(0,16).replace("T","_").replace(":","-")}`;
+}
+
+// ── Sanera filnamn: ta bort otillåtna tecken, .json-suffix, trim ─────────────
+export function _sanitizeFilename(name, defaultName) {
+  let s = name.trim().replace(/[\\/:*?"<>|]/g, '').replace(/\.json$/i, '').trim();
+  return s.length > 0 ? s.slice(0, 100) : defaultName;
+}
+
+// ── Spara projekt – visar dialog för filnamn innan nedladdning ───────────────
 export function saveProject() {
-  const snapshot = _buildSnapshot();
-  const name = `stomnät_${new Date().toISOString().slice(0,16).replace("T","_").replace(":","-")}.json`;
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type:"application/json" }));
-  a.download = name;
-  a.click();
-  const el = document.getElementById("autosave-status");
-  if (el) el.textContent = `Sparad som ${name}`;
+  const defaultName = _generateDefaultFilename();
+  const ov = document.createElement("div");
+  ov.className = "ov";
+  ov.style.zIndex = "200";
+  const mo = document.createElement("div");
+  mo.className = "mo";
+  mo.innerHTML = `
+    <div style="font-size:14px;color:#ffd54f;margin-bottom:12px;font-weight:bold;">💾 Spara projekt</div>
+    <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">Filnamn (utan .json)</div>
+    <input id="sfn-input" type="text" maxlength="100">
+    <div class="mbs">
+      <button id="sfn-save" class="bs">✓ Spara</button>
+      <button id="sfn-cancel" class="bc">✕ Avbryt</button>
+    </div>`;
+  ov.appendChild(mo);
+  document.body.appendChild(ov);
+
+  const inp = mo.querySelector("#sfn-input");
+  inp.value = defaultName;
+
+  function close() {
+    document.body.removeChild(ov);
+    document.removeEventListener("keydown", onKey);
+  }
+  function doSave() {
+    const name = _sanitizeFilename(inp.value, defaultName);
+    const filename = name + ".json";
+    const snapshot = _buildSnapshot();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type:"application/json" }));
+    a.download = filename;
+    a.click();
+    const el = document.getElementById("autosave-status");
+    if (el) el.textContent = `Sparad som ${filename}`;
+    close();
+  }
+  function onKey(e) {
+    if (e.key === "Enter")  { e.preventDefault(); doSave(); }
+    if (e.key === "Escape") close();
+  }
+  mo.querySelector("#sfn-save").onclick   = doSave;
+  mo.querySelector("#sfn-cancel").onclick = close;
+  ov.addEventListener("click", e => { if (e.target === ov) close(); });
+  document.addEventListener("keydown", onKey);
+  setTimeout(() => { inp.focus(); inp.select(); }, 0);
 }
 
 // ── Ladda projekt från JSON-text – bakåtkompatibelt med ver:1, 2 och 3 ────────
