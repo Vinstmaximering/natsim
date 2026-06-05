@@ -1,0 +1,295 @@
+/* ═══════════════════════════════════════════════════════════
+   NätSim – Studioläge  (Fas 2 UI)
+   Alla färger via tokens.css – inga hårdkodade hex-värden.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── ⛶-knapp i flikraden ─────────────────────────────────── */
+.tabt-wrap {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.tabt-sx {
+  padding: 4px 5px;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.tabt-wrap:hover .tabt-sx { opacity: 1; }
+.tabt.act + .tabt-sx       { opacity: 0.7; color: var(--accent); }
+.tabt-sx:hover             { opacity: 1 !important; color: var(--accent); }
+
+@media (max-width: 1023px) {
+  .tabt-sx { opacity: 0.7; }
+}
+
+/* ── App-nivå: studio-active splitter layout ─────────────── */
+#app.studio-active #lp        { display: none; }
+#app.studio-active #lrh       { display: none; }
+#app.studio-active #rrh       { display: none; }
+#app.studio-active #rp        { display: none; }
+#app.studio-active #cw        { flex: 0 0 30%; min-width: 180px; max-width: 30%; }
+
+#studio-overlay {
+  display: none;
+  flex-direction: column;
+  background: var(--bg-primary);
+  overflow: hidden;
+  border-left: 1px solid var(--border-default);
+}
+#app.studio-active #studio-overlay {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Phone / tablet: studio tar hela skärmen, kartan göms */
+@media (max-width: 1023px) {
+  #app.studio-active #cw { display: none; }
+  #app.studio-active #studio-overlay { flex: 1; border-left: none; }
+}
+
+/* ── Topprad ─────────────────────────────────────────────── */
+.studio-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--bg-header);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+  min-height: 38px;
+}
+
+.studio-back {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: monospace;
+}
+.studio-back:hover { color: var(--accent); border-color: var(--accent); }
+
+.studio-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio-shortcut {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.studio-close {
+  padding: 4px 8px;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid var(--color-cancel-border);
+  color: var(--color-cancel-text);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: monospace;
+  line-height: 1;
+}
+.studio-close:hover { color: var(--color-danger); border-color: var(--color-danger); }
+
+/* ── Kropp: sidopanel + huvudvy ──────────────────────────── */
+.studio-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.studio-sidebar {
+  width: 280px;
+  min-width: 220px;
+  max-width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-default);
+  overflow-y: auto;
+  background: var(--bg-panel);
+  padding: 10px;
+}
+
+.studio-main {
+  flex: 1;
+  overflow: auto;
+  background: var(--bg-primary);
+  min-width: 0;
+}
+
+/* Komprimera sidopanelen på smala skärmar */
+@media (max-width: 1279px) {
+  .studio-sidebar { width: 220px; min-width: 180px; }
+}
+
+/* ── Footer ──────────────────────────────────────────────── */
+.studio-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-default);
+  flex-shrink: 0;
+  min-height: 34px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── Skeleton / loading-placeholders ─────────────────────── */
+.studio-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+/* ── Studio-tabell (används av alla vyer) ────────────────── */
+.st-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.st-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-panel);
+  color: var(--accent);
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 2px solid var(--border-default);
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+.st-table thead th:hover { color: var(--text-value); }
+.st-table thead th.sort-asc::after  { content: " ▲"; font-size: 10px; }
+.st-table thead th.sort-desc::after { content: " ▼"; font-size: 10px; }
+
+.st-table tbody tr {
+  border-bottom: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: background .1s;
+}
+.st-table tbody tr:hover   { background: var(--bg-hover); }
+.st-table tbody tr.sel-row { background: var(--bg-selected); }
+.st-table tbody tr.warn-row { background: color-mix(in srgb, var(--color-warning-text) 8%, transparent); }
+.st-table tbody tr.err-row  { background: color-mix(in srgb, var(--color-danger) 8%, transparent); }
+
+.st-table tbody td {
+  padding: 6px 10px;
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+.st-table tbody td.mono { font-family: monospace; color: var(--text-value); }
+.st-table tbody td.dim  { color: var(--text-muted); font-size: 12px; }
+
+/* ── Sidopanel-komponenter (återanvänds av alla studio-vyer) */
+.studio-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.studio-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  padding: 7px 9px;
+}
+.studio-stat-card .sc-val {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--accent);
+  font-family: monospace;
+  line-height: 1.1;
+}
+.studio-stat-card .sc-lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.studio-filter-section { margin-bottom: 10px; }
+.studio-filter-section .sf-head {
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  font-family: monospace;
+}
+
+.studio-search {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  color: var(--text-value);
+  border-radius: 3px;
+  font-family: monospace;
+  box-sizing: border-box;
+}
+.studio-search:focus { outline: none; border-color: var(--accent); }
+
+.studio-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+  cursor: pointer;
+}
+.studio-filter-row input[type="checkbox"] { accent-color: var(--accent); flex-shrink: 0; }
+
+/* ── Footer-knappar ──────────────────────────────────────── */
+.studio-footer-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: monospace;
+  white-space: nowrap;
+}
+.studio-footer-btn:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+
+.studio-footer-stat { color: var(--text-muted); font-size: 11px; }
+.studio-footer-spacer { flex: 1; }

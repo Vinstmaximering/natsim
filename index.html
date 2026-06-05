@@ -8,7 +8,6 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <title>NätSim Beta 2 – Stomnätssimulator</title>
-  <script>(function(){var t=localStorage.getItem('natsim_theme')||(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);})()</script>
 </head>
 <body>
 <div id="app">
@@ -72,21 +71,21 @@
   <div class="ptl" id="ptl">
     <div style="padding:6px 10px 3px;font-size:11px;color:#4fc3f7;letter-spacing:2px;" id="pth">PUNKTER (0)</div>
   </div>
-  <div style="padding:8px;border-top:1px solid #1a2d48;">
-    <button class="tb" style="color:#ff5050;border-color:#3a1010;background:#1e0808;" onclick="window.clearAll()">🗑 Rensa allt</button>
-    <button id="btn-undo" class="tb" style="color:#4fc3f7;border-color:#0a2848;margin-top:3px;opacity:0.35;" onclick="window.undo()" disabled>↩ Ångra</button>
-    <button class="tb" style="color:#00ff88;border-color:#0a3020;margin-top:3px;" onclick="document.getElementById('xl-fi').click()">📥 Importera punkter (Excel/CSV)</button>
+  <div style="padding:8px;border-top:1px solid var(--border-default);">
+    <button class="tb tb-danger" onclick="window.clearAll()">🗑 Rensa allt</button>
+    <button id="btn-undo" class="tb tb-info" style="margin-top:3px;opacity:0.35;" onclick="window.undo()" disabled>↩ Ångra</button>
+    <button class="tb tb-success" style="margin-top:3px;" onclick="document.getElementById('xl-fi').click()">📥 Importera punkter (Excel/CSV)</button>
     <input type="file" id="xl-fi" accept=".xlsx,.xls,.csv" style="display:none">
-    <button class="tb" style="color:#00ff88;border-color:#0a3020;margin-top:2px;" onclick="document.getElementById('geo-fi').click()">📥 Importera punkter (.geo)</button>
+    <button class="tb tb-success" style="margin-top:2px;" onclick="document.getElementById('geo-fi').click()">📥 Importera punkter (.geo)</button>
     <input type="file" id="geo-fi" accept=".geo" style="display:none">
-    <button class="tb" style="color:#00ff88;border-color:#0a3020;margin-top:2px;" onclick="window.exportGeoFile()">📤 Exportera punkter (.geo)</button>
-    <button class="tb" style="color:#4fc3f7;border-color:#0a2030;margin-top:2px;" onclick="window.showExcelTemplate()">📋 Visa Excel-mall</button>
-    <div style="border-top:1px solid #1a2d48;margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:3px;">
-      <button class="tb" style="color:#ffd54f;border-color:#3a2800;" onclick="window.saveProject()">💾 Spara projekt</button>
-      <button class="tb" style="color:#ffd54f;border-color:#3a2800;" onclick="document.getElementById('load-fi').click()">📂 Ladda projekt</button>
+    <button class="tb tb-success" style="margin-top:2px;" onclick="window.exportGeoFile()">📤 Exportera punkter (.geo)</button>
+    <button class="tb tb-info" style="margin-top:2px;" onclick="window.showExcelTemplate()">📋 Visa Excel-mall</button>
+    <div style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:3px;">
+      <button class="tb tb-gold" onclick="window.saveProject()">💾 Spara projekt</button>
+      <button class="tb tb-gold" onclick="document.getElementById('load-fi').click()">📂 Ladda projekt</button>
       <input type="file" id="load-fi" accept=".json" style="display:none">
     </div>
-    <div id="autosave-status" style="font-size:10px;color:#6080a0;text-align:center;margin-top:3px;"></div>
+    <div id="autosave-status" class="val-muted" style="font-size:10px;text-align:center;margin-top:3px;"></div>
   </div>
 </div>
 
@@ -114,7 +113,6 @@
     <button onclick="window.locateMe()"       title="Gå till min plats">📍 Visa mig</button>
     <button onclick="window.resetView()"      title="Återställ vy">⌂ Hem</button>
     <button id="btn-coordview" onclick="window.toggleCoordView()" style="background:#4fc3f722;border-color:#4fc3f7;color:#4fc3f7;">📋 Koordinatlista</button>
-    <button id="btn-theme" onclick="window.toggleTheme()" title="Växla ljust/mörkt tema">☾</button>
   </div>
 
   <div class="hint" id="hint">➕ Tryck för att lägga punkt</div>
@@ -138,22 +136,22 @@
   </div>
 
   <!-- D6: Kvalitetspanel -->
-  <div id="qPanel" style="position:absolute;top:55px;right:65px;background:rgba(13,21,32,0.93);border:1px solid #1e3050;border-radius:6px;padding:8px 12px;font-size:11px;color:#d0e4f8;font-family:'Segoe UI',sans-serif;z-index:600;display:none;min-width:180px;">
-    <div style="font-size:10px;color:#4fc3f7;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
+  <div id="qPanel" style="position:absolute;top:55px;right:65px;border-radius:6px;padding:8px 12px;font-size:11px;font-family:'Segoe UI',sans-serif;z-index:600;display:none;min-width:180px;">
+    <div class="val-info" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
       <span>Nätkvalitet</span>
-      <label style="display:flex;align-items:center;gap:3px;font-size:9px;font-weight:normal;cursor:pointer;color:#7090a8">
+      <label class="val-muted" style="display:flex;align-items:center;gap:3px;font-size:9px;font-weight:normal;cursor:pointer">
         <input type="checkbox" id="autoSimToggle" checked style="margin:0;cursor:pointer"> auto
       </label>
     </div>
     <div id="qPanelBody" style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-family:monospace">
-      <span class="qpl" style="color:#7090a8" title="K-tal: global redundanskvot. ≥1.14 utmärkt, ≥0.5 bra, ≥0.3 godkänt." data-tip="K-tal: global redundanskvot. ≥1.14=utmärkt, ≥0.5=bra, ≥0.3=godkänt">k</span><span id="qK">–</span>
-      <span class="qpl" style="color:#7090a8" title="Antal mätningar (n) / antal okända (u)." data-tip="n/u: antal mätningar / antal okända">n/u</span><span id="qNu">–</span>
-      <span class="qpl" style="color:#7090a8" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
-      <span class="qpl" style="color:#7090a8" title="Minsta enskilda redundanstal r_i. ≥0.5 bra, <0.1 risk." data-tip="min r_i: minsta redundanstal ≥0.5=bra, <0.1=risk">min r_i</span><span id="qRmin">–</span>
-      <span class="qpl" style="color:#7090a8" title="Störst positionsosäkerhet σ_pos bland nya punkter." data-tip="max σ_pos: störst positionsosäkerhet bland nya punkter">max σ_pos</span><span id="qSmax">–</span>
-      <span class="qpl" style="color:#7090a8" title="Antal befintliga mätningar utan siktlinje till hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
+      <span class="qpl val-muted" title="K-tal: global redundanskvot. ≥1.14 utmärkt, ≥0.5 bra, ≥0.3 godkänt." data-tip="K-tal: global redundanskvot. ≥1.14=utmärkt, ≥0.5=bra, ≥0.3=godkänt">k</span><span id="qK">–</span>
+      <span class="qpl val-muted" title="Antal mätningar (n) / antal okända (u)." data-tip="n/u: antal mätningar / antal okända">n/u</span><span id="qNu">–</span>
+      <span class="qpl val-muted" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
+      <span class="qpl val-muted" title="Minsta enskilda redundanstal r_i. ≥0.5 bra, <0.1 risk." data-tip="min r_i: minsta redundanstal ≥0.5=bra, <0.1=risk">min r_i</span><span id="qRmin">–</span>
+      <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland nya punkter." data-tip="max σ_pos: störst positionsosäkerhet bland nya punkter">max σ_pos</span><span id="qSmax">–</span>
+      <span class="qpl val-muted" title="Antal befintliga mätningar utan siktlinje till hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
     </div>
-    <div id="qTip" style="display:none;margin-top:5px;font-size:9px;color:#90b0c8;line-height:1.4;border-top:1px solid #1e3050;padding-top:4px;"></div>
+    <div id="qTip" style="display:none;margin-top:5px;font-size:9px;line-height:1.4;padding-top:4px;"></div>
   </div>
 
   <!-- Zoomknappar -->
@@ -171,6 +169,21 @@
 <!-- RIGHT RESIZE HANDLE -->
 <div class="resize-handle" id="rrh" title="Dra för att ändra bredd"></div>
 
+<!-- STUDIO OVERLAY (Fas 2 UI) -->
+<div id="studio-overlay">
+  <div class="studio-topbar">
+    <button class="studio-back" onclick="window.closeStudio()">← Tillbaka till kartvy</button>
+    <span class="studio-title">Studioläge</span>
+    <span class="studio-shortcut">Ctrl+E</span>
+    <button class="studio-close" onclick="window.closeStudio()">✕</button>
+  </div>
+  <div class="studio-body">
+    <div class="studio-sidebar" id="studio-sidebar"></div>
+    <div class="studio-main"   id="studio-main"></div>
+  </div>
+  <div class="studio-footer" id="studio-footer"></div>
+</div>
+
 <!-- RIGHT PANEL -->
 <div id="rp" style="position:relative;">
   <button class="panel-close" onclick="window.togglePanel('rp')" aria-label="Stäng högerpanel">×</button>
@@ -185,60 +198,62 @@
 </div>
 
 <!-- KOORDINATLISTVY (Fas 6+) -->
-<div id="coordview" style="display:none;position:fixed;inset:0;background:#070d18;z-index:50;flex-direction:column;">
-  <div style="background:#0b1422;border-bottom:1px solid #1a2d48;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
-    <button onclick="window.toggleCoordView()" style="padding:5px 14px;font-size:12px;background:#091424;border:1px solid #4fc3f7;color:#4fc3f7;border-radius:4px;cursor:pointer;">← Tillbaka till karta</button>
-    <span style="font-size:13px;font-weight:bold;color:#4fc3f7;">KOORDINATLISTA</span>
-    <span id="cv-crs-label" style="font-size:11px;color:#7090a8;"></span>
+<div id="coordview" style="display:none;position:fixed;inset:0;z-index:50;flex-direction:column;">
+  <div class="cv-header" style="padding:8px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+    <button onclick="window.toggleCoordView()" class="tb tb-info" style="padding:5px 14px;font-size:12px;border-radius:4px;cursor:pointer;">← Tillbaka till karta</button>
+    <span class="val-info" style="font-size:13px;font-weight:bold;">KOORDINATLISTA</span>
+    <span id="cv-crs-label" class="val-muted" style="font-size:11px;"></span>
     <div style="flex:1"></div>
-    <button onclick="window.cvAddRow()"    style="padding:5px 14px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:4px;cursor:pointer;">+ Lägg till punkt</button>
-    <button onclick="window.cvImportGeo()" style="padding:5px 14px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f7;color:#4fc3f7;border-radius:4px;cursor:pointer;">📥 Importera .geo</button>
-    <button onclick="window.cvExportGeo()" style="padding:5px 14px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f7;color:#4fc3f7;border-radius:4px;cursor:pointer;">📤 Exportera .geo</button>
+    <button onclick="window.cvAddRow()"    class="bs" style="padding:5px 14px;font-size:12px;border-radius:4px;cursor:pointer;">+ Lägg till punkt</button>
+    <button onclick="window.cvImportGeo()" class="tb tb-info" style="padding:5px 14px;font-size:12px;border-radius:4px;cursor:pointer;">📥 Importera .geo</button>
+    <button onclick="window.cvExportGeo()" class="tb tb-info" style="padding:5px 14px;font-size:12px;border-radius:4px;cursor:pointer;">📤 Exportera .geo</button>
   </div>
   <div style="flex:1;overflow:auto;padding:12px 16px;">
     <table id="cv-table" style="width:100%;border-collapse:collapse;font-family:monospace;font-size:12px;">
-      <thead><tr style="background:#0d1e30;border-bottom:2px solid #1e3850;position:sticky;top:0;z-index:2;">
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;">#</th>
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;min-width:120px;">Punkt-ID</th>
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;min-width:100px;">Typ</th>
-        <th style="padding:8px 6px;text-align:right;color:#4fc3f7;min-width:160px;">N (m)</th>
-        <th style="padding:8px 6px;text-align:right;color:#4fc3f7;min-width:160px;">E (m)</th>
-        <th style="padding:8px 6px;text-align:right;color:#4fc3f7;min-width:100px;">H (m)</th>
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;">Mätningar</th>
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;min-width:140px;">Markering</th>
-        <th style="padding:8px 6px;text-align:left;color:#4fc3f7;min-width:140px;">Prisma/Instrument</th>
-        <th style="padding:8px 6px;text-align:center;color:#4fc3f7;width:80px;"></th>
+      <thead><tr class="cv-thead" style="position:sticky;top:0;z-index:2;">
+        <th class="val-info" style="padding:8px 6px;text-align:left;">#</th>
+        <th class="val-info" style="padding:8px 6px;text-align:left;min-width:120px;">Punkt-ID</th>
+        <th class="val-info" style="padding:8px 6px;text-align:left;min-width:100px;">Typ</th>
+        <th class="val-info" style="padding:8px 6px;text-align:right;min-width:160px;">N (m)</th>
+        <th class="val-info" style="padding:8px 6px;text-align:right;min-width:160px;">E (m)</th>
+        <th class="val-info" style="padding:8px 6px;text-align:right;min-width:100px;">H (m)</th>
+        <th class="val-info" style="padding:8px 6px;text-align:left;">Mätningar</th>
+        <th class="val-info" style="padding:8px 6px;text-align:left;min-width:140px;">Markering</th>
+        <th class="val-info" style="padding:8px 6px;text-align:left;min-width:140px;">Prisma/Instrument</th>
+        <th style="padding:8px 6px;text-align:center;width:80px;"></th>
       </tr></thead>
       <tbody id="cv-tbody"></tbody>
-      <tfoot><tr id="cv-newrow" style="background:#091424;border-top:2px solid #1e3850;">
-        <td style="padding:6px;color:#506070;font-size:11px;">ny</td>
-        <td style="padding:4px 6px;"><input id="cv-new-id" placeholder="Punkt-ID" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;"></td>
+      <tfoot><tr id="cv-newrow" class="cv-new-row">
+        <td class="val-muted" style="padding:6px;font-size:11px;">ny</td>
+        <td style="padding:4px 6px;"><input id="cv-new-id" placeholder="Punkt-ID" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;"></td>
         <td style="padding:4px 6px;">
-          <select id="cv-new-type" style="width:100%;padding:4px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;">
+          <select id="cv-new-type" style="width:100%;padding:4px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;">
             <option value="known">Känd punkt</option><option value="station" selected>Uppställning</option><option value="new">Ny punkt</option><option value="detail">Detalj</option>
           </select>
         </td>
-        <td style="padding:4px 6px;"><input id="cv-new-N" type="number" placeholder="N-koordinat" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;text-align:right;"></td>
-        <td style="padding:4px 6px;"><input id="cv-new-E" type="number" placeholder="E-koordinat" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;text-align:right;"></td>
-        <td style="padding:4px 6px;"><input id="cv-new-H" type="number" placeholder="H (valfritt)" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;text-align:right;"></td>
-        <td style="padding:4px 6px;"><input id="cv-new-markering" placeholder="Befästning/markering" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;"></td>
+        <td style="padding:4px 6px;"><input id="cv-new-N" type="number" placeholder="N-koordinat" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;text-align:right;"></td>
+        <td style="padding:4px 6px;"><input id="cv-new-E" type="number" placeholder="E-koordinat" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;text-align:right;"></td>
+        <td style="padding:4px 6px;"><input id="cv-new-H" type="number" placeholder="H (valfritt)" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;text-align:right;"></td>
+        <td style="padding:4px 6px;"><input id="cv-new-markering" placeholder="Befästning/markering" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;"></td>
         <td style="padding:4px 6px;">
-          <input id="cv-new-prisma" type="text" placeholder="Prisma/instrument" list="prisma-list" style="width:100%;padding:4px 6px;font-size:12px;background:#060c18;border:1px solid #2a4060;color:#e8f4fd;border-radius:3px;">
+          <input id="cv-new-prisma" type="text" placeholder="Prisma/instrument" list="prisma-list" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;">
           <datalist id="prisma-list">
             <option value="Leica Standardprisma"><option value="Leica 360°-prisma"><option value="Leica Miniprisma"><option value="Leica GMP111"><option value="Tvångscentriering">
           </datalist>
         </td>
         <td style="padding:4px 6px;text-align:center;">
-          <button onclick="window.cvSaveNewRow()" style="padding:4px 10px;font-size:12px;background:#00ff8818;border:1px solid #00ff88;color:#00ff88;border-radius:3px;cursor:pointer;">✓ Lägg till</button>
+          <button onclick="window.cvSaveNewRow()" class="bs" style="padding:4px 10px;font-size:12px;border-radius:3px;cursor:pointer;">✓ Lägg till</button>
         </td>
       </tr></tfoot>
     </table>
   </div>
-  <div style="background:#0b1422;border-top:1px solid #1a2d48;padding:6px 16px;display:flex;gap:16px;font-size:11px;color:#7090a8;flex-shrink:0;">
-    <span id="cv-stat-total"></span><span id="cv-stat-known" style="color:#00ff88;"></span>
-    <span id="cv-stat-station" style="color:#4fc3f7;"></span><span id="cv-stat-new" style="color:#ffb74d;"></span>
+  <div class="cv-footer" style="padding:6px 16px;display:flex;gap:16px;font-size:11px;flex-shrink:0;">
+    <span id="cv-stat-total" class="val-muted"></span>
+    <span id="cv-stat-known"   style="color:#00ff88;"></span>
+    <span id="cv-stat-station" style="color:#4fc3f7;"></span>
+    <span id="cv-stat-new"     style="color:#ffb74d;"></span>
     <span style="flex:1;"></span>
-    <span style="color:#506070;font-size:10px;">Dubbelklicka cell för att redigera · Enter = spara · Esc = avbryt</span>
+    <span class="val-muted" style="font-size:10px;">Dubbelklicka cell för att redigera · Enter = spara · Esc = avbryt</span>
   </div>
 </div>
 

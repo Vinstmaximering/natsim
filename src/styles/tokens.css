@@ -1,48 +1,6 @@
-/* NätSim – Centralt färgsystem. Light = default, dark via [data-theme="dark"]. */
+/* NätSim – Dark-only färgsystem via CSS-variabler. */
 
 :root {
-  /* Bakgrunder */
-  --bg-primary:          #f7f8fa;
-  --bg-surface:          #ffffff;
-  --bg-panel:            #ffffff;
-  --bg-card:             #f8f9fa;
-  --bg-header:           #f0f4f8;
-  --bg-input:            #f0f2f5;
-  --bg-selected:         #e3f2fd;
-  --bg-hover:            #edf2f7;
-
-  /* Borders */
-  --border-default:      #e1e5eb;
-  --border-strong:       #d4dae1;
-  --border-emphasis:     #c8d0da;
-  --color-cancel-border: #d4dae1;
-
-  /* Accent */
-  --accent:              #0277bd;
-
-  /* Text */
-  --text-primary:        #2c3e50;
-  --text-value:          #1a2733;
-  --text-secondary:      #6c7a89;
-  --color-cancel-text:   #6c7a89;
-  --text-muted:          #b0bac5;
-
-  /* Semantiska färger */
-  --color-warning-text:  #b06900;
-  --color-measure:       #b06900;
-  --color-danger:        #d32f2f;
-  --color-success:       #2e7d32;
-
-  /* Overlay & skuggor */
-  --overlay-bg:          rgba(0, 0, 0, 0.42);
-  --shadow-modal:        0 20px 60px rgba(0, 0, 0, 0.12);
-
-  /* Scrollbar */
-  --scrollbar-track:     #f0f2f5;
-  --scrollbar-thumb:     #d4dae1;
-}
-
-[data-theme="dark"] {
   /* Bakgrunder */
   --bg-primary:          #070d18;
   --bg-surface:          #1a2030;
@@ -72,8 +30,10 @@
   /* Semantiska färger */
   --color-warning-text:  #ff7040;
   --color-measure:       #ff9900;
+  --color-caution:       #ffcc00;
   --color-danger:        #ff4444;
   --color-success:       #00ff88;
+  --color-pt-new-text:   #ce93d8;
 
   /* Overlay & skuggor */
   --overlay-bg:          rgba(0, 0, 0, 0.6);
@@ -83,3 +43,75 @@
   --scrollbar-track:     #060c18;
   --scrollbar-thumb:     #1e3850;
 }
+
+/* ── Semantiska värde-klasser ────────────────────────────────────────────── */
+.val-good      { color: var(--color-success); }
+.val-caution   { color: var(--color-caution); }
+.val-warn      { color: var(--color-warning-text); }
+.val-danger    { color: var(--color-danger); }
+.val-info      { color: var(--accent); }
+.val-purple    { color: var(--color-pt-new-text); }
+.val-muted     { color: var(--text-muted); }
+.val-value     { color: var(--text-value); }
+.val-secondary { color: var(--text-secondary); }
+
+/* ── Sim-tab layout-klasser ─────────────────────────────────────────────── */
+.sim-sec {
+  background: var(--bg-selected);
+  border-left: 3px solid var(--accent);
+  padding: 4px 8px; margin: 10px 0 5px;
+  font-size: 12px; font-weight: bold;
+  color: var(--accent); letter-spacing: 0.5px;
+}
+.sim-header {
+  background: var(--bg-input);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px; padding: 8px 10px;
+  margin-bottom: 6px; font-family: monospace;
+}
+.sim-k-box {
+  background: var(--bg-card);
+  border-radius: 3px; padding: 8px; margin-bottom: 4px;
+}
+.sim-tbl-sep { border-bottom: 1px solid var(--border-strong); padding: 2px 0; }
+
+/* ── Knapp-varianter (.tb-*) ─────────────────────────────────────────────── */
+.tb-danger  { color: var(--color-danger);       border-color: color-mix(in srgb, var(--color-danger)       50%, transparent); }
+.tb-success { color: var(--color-success);      border-color: color-mix(in srgb, var(--color-success)      50%, transparent); }
+.tb-gold    { color: var(--color-warning-text); border-color: color-mix(in srgb, var(--color-warning-text) 50%, transparent); }
+.tb-info    { color: var(--accent);             border-color: color-mix(in srgb, var(--accent)             50%, transparent); }
+.tb-purple  { color: var(--color-pt-new-text);  border-color: color-mix(in srgb, var(--color-pt-new-text)  50%, transparent); }
+
+/* ── Kvalitetspanel + koordinatvy ────────────────────────────────────────── */
+#qPanel {
+  background: color-mix(in srgb, var(--bg-panel) 95%, transparent);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+}
+#qTip      { border-top: 1px solid var(--border-default); color: var(--text-secondary); }
+#coordview { background: var(--bg-primary); color: var(--text-primary); }
+.cv-header { background: var(--bg-panel); border-bottom: 1px solid var(--border-default); }
+.cv-footer { background: var(--bg-panel); border-top:    1px solid var(--border-default); }
+.cv-thead  { background: var(--bg-selected); border-bottom: 2px solid var(--border-strong); }
+.cv-thead th { color: var(--accent); }
+.cv-new-row  { background: var(--bg-card); border-top: 2px solid var(--border-strong); }
+
+/* ── Rapport studio ──────────────────────────────────────────────────────── */
+.rs-wrapper    { max-width: 900px; margin: 0 auto; padding: 20px 24px; font-size: 14px; }
+.rs-section    { margin-bottom: 32px; }
+.rs-sec-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border-default); }
+.rs-title      { font-size: 14px; font-weight: bold; color: var(--accent); letter-spacing: .5px; margin: 0; }
+.rs-meta       { font-size: 12px; margin-bottom: 10px; }
+.rs-note       { font-size: 12px; margin-bottom: 8px; }
+.rs-tbl        { border-collapse: collapse; font-family: monospace; font-size: 13px; margin-bottom: 6px; }
+.rs-tbl-full   { width: 100%; }
+.rs-tbl td, .rs-tbl th { padding: 6px 10px; }
+.rs-th         { border-bottom: 2px solid var(--border-strong); }
+.rs-th th      { color: var(--text-muted); font-weight: normal; padding: 6px 10px; }
+.rs-row        { border-bottom: 1px solid var(--border-default); }
+.rs-sep        { border-bottom: 1px solid var(--border-strong); padding: 2px 0; }
+.rs-td-lbl     { padding: 4px 12px 4px 0; white-space: nowrap; }
+.rs-td-val     { padding: 4px 0; font-family: monospace; text-align: right; }
+.rs-k-box      { display:flex; align-items:center; gap:12px; background:var(--bg-card); border-radius:4px; padding:10px 14px; margin-bottom:12px; }
+.rs-k-val      { font-size: 20px; font-weight: bold; font-family: monospace; }
+.rs-k-cls      { font-size: 13px; font-weight: bold; background:color-mix(in srgb,currentColor 10%,transparent); padding:3px 10px; border-radius:3px; }

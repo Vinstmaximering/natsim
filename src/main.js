@@ -1,9 +1,13 @@
 import './styles/main.css';
 import 'leaflet/dist/leaflet.css';
 
-import { initTheme, toggleTheme } from './ui/theme.js';
-initTheme();
-window.toggleTheme = toggleTheme;
+import { openStudio, closeStudio, bindKeyboardShortcut, initStudioForTab } from './ui/studio.js';
+import { render as renderNetStudio }  from './ui/studio-views/net-studio.js';
+import { render as renderMeasStudio } from './ui/studio-views/measurements-studio.js';
+import { render as renderSimStudio }  from './ui/studio-views/simulation-studio.js';
+import { render as renderRepStudio }  from './ui/studio-views/report-studio.js';
+window._openStudio  = openStudio;
+window.closeStudio  = closeStudio;
 
 import { getState, setState, setAutoSimHandler, subscribe } from './state/store.js';
 // openPM definieras nedan (refererar till getState och map-imports)
@@ -108,8 +112,13 @@ if (!loaded) {
   });
 }
 
-// ── 9. Initiera höger-panel och rendera ────────────────────────────────────
+// ── 9. Initiera höger-panel, studio-genvägar och rendera ──────────────────
 initRightPanel();
+bindKeyboardShortcut();
+initStudioForTab('net',  { render: renderNetStudio });
+initStudioForTab('meas', { render: renderMeasStudio });
+initStudioForTab('sim',  { render: renderSimStudio });
+initStudioForTab('rep',  { render: renderRepStudio });
 initResize('lp', 'right');
 initResize('rp', 'left');
 buildTools();
