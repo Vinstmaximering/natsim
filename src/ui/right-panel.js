@@ -13,12 +13,20 @@ import { showValidationDialog } from './validation.js';
 import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
 import { hasLineOfSight } from '../core/visibility.js';
 
+// Returnerar true för typ "station" och för känd punkt med isStation: true.
+// Används för att identifiera alla uppställningspunkter oavsett ursprungstyp.
+export function isStationPoint(p) {
+  return p.type === "station" || (p.type === "known" && p.isStation === true);
+}
+
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
 // Läser ENBART pts/meas från state – kräver INTE att simResult är satt.
 // Fas 3: siktlinje-kontroll mot obstacles (tom array = identiskt beteende som innan).
 export function suggestMeasurements() {
   const { pts, meas, obstacles = [] } = getState();
-  const stations = pts.filter(p => p.type === "station");
+  // Alla uppställningspunkter: type:"station" + type:"known" med isStation:true
+  const stations = pts.filter(isStationPoint);
+  // Kända punkter som bakåtsiktsmål – kombi-punkter ingår (de har kända koordinater)
   const known    = pts.filter(p => p.type === "known");
   // Fix: inkludera new, detail och simstation som mätmål (var ofrivilligt borttaget)
   const unknowns = pts.filter(p => ["new", "detail", "simstation"].includes(p.type));
@@ -30,10 +38,11 @@ export function suggestMeasurements() {
     const existing    = meas.filter(m => m.from === s.id || m.to === s.id);
     const existingIds = new Set(existing.map(m => m.from === s.id ? m.to : m.from));
 
-    // Bakåtsikter till kända punkter (upp till 3 saknade)
-    const missingKnown = known.filter(k => !existingIds.has(k.id));
+    // Bakåtsikter till kända punkter (upp till 3 saknade).
+    // k.id !== s.id: en kombi-punkt ska inte föreslå bakåtsikt till sig själv.
+    const missingKnown = known.filter(k => k.id !== s.id && !existingIds.has(k.id));
     missingKnown.sort((a, b) => d2EN(s, a) - d2EN(s, b));
-    const currentKnownCount = known.filter(k => existingIds.has(k.id)).length;
+    const currentKnownCount = known.filter(k => k.id !== s.id && existingIds.has(k.id)).length;
     const needed = Math.max(0, 3 - currentKnownCount);
     missingKnown.slice(0, needed).forEach(k => {
       const los = hasLineOfSight(s, k, obstacles);
@@ -54,22 +63,28 @@ export function suggestMeasurements() {
       }
     });
 
-    // Korsförbindelser mellan uppställningar
+    // Dubbelriktade korsförbindelser mellan uppställningar.
+    // Varje riktning kontrolleras separat – s→s2 och s2→s är oberoende förslag.
     if (stations.length > 1) {
-      stations.filter(s2 => s2.id !== s.id && !existingIds.has(s2.id)).forEach(s2 => {
-        const already = suggested.find(sg =>
-          (sg.from === s.id && sg.to === s2.id) || (sg.from === s2.id && sg.to === s.id)
-        );
-        const alreadyBlocked = blocked.find(b =>
-          (b.from === s.id && b.to === s2.id) || (b.from === s2.id && b.to === s.id)
-        );
-        if (!already && !alreadyBlocked) {
-          const los = hasLineOfSight(s, s2, obstacles);
-          if (!los.visible) {
-            blocked.push({ from: s.id, to: s2.id, blockedBy: los.blockedBy });
-          } else {
-            suggested.push({ from: s.id, to: s2.id, reason: "Korsförbindelse mellan uppställningar (stärker geometrin)" });
-          }
+      stations.filter(s2 => s2.id !== s.id).forEach(s2 => {
+        const thisDirExists =
+          meas.some(m  => m.from  === s.id && m.to   === s2.id) ||
+          suggested.some(sg => sg.from === s.id && sg.to  === s2.id) ||
+          blocked.some(b  => b.from  === s.id && b.to   === s2.id);
+        if (thisDirExists) return;
+        const los = hasLineOfSight(s, s2, obstacles);
+        if (!los.visible) {
+          blocked.push({ from: s.id, to: s2.id, blockedBy: los.blockedBy });
+        } else {
+          const reverseExists =
+            meas.some(m  => m.from  === s2.id && m.to  === s.id) ||
+            suggested.some(sg => sg.from === s2.id && sg.to === s.id);
+          suggested.push({
+            from: s.id, to: s2.id,
+            reason: reverseExists
+              ? "Kompletterande dubbelmätning (geodetisk felteori)"
+              : "Korsförbindelse mellan uppställningar (stärker geometrin)",
+          });
         }
       });
     }
@@ -119,10 +134,19 @@ export function renderTab() {
   if (atab === "net") {
     tc.innerHTML = `<div class="sl">NÄTÖVERSIKT</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;">
-      ${[["Kända",pts.filter(p=>p.type==="known").length,"#00ff88"],["Uppst.",pts.filter(p=>p.type==="station").length,"#4fc3f7"],
-         ["Detalj",pts.filter(p=>p.type==="detail").length,"#ffb74d"],["Nya",pts.filter(p=>p.type==="new").length,"#ce93d8"],
-         ["Mätningar",meas.length,"#ff9900"],["Inmatade",meas.filter(m=>m.measDist!=null||m.measHz!=null).length,"#ff9900"]]
-        .map(([l,n,c]) => `<div style="background:#091424;border-radius:3px;padding:6px 8px;border:1px solid ${c}28;"><div style="font-size:20px;font-weight:bold;color:${c}">${n}</div><div style="font-size:11px;color:#7090a8">${l}</div></div>`).join("")}
+      ${(() => {
+        const knownAll   = pts.filter(p=>p.type==="known");
+        const knownCombo = knownAll.filter(p=>p.isStation).length;
+        const knownSub   = knownCombo > 0 ? `<div style="font-size:10px;color:#4a7090;margin-top:1px;">varav ${knownCombo} + uppst.</div>` : '';
+        return [
+          ["Kända",   knownAll.length, "#00ff88", knownSub],
+          ["Uppst.",  pts.filter(p=>p.type==="station").length,"#4fc3f7",""],
+          ["Detalj",  pts.filter(p=>p.type==="detail").length, "#ffb74d",""],
+          ["Nya",     pts.filter(p=>p.type==="new").length,    "#ce93d8",""],
+          ["Mätningar",meas.length,"#ff9900",""],
+          ["Inmatade",meas.filter(m=>m.measDist!=null||m.measHz!=null).length,"#ff9900",""],
+        ].map(([l,n,c,sub]) => `<div style="background:#091424;border-radius:3px;padding:6px 8px;border:1px solid ${c}28;"><div style="font-size:20px;font-weight:bold;color:${c}">${n}</div><div style="font-size:11px;color:#7090a8">${l}${sub}</div></div>`).join("");
+      })()}
     </div>
     <div class="sl">MÄTKLASS (SIS-TS)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:8px;">

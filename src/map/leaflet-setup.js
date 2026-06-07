@@ -179,7 +179,18 @@ export function drawPt(ctx, pt, sel, showL, labelRects) {
   }
   ctx.lineWidth = sel ? 2.5 : 1.8; ctx.strokeStyle = c; ctx.fillStyle = c + "33";
 
-  if (pt.type === "known") {
+  if (pt.type === "known" && pt.isStation) {
+    // Kombi-symbol: grön triangel (datum-fix) + blå stationscirkel med korslin
+    ctx.beginPath(); ctx.moveTo(cx, cy - r*1.5); ctx.lineTo(cx + r*1.3, cy + r*0.9); ctx.lineTo(cx - r*1.3, cy + r*0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const oy = cy + r*0.2;
+    ctx.beginPath(); ctx.arc(cx, oy, r*0.72, 0, Math.PI*2);
+    ctx.strokeStyle = "#4fc3f7"; ctx.lineWidth = sel ? 2 : 1.5; ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - r*1.05, oy); ctx.lineTo(cx + r*1.05, oy);
+    ctx.moveTo(cx, oy - r*1.05); ctx.lineTo(cx, oy + r*1.05);
+    ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = c;
+  } else if (pt.type === "known") {
     ctx.beginPath(); ctx.moveTo(cx, cy - r*1.5); ctx.lineTo(cx + r*1.3, cy + r*0.9); ctx.lineTo(cx - r*1.3, cy + r*0.9); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy + r*0.2, r*0.28, 0, Math.PI*2); ctx.fillStyle = c; ctx.fill();
   } else if (pt.type === "station") {

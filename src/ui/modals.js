@@ -134,6 +134,15 @@ export function openEditPt(id) {
       <div style="display:flex;gap:3px;flex-wrap:wrap;">${Object.entries(PT).map(([k,v]) =>
         `<button onclick="window._setMT('${id}','${k}')" style="padding:3px 7px;font-size:11px;border-radius:3px;cursor:pointer;border:1px solid ${pt.type===k?v.c:"#1e3850"};background:${pt.type===k?v.c+"22":"transparent"};color:${pt.type===k?v.c:"#7090a8"}">${v.l}</button>`).join("")}</div>
     </div>
+    ${pt.type === "known" ? `
+    <div style="margin-bottom:8px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:#4fc3f7;font-size:12px;">
+        <input type="checkbox" id="me_isStation" ${pt.isStation ? "checked" : ""}
+               style="accent-color:#4fc3f7;width:14px;height:14px;">
+        Etablerad över känd punkt (även uppställning)
+      </label>
+      <div style="font-size:11px;color:#4a6070;margin-top:3px;margin-left:22px;">Punkten används som mätstation och bakåtsiktsfix.</div>
+    </div>` : ""}
     <div class="mbs">
       <button class="bs" onclick="window._savePM('${id}')">✓ Spara</button>
       <button class="bd" onclick="window._delPt('${id}')">🗑</button>
@@ -165,6 +174,12 @@ export function savePM(id) {
   pt.centerErr  = ceVal !== "" ? parseFloat(ceVal) : null;
   pt.markering  = document.getElementById("me_markering").value.trim() || undefined;
   pt.prisma     = document.getElementById("me_prisma").value.trim()    || undefined;
+  if (pt.type === "known") {
+    const cbEl = document.getElementById("me_isStation");
+    pt.isStation = cbEl ? cbEl.checked : false;
+  } else {
+    delete pt.isStation;
+  }
   setState({ simResult: null });
   closeModal();
   draw();
@@ -196,7 +211,12 @@ export function delM(id) {
 function _setMT(id, nt) {
   const { pts } = getState();
   const pt = pts.find(p => p.id === id);
-  if (pt) { saveUndo(`Ändra typ ${id}`); pt.type = nt; openEditPt(id); }
+  if (pt) {
+    saveUndo(`Ändra typ ${id}`);
+    pt.type = nt;
+    if (nt !== "known") delete pt.isStation;
+    openEditPt(id);
+  }
 }
 
 // Exponera hjälpfunktioner på window för inline onclick i innerHTML

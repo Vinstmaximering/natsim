@@ -17,7 +17,8 @@ export function updatePtList() {
     const d  = document.createElement("div");
     d.className = "pti" + (pt.id === selId ? " sel" : "");
     d.style.borderLeftColor = pt.id === selId ? c : "transparent";
-    d.innerHTML = `<span><span style="color:${c};margin-right:4px;">●</span><b style="font-size:12px">${pt.id}</b><span style="font-size:11px;color:#6080a0;margin-left:4px">${PT[pt.type]?.l || pt.type}</span></span><span style="font-size:11px;color:#8aa8c0">${mc ? mc+"×" : ""}</span>`;
+    const typeLabel = (PT[pt.type]?.l || pt.type) + (pt.type === "known" && pt.isStation ? " + uppst." : "");
+    d.innerHTML = `<span><span style="color:${c};margin-right:4px;">●</span><b style="font-size:12px">${pt.id}</b><span style="font-size:11px;color:#6080a0;margin-left:4px">${typeLabel}</span></span><span style="font-size:11px;color:#8aa8c0">${mc ? mc+"×" : ""}</span>`;
     d.onclick = () => {
       setState({ selId: pt.id });
       import('../map/leaflet-setup.js').then(({ map: m }) => {

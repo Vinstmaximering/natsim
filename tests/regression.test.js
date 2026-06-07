@@ -1,10 +1,12 @@
 // Regressionstester och funktionstester
 // – suggestMeasurements mot blandade punkttyper
 // – importera alla förslagna mätningar
+// – isStationPoint + kombinerade uppställningar + dubbelmätta mätningar
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { suggestMeasurements } from '../src/ui/right-panel.js';
+import { suggestMeasurements, isStationPoint } from '../src/ui/right-panel.js';
 import { getState, setState } from '../src/state/store.js';
+import { _buildSnapshot, _applySnapshot } from '../src/io/export-project.js';
 
 // ─── Hjälpdata ────────────────────────────────────────────────────────────────
 
@@ -119,6 +121,125 @@ describe('suggestMeasurements – blandade punkttyper', () => {
     suggestMeasurements();
     expect(getState().suggestedMeas).toHaveLength(0);
     expect(getState().blockedSuggestions).toHaveLength(0);
+  });
+});
+
+// ─── isStationPoint + kombinerade uppställningar ─────────────────────────────
+
+describe('isStationPoint', () => {
+  it('returnerar true för type:"station"', () => {
+    expect(isStationPoint({ id: 'S1', type: 'station', E: 0, N: 0 })).toBe(true);
+  });
+
+  it('returnerar true för type:"known" med isStation:true', () => {
+    expect(isStationPoint({ id: 'K1', type: 'known', isStation: true, E: 0, N: 0 })).toBe(true);
+  });
+
+  it('returnerar false för type:"known" utan isStation', () => {
+    expect(isStationPoint({ id: 'K1', type: 'known', E: 0, N: 0 })).toBe(false);
+    expect(isStationPoint({ id: 'K2', type: 'known', isStation: false, E: 0, N: 0 })).toBe(false);
+  });
+});
+
+describe('suggestMeasurements – kombinerade uppställningar och dubbelmätta mätningar', () => {
+  beforeEach(() => setState(BASE));
+
+  it('föreslår båda riktningar för två rena uppställningar utan befintliga mätningar', () => {
+    setState({
+      pts: [
+        { id: 'S1', type: 'station', E: 0,   N: 0   },
+        { id: 'S2', type: 'station', E: 100, N: 0   },
+        { id: 'FP1', type: 'known',  E: 50,  N: 100 },
+      ],
+      meas: [],
+    });
+    suggestMeasurements();
+    const sugg = getState().suggestedMeas;
+    const fwd = sugg.find(s => s.from === 'S1' && s.to === 'S2');
+    const bwd = sugg.find(s => s.from === 'S2' && s.to === 'S1');
+    expect(fwd).toBeDefined();
+    expect(bwd).toBeDefined();
+  });
+
+  it('föreslår bara uppst→känd (enkelriktat) – känd utan isStation ger inget omvänt förslag', () => {
+    setState({
+      pts: [
+        { id: 'S1',  type: 'station', E: 0,   N: 0   },
+        { id: 'FP1', type: 'known',   E: 100, N: 0   },
+      ],
+      meas: [],
+    });
+    suggestMeasurements();
+    const sugg = getState().suggestedMeas;
+    // FP1 är inte station → inget förslag FP1→S1
+    const reverse = sugg.find(s => s.from === 'FP1' && s.to === 'S1');
+    expect(reverse).toBeUndefined();
+    // S1→FP1 ska däremot finnas (bakåtsikt)
+    const fwd = sugg.find(s => s.from === 'S1' && s.to === 'FP1');
+    expect(fwd).toBeDefined();
+  });
+
+  it('kombi+station-par: båda riktningar föreslås, inget självpar', () => {
+    setState({
+      pts: [
+        { id: 'K1', type: 'known', isStation: true, E: 0,   N: 0   },
+        { id: 'S1', type: 'station',                E: 100, N: 0   },
+      ],
+      meas: [],
+    });
+    suggestMeasurements();
+    const sugg = getState().suggestedMeas;
+    // S1 → K1 (S1 mäter bakåtsikt mot K1 som känd)
+    const s1_k1 = sugg.find(s => s.from === 'S1' && s.to === 'K1');
+    // K1 → S1 (K1 som station mäter mot S1)
+    const k1_s1 = sugg.find(s => s.from === 'K1' && s.to === 'S1');
+    // Inget självpar
+    const selfPair = sugg.find(s => s.from === s.to);
+    expect(s1_k1).toBeDefined();
+    expect(k1_s1).toBeDefined();
+    expect(selfPair).toBeUndefined();
+  });
+
+  it('kompletterande dubbelmätning: om A→B finns i meas föreslås B→A med rätt reason', () => {
+    setState({
+      pts: [
+        { id: 'S1', type: 'station', E: 0,   N: 0   },
+        { id: 'S2', type: 'station', E: 100, N: 0   },
+        { id: 'FP1', type: 'known',  E: 50,  N: 100 },
+      ],
+      meas: [
+        { id: 'M1', from: 'S1', to: 'S2', obsType: 'both',
+          sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3 },
+      ],
+    });
+    suggestMeasurements();
+    const sugg = getState().suggestedMeas;
+    const complement = sugg.find(s => s.from === 'S2' && s.to === 'S1');
+    expect(complement).toBeDefined();
+    expect(complement.reason).toMatch(/dubbelmätning/i);
+    // S1→S2 ska inte föreslås igen
+    const duplicate = sugg.find(s => s.from === 'S1' && s.to === 'S2');
+    expect(duplicate).toBeUndefined();
+  });
+
+  it('isStation sparas och återladdas korrekt via _buildSnapshot/_applySnapshot', () => {
+    setState({
+      ...BASE,
+      pts: [
+        { id: 'K1', type: 'known', isStation: true,  E: 100, N: 200 },
+        { id: 'K2', type: 'known', isStation: false, E: 300, N: 400 },
+        { id: 'K3', type: 'known',                   E: 500, N: 600 },
+      ],
+    });
+    const snap = _buildSnapshot();
+    // Simulera ny session
+    setState({ ...BASE, pts: [] });
+    _applySnapshot(snap);
+    const loaded = getState().pts;
+    expect(loaded.find(p => p.id === 'K1')?.isStation).toBe(true);
+    expect(loaded.find(p => p.id === 'K2')?.isStation).toBe(false);
+    // K3 har inget isStation-fält → isStationPoint ska returnera false
+    expect(isStationPoint(loaded.find(p => p.id === 'K3'))).toBe(false);
   });
 });
 
