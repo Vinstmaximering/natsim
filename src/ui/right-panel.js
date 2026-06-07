@@ -170,7 +170,7 @@ export function renderTab() {
       const rh = simResult?.ok ? simResult.redund.find(r => r.measId === m.id && r.type === "hz")   : null;
       const riStr = rd ? `r_d=${rd.ri.toFixed(3)}` : rh ? `r_h=${rh.ri.toFixed(3)}` : "";
       const riCol = rd ? rColor(rd.ri) : rh ? rColor(rh.ri) : "#7090a8";
-      return `<div class="lc" style="${isSel?"border-color:#ff9900;":""}cursor:pointer;" onclick="setState_({selMId:'${m.id}'});draw_();">
+      return `<div class="lc" style="${isSel?"border-color:#ff9900;":""}cursor:pointer;" onclick="window._selectMeas('${m.id}')">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
           <span style="color:#ff9900;font-weight:bold;">[${m.id}] ${m.from}→${m.to}</span>
           <div style="display:flex;gap:3px;">
@@ -386,7 +386,7 @@ export function renderTab() {
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11px;">
       <span class="val-secondary">Krav σ_pos ≤</span>
       <input type="number" id="sig-req" value="${sigReq}" min="0.1" step="0.5"
-        oninput="window._setSigReq(parseFloat(this.value)||3)"
+        onchange="window._setSigReq(parseFloat(this.value)||3)"
         style="width:55px;padding:2px 4px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
       <span class="val-secondary">mm</span>
     </div>
@@ -467,6 +467,9 @@ export function renderTab() {
         <input id="sig-req" type="number" step="0.5" min="0.5" value="${getState().sigReq||3}" style="width:70px;padding:5px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
         <span class="val-secondary" style="font-size:12px;">mm</span>
       </div>`;
+    document.getElementById("sig-req")?.addEventListener("change", e => {
+      setState({ sigReq: parseFloat(e.target.value) || 3 });
+    });
     return;
   }
 
@@ -614,4 +617,5 @@ export function initRightPanel() {
   // Exponera setState/draw för inline onclick i renderTab-HTML
   window.setState_ = partial => { setState(partial); };
   window.draw_     = draw;
+  window._selectMeas = id => { setState({ selMId: id }); renderTab(); draw(); };
 }

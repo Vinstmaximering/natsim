@@ -34,7 +34,7 @@ setAutoSimHandler(autoSim);
 setDrawCallbacks({ updatePtList, renderTab });
 
 // ── 3. Map interaction callbacks ────────────────────────────────────────────
-setInteractionCallbacks({ openEditPt, openMM, buildTools, setTab, showToast, renderObsPanel: renderObstaclePanel });
+setInteractionCallbacks({ openEditPt, openMM, buildTools, setTab, showToast, renderObsPanel: renderObstaclePanel, renderTab });
 
 // ── 3b. Bugg 3-fix: undo-callbacks (draw + toast direkt efter Ctrl+Z) ───────
 setUndoCallbacks({ draw, updateQualityPanel, showToast });

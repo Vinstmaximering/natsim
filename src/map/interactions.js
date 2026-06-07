@@ -27,6 +27,7 @@ const cb = {
   setTab:        null,   // rad 1313: byt flik
   showToast:     null,   // rad 1273, 1333, 1342, 1349: notiser
   renderObsPanel: null,  // obstacle-panel re-render efter selektion ändras
+  renderTab:     null,   // höger-panel re-render efter mätnings-selektion ändras
 };
 export function setInteractionCallbacks(callbacks) { Object.assign(cb, callbacks); }
 
@@ -36,6 +37,20 @@ export function near(cx, cy, t = 20) {
   return pts.find(p => {
     const px = ptPixel(p);
     return Math.abs(px.x - cx) < t && Math.abs(px.y - cy) < t;
+  });
+}
+
+// ── nearMeas – hitta mätningslinje inom pixel-tröskel (punkt-till-segment) ──
+export function nearMeas(cx, cy, t = 8) {
+  const { meas, pts } = getState();
+  return meas.find(m => {
+    const p1 = pts.find(p => p.id === m.from), p2 = pts.find(p => p.id === m.to);
+    if (!p1 || !p2) return false;
+    const px1 = ptPixel(p1), px2 = ptPixel(p2);
+    const dx = px2.x - px1.x, dy = px2.y - px1.y, len2 = dx*dx + dy*dy;
+    if (len2 === 0) return Math.hypot(cx - px1.x, cy - px1.y) < t;
+    const u = Math.max(0, Math.min(1, ((cx - px1.x)*dx + (cy - px1.y)*dy) / len2));
+    return Math.hypot(cx - (px1.x + u*dx), cy - (px1.y + u*dy)) < t;
   });
 }
 
@@ -214,6 +229,15 @@ export function initInteractions(map) {
       return;
     }
 
+    // ── Träff på mätningslinje → välj mätning ──
+    const hitM = nearMeas(px.x, px.y, 8);
+    if (hitM) {
+      setState({ selMId: hitM.id });
+      if (cb.renderTab) cb.renderTab();
+      draw();
+      return;
+    }
+
     // ── Ingen träff → rensa hinder-selektion ──
     if (selObsId) { clearObstacleSelection(); if (cb.renderObsPanel) cb.renderObsPanel(); }
 
@@ -311,7 +335,7 @@ export function initInteractions(map) {
     if (n) { e.originalEvent.preventDefault(); if (cb.openEditPt) cb.openEditPt(n.id); }
   });
 
-  // ── Tangentbord: Esc/Enter – prioritetsordning: ritläge > hinder-selektion ──
+  // ── Tangentbord: Esc/Enter – prioritetsordning: ritläge > hinder > mätning ──
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       if (isDrawing()) {
@@ -322,6 +346,10 @@ export function initInteractions(map) {
       } else if (getState().selObsId) {
         clearObstacleSelection();
         if (cb.renderObsPanel) cb.renderObsPanel();
+        draw();
+      } else if (getState().selMId) {
+        setState({ selMId: null });
+        if (cb.renderTab) cb.renderTab();
         draw();
       }
     } else if (e.key === 'Enter' && isDrawing()) {
