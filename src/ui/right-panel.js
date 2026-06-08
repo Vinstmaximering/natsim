@@ -12,6 +12,7 @@ import { openMM, delM } from './modals.js';
 import { showValidationDialog } from './validation.js';
 import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
 import { hasLineOfSight } from '../core/visibility.js';
+import { renderClassInfo } from './sis-ts-info.js';
 
 // Returnerar true för typ "station" och för känd punkt med isStation: true.
 // Används för att identifiera alla uppställningspunkter oavsett ursprungstyp.
@@ -153,6 +154,7 @@ export function renderTab() {
       <button class="tb" onclick="window._applyMatklass('')" style="font-size:12px;${!getState().activeMatklass?"border-color:#4fc3f7;color:#4fc3f7;":""}">Ingen</button>
       ${Object.entries(MATKLASSER).map(([k,v])=>`<button class="tb" onclick="window._applyMatklass('${k}')" style="font-size:12px;${getState().activeMatklass===k?"border-color:#00ff88;color:#00ff88;":""}">${k}</button>`).join("")}
     </div>
+    ${renderClassInfo(getState().activeMatklass)}
     <div class="sl">FÖRESLÅ MÄTNINGAR</div>
     <button onclick="window._suggestMeas()" style="width:100%;padding:7px;font-size:12px;background:#ffdc3218;border:1px solid #ffdc3266;color:#ffdc32;border-radius:3px;cursor:pointer;margin-bottom:4px;">⚡ Analysera och föreslå mätningar</button>
     ${(() => {
