@@ -43,10 +43,11 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
       const d_m = Math.sqrt(dE * dE + dN * dN) || 1;
       const dist_m = m.measDist != null ? m.measDist : d_m;
 
-      // Centreringsfel – rad 661 exakt: e_c = √(e_from²+e_to²)
+      // Centreringen enligt HMK-Stommätning 2024 Bilaga C.1.1 / C.1.2 –
+      // en enda C-term, identiskt med simulation.js. Se kommentaren där.
       const e_from = (stn.centerErr != null ? stn.centerErr : centerErr) / 1000;
       const e_to   = (p2.centerErr  != null ? p2.centerErr  : centerErr) / 1000;
-      const e_c    = Math.sqrt(e_from * e_from + e_to * e_to);
+      const e_c    = Math.sqrt((e_from * e_from + e_to * e_to) / 2);
 
       const sigD = Math.sqrt((sDmm / 1000) ** 2 + (dist_m * sDppm * 1e-6) ** 2 + e_c * e_c);
       const sigH_c_mgon = e_c / dist_m * (200000 / Math.PI);

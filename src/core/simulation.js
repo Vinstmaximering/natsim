@@ -82,10 +82,15 @@ export function runSimulation() {
     const d_m = Math.sqrt(dE * dE + dN * dN) || 1;
     const dist_m = m.measDist != null ? m.measDist : d_m;
 
-    // Centreringsfel – rad 911–913 exakt: e_c = √(e_from²+e_to²)  (ej /√2)
+    // Centreringen enligt HMK-Stommätning 2024 Bilaga C.1.1 (riktning) och
+    // C.1.2 (längd): centreringens standardosäkerhet C är gemensam för
+    // instrument och reflektor/signal och ingår med EN C-term i
+    // osäkerhetsbudgeten – inte en gång per ände. Skiljer sig punkternas
+    // värden åt används deras kvadratiska medelvärde, vilket är exakt C när de
+    // är lika (HMK:s förutsättning).
     const e_from = (p1.centerErr != null ? p1.centerErr : centerErr) / 1000;
     const e_to   = (p2.centerErr != null ? p2.centerErr : centerErr) / 1000;
-    const e_c    = Math.sqrt(e_from * e_from + e_to * e_to);
+    const e_c    = Math.sqrt((e_from * e_from + e_to * e_to) / 2);
 
     const sigD = Math.sqrt((sDmm / 1000) ** 2 + (dist_m * sDppm * 1e-6) ** 2 + e_c * e_c);
     const sigH_mgon_eff  = sHmg / Math.sqrt(nSat);
