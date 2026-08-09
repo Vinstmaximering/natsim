@@ -116,8 +116,11 @@ export function runSimulation() {
         const i2 = freeIdx[p2.id]; rowH[i2*2] -= ey; rowH[i2*2+1] += ex;
       }
       if (stnIdx[p1.id] !== undefined) {
-        // Orienteringskonstant z_k: ∂f_hz/∂z_k = -1  – rad 951 exakt (ej -dist_m)
-        rowH[nFree * 2 + stnIdx[p1.id]] = -1;
+        // Orienteringskonstant z_k. Raden är bågmeterskalad – koordinatleden är
+        // multiplicerade med d och σ skalas som σ_arc = d·σ_rad – så även
+        // orienteringsledet måste skalas: ∂(d·φ)/∂z_k = -d.
+        // HMK-Stommätning 2024 Formel 3.3 / Bilaga F.
+        rowH[nFree * 2 + stnIdx[p1.id]] = -dist_m;
       }
       obsRows.push({ row: rowH, sig: sigH_arc, type: "hz", measId: m.id,
         fromId: p1.id, toId: p2.id, d: dist_m, sigH_mgon_eff: sigH_tot_mgon });

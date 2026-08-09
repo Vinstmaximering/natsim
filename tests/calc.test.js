@@ -50,27 +50,38 @@ describe('Beräkningskärna – referensnät 1: P1 fri + A,B,C kända', () => {
     expect(getState().simResult.kappa).toBe(2.80)
   })
 
-  it('P1 σ_pos = 2.006 mm (matchar NumPy)', () => {
+  // OMSKRIVET efter F1-fixen (∂(d·φ)/∂z = −d i stället för −1).
+  // Tidigare värden 2.166 / 1.832 / 2.006 kom från NätSim_Beta_2.html och den
+  // NumPy-referens som replikerade samma −1. Siktlängderna i detta nät är
+  // olika (100 / 111.80 / 94.34 m), och just då är −1 mot −d inte längre en
+  // ofarlig kolumnskalning – de gamla värdena var alltså fel.
+  // Nya värdena är verifierade mot en oberoende referensimplementation
+  // (avvikelse < 5e-16 på samtliga storheter).
+  it('P1 σ_pos = 2.031 mm', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    expect(p1.sigE * 1000).toBeCloseTo(2.166, 2)
-    expect(p1.sigN * 1000).toBeCloseTo(1.832, 2)
-    expect(p1.sigPos * 1000).toBeCloseTo(2.006, 2)
+    expect(p1.sigE * 1000).toBeCloseTo(2.191, 2)
+    expect(p1.sigN * 1000).toBeCloseTo(1.858, 2)
+    expect(p1.sigPos * 1000).toBeCloseTo(2.031, 2)
   })
 
-  it('Felellips a=2.283 mm, b=1.684 mm (1σ)', () => {
+  // OMSKRIVET efter F1-fixen. Tidigare a=2.283, b=1.684.
+  it('Felellips a=2.327 mm, b=1.684 mm (1σ)', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    expect(p1.aSemi * 1000).toBeCloseTo(2.283, 2)
+    expect(p1.aSemi * 1000).toBeCloseTo(2.327, 2)
     expect(p1.bSemi * 1000).toBeCloseTo(1.684, 2)
   })
 
-  it('Obs 1 (P1→A dist): r_i=0.4793, MUF=12.14mm, YT=6.32mm', () => {
+  // OMSKRIVET efter F1-fixen. Tidigare r=0.4793, MUF=12.14mm, YT=6.32mm.
+  // MUF = κ·σ/√r och YT = (1−r)·MUF är oförändrade formler; det är r som
+  // flyttat sig, och MUF/YT följer med.
+  it('Obs 1 (P1→A dist): r_i=0.4671, MUF=12.30mm, YT=6.55mm', () => {
     runSimulation()
     const r = getState().simResult.redund[0]  // första obs i ordning
-    expect(r.ri).toBeCloseTo(0.4793, 3)
-    expect(r.mdb.val * 1000).toBeCloseTo(12.14, 1)
-    expect(r.yt_m * 1000).toBeCloseTo(6.32, 1)
+    expect(r.ri).toBeCloseTo(0.4671, 3)
+    expect(r.mdb.val * 1000).toBeCloseTo(12.30, 1)
+    expect(r.yt_m * 1000).toBeCloseTo(6.55, 1)
   })
 
   it('Inga NaN i resultatet', () => {
@@ -152,10 +163,13 @@ describe('k-tal klassificering', () => {
   })
 })
 
-describe('NUMERISK REGRESSIONSTEST - exakt matchning mot original', () => {
-  // Detta är "golden master"-test: kör exakt samma data genom både gamla och
-  // nya implementationen, värdena MÅSTE vara identiska till 4 decimaler.
-  it('Standardnät ger identiskt sigPos som original', () => {
+describe('NUMERISK REGRESSIONSTEST - exakt matchning mot facit', () => {
+  // Var tidigare ett golden master mot NätSim_Beta_2.html. Originalet använde
+  // ∂φ/∂z = −1 i en bågmeterskalad riktningsrad (F1), vilket var fel, så
+  // "identiskt med originalet" är inte längre rätt kriterium. Testet mäter nu
+  // mot facit: värdena är verifierade mot en oberoende referensimplementation
+  // av 2D MK-utjämning skriven från lärobokens formler.
+  it('Standardnät ger facitvärden för sigPos', () => {
     setState({
       pts: [
         { id: 'P1', type: 'station', E: 0,   N: 0,   H: 0, centerErr: 2 },
@@ -173,9 +187,10 @@ describe('NUMERISK REGRESSIONSTEST - exakt matchning mot original', () => {
     })
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    // Värden från original NätSim_Beta_2.html (verifierade mot NumPy)
-    expect(p1.sigE.toFixed(6)).toBe('0.002166')
-    expect(p1.sigN.toFixed(6)).toBe('0.001832')
-    expect(p1.sigPos.toFixed(6)).toBe('0.002006')
+    // Facit med korrekt orienteringspartial ∂(d·φ)/∂z = −d.
+    // Gamla (felaktiga) värden: 0.002166 / 0.001832 / 0.002006.
+    expect(p1.sigE.toFixed(6)).toBe('0.002191')
+    expect(p1.sigN.toFixed(6)).toBe('0.001858')
+    expect(p1.sigPos.toFixed(6)).toBe('0.002031')
   })
 })
