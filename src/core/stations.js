@@ -15,7 +15,9 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
 
   const freeIdxPrim = {};
   freeIds_prim.forEach((id, i) => { freeIdxPrim[id] = i; });
-  const kappa = 2.80;   // identisk med runSimulation – originalet: simResult?.kappa||2.80
+  // δ₀ = 2,80 enligt HMK-Stommätning 2024 Formel F.16 (α = 5 %, β = 80 %).
+  // Identisk med runSimulation – se kommentaren där. Ändra inte till 4,13.
+  const kappa = 2.80;
 
   return simStations.map(stn => {
     const stnMeas = meas.filter(m => m.from === stn.id);

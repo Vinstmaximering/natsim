@@ -186,6 +186,12 @@ export function runSimulation() {
 
   // ── r_i = 1 - H_ii (HMK F.9/F.10) – rad 1017–1050 ──
   // κ = 2.80 (α=0.05, β=0.80) per HMK F.16: λ_2.5%+λ_20%=1.96+0.84=2.80
+  // δ₀ = 2,80 enligt HMK-Stommätning 2024 Formel F.16, med α = 5 % och
+  // β = 80 %:  δ₀ = λ(α/2) + λ(β) = 1,96 + 0,84 = 2,80.
+  // Tabell 55 visar hela fältet av risknivåer. Baardas klassiska 4,13 svarar
+  // mot α = 0,1 % – en annan risknivå som HMK medvetet valt bort. ÄNDRA INTE
+  // till 4,13; det skulle göra NätSim icke-HMK-kompatibelt. Låst av
+  // facittestet "F18 – δ₀ = 2,80 låst enligt HMK Formel F.16".
   const kappa = 2.80;
   const redund = [];
   for (let i = 0; i < n_obs; i++) {
