@@ -60,41 +60,47 @@ describe('Beräkningskärna – referensnät 1: P1 fri + A,B,C kända', () => {
   //             går e_c från 2,828 till 2,000 mm, dvs. kärnan var √2 för
   //             pessimistisk. Punktosäkerheten förbättras därmed ~26 %.
   //   Efter F5  1,621 / 1,361 / 2,117  – σ_pos är u(plan) = √(σN²+σE²) enligt
-  //             HMK Formel F.23. Endast σ_pos rör sig; σ_E och σ_N är
-  //             definitionsoberoende och ligger still.
+  //             HMK Formel F.23. Endast σ_pos rörde sig där; σ_E och σ_N är
+  //             definitionsoberoende.
+  //   Efter F17 1,648 / 1,379 / 2,148  – längd-σ summeras som
+  //             √[(A + B·L)² + C²] enligt HMK Bilaga C.1.2 i stället för helt
+  //             kvadratiskt. Längd-σ stiger (2,2383 → 2,2825 mm vid 100 m),
+  //             alltså konservativ riktning, och allt nedströms följer med.
   // σ_E och σ_N är verifierade mot en oberoende referensimplementation
   // (avvikelse < 5e-16). σ_pos är härlett ur F.23 och de validerade
-  // komponenterna – referensimplementationen kodade tidigare samma mean-form
-  // och dög därför inte som facit för just σ_pos.
-  it('P1 σ_pos = 2.117 mm (HMK F.23)', () => {
+  // komponenterna – referensimplementationen kodade tidigare både mean-formen
+  // (F5) och den kvadratiska längdsummeringen (F17) och dög därför inte som
+  // facit för dessa; båda är rättade i den.
+  it('P1 σ_pos = 2.148 mm (HMK F.23)', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    expect(p1.sigE * 1000).toBeCloseTo(1.621, 2)
-    expect(p1.sigN * 1000).toBeCloseTo(1.361, 2)
-    expect(p1.sigPos * 1000).toBeCloseTo(2.117, 2)
+    expect(p1.sigE * 1000).toBeCloseTo(1.648, 2)
+    expect(p1.sigN * 1000).toBeCloseTo(1.379, 2)
+    expect(p1.sigPos * 1000).toBeCloseTo(2.148, 2)
     // u(plan) = √[u²(N) + u²(E)] – ingen delning med 2.
     expect(p1.sigPos).toBeCloseTo(Math.sqrt(p1.sigN ** 2 + p1.sigE ** 2), 12)
   })
 
-  // OMSKRIVET av F1 (2,283/1,684 → 2,327/1,684) och av F4 (→ 1,729/1,222).
-  // F5 rörde INTE halvaxlarna – de kommer ur egenvärdesuppdelningen och är
-  // oberoende av hur σ_pos definieras.
-  it('Felellips a=1.729 mm, b=1.222 mm (1σ)', () => {
+  // OMSKRIVET av F1 (2,283/1,684 → 2,327/1,684), F4 (→ 1,729/1,222) och
+  // F17 (→ 1,759/1,233). F5 rörde INTE halvaxlarna – de kommer ur
+  // egenvärdesuppdelningen och är oberoende av hur σ_pos definieras.
+  it('Felellips a=1.759 mm, b=1.233 mm (1σ)', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    expect(p1.aSemi * 1000).toBeCloseTo(1.729, 2)
-    expect(p1.bSemi * 1000).toBeCloseTo(1.222, 2)
+    expect(p1.aSemi * 1000).toBeCloseTo(1.759, 2)
+    expect(p1.bSemi * 1000).toBeCloseTo(1.233, 2)
   })
 
-  // OMSKRIVET av F1 (0,4793 → 0,4671) och av F4 (→ 0,4753).
-  // MUF = κ·σ/√r och YT = (1−r)·MUF är oförändrade formler. MUF faller kraftigt
-  // (12,14 → 9,09 mm) eftersom σ_D sjunker med det lägre centreringsbidraget.
-  it('Obs 1 (P1→A dist): r_i=0.4753, MUF=9.09mm, YT=4.77mm', () => {
+  // OMSKRIVET av F1 (0,4793 → 0,4671), F4 (→ 0,4753) och F17 (→ 0,4789).
+  // MUF = κ·σ/√r och YT = (1−r)·MUF är oförändrade formler. MUF föll kraftigt
+  // med F4 (12,14 → 9,09 mm) och stiger något med F17 (→ 9,24 mm) eftersom
+  // längd-σ blir större med den linjära A+B·L-summeringen.
+  it('Obs 1 (P1→A dist): r_i=0.4789, MUF=9.24mm, YT=4.81mm', () => {
     runSimulation()
     const r = getState().simResult.redund[0]  // första obs i ordning
-    expect(r.ri).toBeCloseTo(0.4753, 3)
-    expect(r.mdb.val * 1000).toBeCloseTo(9.09, 1)
-    expect(r.yt_m * 1000).toBeCloseTo(4.77, 1)
+    expect(r.ri).toBeCloseTo(0.4789, 3)
+    expect(r.mdb.val * 1000).toBeCloseTo(9.24, 1)
+    expect(r.yt_m * 1000).toBeCloseTo(4.81, 1)
   })
 
   it('Inga NaN i resultatet', () => {
@@ -201,13 +207,15 @@ describe('NUMERISK REGRESSIONSTEST - exakt matchning mot facit', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
     // Facit med korrekt orienteringspartial ∂(d·φ)/∂z = −d (F1), centreringen
-    // som en enda C-term enligt HMK Bilaga C.1.1/C.1.2 (F4) och u(plan) =
-    // √(σN²+σE²) enligt HMK Formel F.23 (F5).
+    // som en enda C-term enligt HMK Bilaga C.1.1/C.1.2 (F4), u(plan) =
+    // √(σN²+σE²) enligt HMK Formel F.23 (F5) och längd-σ som
+    // √[(A + B·L)² + C²] enligt HMK Bilaga C.1.2 (F17).
     // Ursprungliga (felaktiga) värden: 0.002166 / 0.001832 / 0.002006.
     // Efter enbart F1:                  0.002191 / 0.001858 / 0.002031.
     // Efter F1+F4:                      0.001621 / 0.001361 / 0.001497.
-    expect(p1.sigE.toFixed(6)).toBe('0.001621')
-    expect(p1.sigN.toFixed(6)).toBe('0.001361')
-    expect(p1.sigPos.toFixed(6)).toBe('0.002117')
+    // Efter F1+F4+F5:                   0.001621 / 0.001361 / 0.002117.
+    expect(p1.sigE.toFixed(6)).toBe('0.001648')
+    expect(p1.sigN.toFixed(6)).toBe('0.001379')
+    expect(p1.sigPos.toFixed(6)).toBe('0.002148')
   })
 })

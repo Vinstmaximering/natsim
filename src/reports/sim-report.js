@@ -147,9 +147,10 @@ export function exportCalcReport() {
     const dist_m  = m.measDist!=null ? m.measDist : d_m;
     const e_from  = (p1.centerErr!=null?p1.centerErr:centerErr)/1000;
     const e_to    = (p2.centerErr!=null?p2.centerErr:centerErr)/1000;
-    // Nota: rapport använder /2-varianten av centreringsfel (rad 2757 exakt)
+    // Centreringen som EN C-term enligt HMK Bilaga C.1.1/C.1.2 – samma som kärnan.
     const e_c     = Math.sqrt((e_from*e_from+e_to*e_to)/2);
-    const sigD    = Math.sqrt((sDmm/1000)**2+(dist_m*sDppm*1e-6)**2+e_c*e_c);
+    // u(L) = √[(A + B·L)² + C²] enligt HMK Bilaga C.1.2 – samma som kärnan.
+    const sigD    = Math.hypot((sDmm/1000)+(dist_m*sDppm*1e-6), e_c);
     const sigH_eff = sHmg/Math.sqrt(nSat);
     const sigH_c   = e_c/dist_m*(200000/Math.PI);
     const sigH_tot = Math.sqrt(sigH_eff**2+sigH_c**2);
@@ -221,7 +222,7 @@ export function exportCalcReport() {
   r += `${SEP}\nFORMELFÖRTECKNING\n${sep}\n`;
   r += `Designmatris avstånd:   ∂D/∂E_i=-ex, ∂D/∂N_i=-ey, ∂D/∂E_j=+ex, ∂D/∂N_j=+ey\n`;
   r += `Designmatris riktning:  ∂r/∂E_i=+ey, ∂r/∂N_i=-ex, ∂r/∂E_j=-ey, ∂r/∂N_j=+ex, ∂r/∂z_k=-d\n`;
-  r += `σ_D  = √(σ_Dmm² + (d×ppm)² + e_c²)\nMUF  = κ × σ / √r_i,   κ=${sr.kappa} (α=0.05, β=0.80)\nYT   = MUF × (1-r_i)\n\n`;
+  r += `σ_D  = √((σ_Dmm + d×ppm)² + e_c²)   HMK Bilaga C.1.2 – A och B·L adderas linjärt\nMUF  = κ × σ / √r_i,   κ=${sr.kappa} (α=0.05, β=0.80, HMK Formel F.16)\nYT   = MUF × (1-r_i)\n\n`;
   r += `REFERENSER\n${sep}\n[1] HMK – Stommätning, Appendix F, Lantmäteriet 2021.\n[2] SIS-TS 21143:2016 – Geodesi: Stomnät.\n[3] Baarda 1968, Pope 1976, Mikhail & Gracie 1981.\n${SEP}\n`;
 
   const a2 = document.createElement("a");

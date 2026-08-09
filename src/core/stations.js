@@ -49,7 +49,9 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
       const e_to   = (p2.centerErr  != null ? p2.centerErr  : centerErr) / 1000;
       const e_c    = Math.sqrt((e_from * e_from + e_to * e_to) / 2);
 
-      const sigD = Math.sqrt((sDmm / 1000) ** 2 + (dist_m * sDppm * 1e-6) ** 2 + e_c * e_c);
+      // u(L) = √[(A + B·L)² + C²] enligt HMK Bilaga C.1.2 – identiskt med
+      // simulation.js. Se kommentaren där.
+      const sigD = Math.hypot((sDmm / 1000) + (dist_m * sDppm * 1e-6), e_c);
       const sigH_c_mgon = e_c / dist_m * (200000 / Math.PI);
       const sigH_tot    = Math.sqrt((sHmg / Math.sqrt(nSat)) ** 2 + sigH_c_mgon ** 2);
       const sigH_arc    = dist_m * sigH_tot * 0.001 * (Math.PI / 200);

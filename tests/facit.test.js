@@ -329,14 +329,16 @@ describe('F5 – u(plan) = √(σN² + σE²) enligt HMK Formel F.23', () => {
   const refMeas = ['A', 'B', 'C'].map((t, i) =>
     ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I }))
 
-  it('referensnätet: σ_pos = √(1,621² + 1,361²) = 2,117 mm', () => {
+  // Komponentvärdena flyttades av F17 (längd-σ enligt HMK C.1.2):
+  // 1,621/1,361 → 1,648/1,379. Själva F.23-egenskapen är oförändrad.
+  it('referensnätet: σ_pos = √(1,648² + 1,379²) = 2,148 mm', () => {
     const sr = kor(refPts, refMeas, 2)
     const p = sr.ptResults.find(x => x.id === 'P1')
     // Validerade komponenter (definitionsoberoende):
-    expect(p.sigE * 1000).toBeCloseTo(1.621, 3)
-    expect(p.sigN * 1000).toBeCloseTo(1.361, 3)
+    expect(p.sigE * 1000).toBeCloseTo(1.648, 3)
+    expect(p.sigN * 1000).toBeCloseTo(1.379, 3)
     // Facit ur F.23:
-    expect(p.sigPos * 1000).toBeCloseTo(2.117, 3)
+    expect(p.sigPos * 1000).toBeCloseTo(2.148, 3)
   })
 
   it('u(plan) = √(σN² + σE²) för varje punkt i flera nät', () => {
@@ -361,13 +363,14 @@ describe('F5 – u(plan) = √(σN² + σE²) enligt HMK Formel F.23', () => {
     }
   })
 
-  it('ellipsens halvaxlar är oförändrade – a=1,729 mm, b=1,222 mm', () => {
+  it('ellipsens halvaxlar följer inte σ_pos-definitionen – a=1,759 mm, b=1,233 mm', () => {
     // F5 rör enbart σ_pos. Halvaxlarna kommer ur egenvärdesuppdelningen och
-    // ska ligga still.
+    // låg still genom F5 (1,729/1,222 både före och efter). F17 flyttade dem
+    // däremot, eftersom längd-σ ändrades och därmed hela Q_xx.
     const sr = kor(refPts, refMeas, 2)
     const p = sr.ptResults.find(x => x.id === 'P1')
-    expect(p.aSemi * 1000).toBeCloseTo(1.729, 3)
-    expect(p.bSemi * 1000).toBeCloseTo(1.222, 3)
+    expect(p.aSemi * 1000).toBeCloseTo(1.759, 3)
+    expect(p.bSemi * 1000).toBeCloseTo(1.233, 3)
   })
 
   it('invarianten a² + b² = σN² + σE² = σ_pos² håller', () => {

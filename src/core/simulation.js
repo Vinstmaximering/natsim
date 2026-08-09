@@ -101,7 +101,14 @@ export function runSimulation() {
     const e_to   = (p2.centerErr != null ? p2.centerErr : centerErr) / 1000;
     const e_c    = Math.sqrt((e_from * e_from + e_to * e_to) / 2);
 
-    const sigD = Math.sqrt((sDmm / 1000) ** 2 + (dist_m * sDppm * 1e-6) ** 2 + e_c * e_c);
+    // Längdosäkerhet enligt HMK-Stommätning 2024 Bilaga C.1.2:
+    //   u(L) = √[(A + B·L)² + C²]
+    // Konstantledet A och det avståndsberoende ledet B·L adderas LINJÄRT –
+    // TDOK 2014:0571 §4.6.1.2 använder ordet "adderas". Först centreringen C
+    // kombineras kvadratiskt. Tidigare summerades allt kvadratiskt, vilket
+    // underskattade längdosäkerheten.
+    const uD_lin = (sDmm / 1000) + (dist_m * sDppm * 1e-6);
+    const sigD   = Math.hypot(uD_lin, e_c);
     const sigH_mgon_eff  = sHmg / Math.sqrt(nSat);
     const sigH_c_mgon    = e_c / dist_m * (200000 / Math.PI);
     const sigH_tot_mgon  = Math.sqrt(sigH_mgon_eff ** 2 + sigH_c_mgon ** 2);
