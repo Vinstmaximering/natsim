@@ -17,6 +17,7 @@ import { runSimStations } from '../src/core/stations.js'
 import { exportCalcReport } from '../src/reports/sim-report.js'
 import { klassificeraKtal, K_NAT_GOLV } from '../src/core/constants.js'
 import { setState, getState } from '../src/state/store.js'
+import { reference } from './ref.mjs'
 
 // Kör ett nät genom kärnan och returnera simResult.
 function kor(pts, meas, centerErr = 0) {
@@ -808,5 +809,103 @@ describe('F7 – klassificering av k-talet', () => {
     // rimligen går att konstruera. Fortfarande < 1.
     expect(sr.K_global).toBeCloseTo(2 / 3, 10)
     expect(sr.K_global).toBeLessThan(1)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F19 – korsjämförelse kärna mot oberoende referensimplementation
+//
+// Referensen (tests/ref.mjs) är förankrad i HMK-Stommätning 2024 och validerad
+// i tests/ref-hmk.test.js, som inte importerar någonting från src/. Först när
+// den står på egna ben är den meningsfull att jämföra kärnan mot.
+//
+// RIKTNING PÅ BEVISNINGEN: om dessa tester går isär är standardtexten
+// skiljedomare. Referensen får ALDRIG justeras för att matcha kärnan – det var
+// precis så F5 och F17 överlevde två granskningsomgångar.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F19 – kärnan mot HMK-förankrad referens', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+
+  const natFall = [
+    {
+      namn: 'referensnätet (station + 3 kända, olika siktlängder)',
+      pts: [
+        { id: 'P1', type: 'station', E: 0, N: 0, centerErr: 2 },
+        { id: 'A', type: 'known', E: 100, N: 0, centerErr: 2 },
+        { id: 'B', type: 'known', E: 50, N: 100, centerErr: 2 },
+        { id: 'C', type: 'known', E: -50, N: 80, centerErr: 2 }
+      ],
+      meas: ['A', 'B', 'C'].map((t, i) => ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I })),
+      ce: 2
+    },
+    {
+      namn: 'fackverk med reciproka sikter',
+      pts: [
+        { id: 'FP1', type: 'known', E: 0, N: 0, centerErr: 1 },
+        { id: 'FP2', type: 'known', E: 200, N: 0, centerErr: 1 },
+        { id: 'NY1', type: 'new', E: 60, N: 120, centerErr: 1 },
+        { id: 'NY2', type: 'new', E: 150, N: 130, centerErr: 1 }
+      ],
+      meas: [['FP1', 'NY1'], ['NY1', 'FP1'], ['FP2', 'NY2'], ['NY2', 'FP2'],
+        ['NY1', 'NY2'], ['NY2', 'NY1'], ['FP1', 'FP2'], ['FP1', 'NY2']]
+        .map(([f, t], i) => ({ id: 'm' + i, from: f, to: t, obsType: 'both', ...I })),
+      ce: 1
+    },
+    {
+      namn: 'ren trilateration (enbart dist_only)',
+      pts: [
+        { id: 'NY1', type: 'new', E: 50, N: 30, centerErr: 0 },
+        { id: 'FP1', type: 'known', E: 0, N: 0, centerErr: 0 },
+        { id: 'FP2', type: 'known', E: 100, N: 0, centerErr: 0 },
+        { id: 'FP3', type: 'known', E: 50, N: 90, centerErr: 0 }
+      ],
+      meas: ['FP1', 'FP2', 'FP3'].map((t, i) =>
+        ({ id: 'm' + i, from: 'NY1', to: t, obsType: 'dist_only', ...I })),
+      ce: 0
+    }
+  ]
+
+  natFall.forEach(({ namn, pts, meas, ce }) => {
+    it(`${namn}: r-tal, σ och ellipser sammanfaller`, () => {
+      const sr = kor(pts, meas, ce)
+      const rf = reference(pts, meas, ce)
+      expect(sr.error).toBeUndefined()
+      expect(rf.singular).toBe(false)
+
+      expect(sr.meas_n).toBe(rf.n)
+      expect(sr.unkn_n).toBe(rf.nu)
+      expect(sr.redundancy).toBe(rf.dof)
+      expect(sr.K_global).toBeCloseTo(rf.kGlobal, 12)
+
+      sr.redund.forEach((rd, i) => {
+        expect(rd.ri, `${namn} obs ${i} (${rd.fromId}→${rd.toId} ${rd.type})`)
+          .toBeCloseTo(rf.redund[i].ri, 12)
+        expect(rd.sig, `${namn} obs ${i} σ`).toBeCloseTo(rf.redund[i].sig, 15)
+      })
+
+      sr.ptResults.forEach(p => {
+        const q = rf.ptResults.find(x => x.id === p.id)
+        expect(q, `saknad punkt ${p.id} i referensen`).toBeDefined()
+        expect(p.sigE, `${namn} ${p.id} σ_E`).toBeCloseTo(q.sigE, 15)
+        expect(p.sigN, `${namn} ${p.id} σ_N`).toBeCloseTo(q.sigN, 15)
+        expect(p.sigPos, `${namn} ${p.id} u(plan)`).toBeCloseTo(q.sigPos, 15)
+        expect(p.aSemi, `${namn} ${p.id} a`).toBeCloseTo(q.aSemi, 15)
+        expect(p.bSemi, `${namn} ${p.id} b`).toBeCloseTo(q.bSemi, 15)
+      })
+
+      expect(sr.redund.reduce((a, b) => a + b.ri, 0)).toBeCloseTo(rf.dof, 10)
+    })
+  })
+
+  it('MUF sammanfaller för kontrollerbara observationer', () => {
+    const { pts, meas, ce } = natFall[1]
+    const sr = kor(pts, meas, ce)
+    const rf = reference(pts, meas, ce)
+    sr.redund.forEach((rd, i) => {
+      if (rf.redund[i].muf === Infinity) return
+      // Kärnan rapporterar MUF för riktningar i mgon; referensen i bågmeter.
+      const kMuf = rd.type === 'dist' ? rd.mdb.val : rd.mdb.val * rd.d / (200000 / Math.PI)
+      expect(kMuf, `obs ${i}`).toBeCloseTo(rf.redund[i].muf, 12)
+    })
   })
 })
