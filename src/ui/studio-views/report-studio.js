@@ -122,7 +122,8 @@ function _buildReportHTML(state) {
   const relRows = sr.redund.map(rd => {
     const mufStr = rd.mdb.val===Infinity?'∞':rd.type==='dist'?(rd.mdb.val*1000).toFixed(1)+'mm':rd.mdb.val.toFixed(2)+'mgon';
     const yt     = rd.mdb.val===Infinity?Infinity:rd.mdb.val*(1-rd.ri);
-    const ytStr  = yt===Infinity?'∞':rd.type==='dist'?(yt*1000).toFixed(2)+'mm':yt.toFixed(4)+'gon';
+    // YT ärver MUF:s enhet: mgon för riktningar (HMK F.4.1).
+    const ytStr  = yt===Infinity?'∞':rd.type==='dist'?(yt*1000).toFixed(2)+'mm':yt.toFixed(4)+'mgon';
     const kpStr  = rd.yt_m==null||rd.yt_m===Infinity?'∞':(rd.yt_m*1000).toFixed(2);
     return `<tr class="rs-row">
       <td class="val-secondary">${rd.fromId}→${rd.toId}</td>

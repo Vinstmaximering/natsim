@@ -52,7 +52,9 @@ export function exportSimReport() {
   sr.redund.forEach(rd => {
     const mufS = rd.mdb.val === Infinity ? "∞" : rd.type==="dist" ? (rd.mdb.val*1000).toFixed(1)+"mm" : rd.mdb.val.toFixed(2)+"mgon";
     const yt   = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1-rd.ri);
-    const ytS  = yt === Infinity ? "∞" : rd.type==="dist" ? (yt*1000).toFixed(2)+"mm" : yt.toFixed(4)+"gon";
+    // YT ärver MUF:s enhet: mm för längder, mgon för riktningar (HMK F.4.1 –
+    // tillförlitlighetsmåtten ges i samma enhet som mätningarna).
+    const ytS  = yt === Infinity ? "∞" : rd.type==="dist" ? (yt*1000).toFixed(2)+"mm" : yt.toFixed(4)+"mgon";
     const kpS  = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : (rd.yt_m*1000).toFixed(2);
     r += `${pad((rd.fromId||"?")+"→"+(rd.toId||"?"),14)} ${pad(rd.type==="dist"?"Avst":"Riktning",9)} ${rpad(rd.ri.toFixed(3),6)} ${rpad(mufS,10)} ${rpad(ytS,10)} ${rpad(kpS,8)} ${rLabel(rd.ri)}\n`;
   });

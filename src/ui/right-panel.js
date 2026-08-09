@@ -389,9 +389,10 @@ export function renderTab() {
           ? (rd.mdb.val*1000).toFixed(1) + "mm"
           : rd.mdb.val.toFixed(2) + "mgon";
         const yt    = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1 - rd.ri);
+        // YT ärver MUF:s enhet: mgon för riktningar (HMK F.4.1).
         const ytStr = yt === Infinity ? "∞" : rd.type === "dist"
           ? (yt*1000).toFixed(2) + "mm"
-          : yt.toFixed(4) + "gon";
+          : yt.toFixed(4) + "mgon";
         const kpStr = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : (rd.yt_m*1000).toFixed(2);
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td class="val-secondary" style="padding:3px 4px 3px 0;font-size:10px;white-space:nowrap;">${rd.fromId}→${rd.toId}</td>
