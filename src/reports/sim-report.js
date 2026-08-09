@@ -37,7 +37,12 @@ export function exportSimReport() {
   if (sr.rMinHz   != null) r += `Min r_i (vink): ${sr.rMinHz.toFixed(3)}\n`;
   r += "\n";
 
-  r += `3. PUNKTOSÄKERHETER (95%, k=2.45)\n${sep}\n`;
+  // Värdena är standardosäkerheter (1σ) – simulation.js sätter k_ell = 1.0.
+  // HMK-Stommätning 2024 Bilaga B.3.3 redovisar dessa storheter som
+  // standardosäkerheter. Rubriken utlovade tidigare 95 % (k=2.45) utan att
+  // värdena skalades, vilket underskattade dem med faktor 2,45 mot sin egen
+  // rubrik.
+  r += `3. PUNKTOSÄKERHETER – standardosäkerhet 1σ (k=1)\n${sep}\n`;
   r += `${pad("Punkt",7)} ${rpad("σE mm",7)} ${rpad("σN mm",7)} ${rpad("σpos mm",8)} ${rpad("a mm",7)} ${rpad("b mm",7)} θ\n`;
   sr.ptResults.forEach(pr => {
     const sm = (pr.sigPos*1000).toFixed(2);
@@ -45,8 +50,8 @@ export function exportSimReport() {
   });
   r += "\n";
 
-  r += `4. RELIABILITET PER MÄTNING\n${sep}\n`;
-  r += `YT = MUF×(1-r) i observationsdomänen (Geos definition)\nKP = Koordinatpåverkan i mm\n\n`;
+  r += `4. RELIABILITET PER MÄTNING – standardosäkerhet 1σ (k=1)\n${sep}\n`;
+  r += `MUF = κ×σ/√r,  YT = MUF×(1-r) i observationsdomänen\nKP = Koordinatpåverkan i mm\nEnheter: mm för längder, mgon för riktningar (HMK F.4.1)\n\n`;
   r += `${pad("Sträcka",14)} ${pad("Typ",9)} ${rpad("r",6)} ${rpad("MUF",10)} ${rpad("YT",10)} ${rpad("KP mm",8)} Klass\n`;
   const rLabel = r_ => r_ >= 0.5 ? "Starkt" : r_ >= 0.3 ? "Acceptabelt" : r_ >= 0.1 ? "Svagt" : "Otillräckligt";
   sr.redund.forEach(rd => {
