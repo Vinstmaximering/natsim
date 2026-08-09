@@ -467,3 +467,239 @@ describe('Rapportkonsistens – orienteringsobekanta i beräkningsrapporten', ()
     expect(Math.max(...zIndex)).toBe(sr.unkn_n - 1)
   })
 })
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F17 – längdosäkerhetens summering enligt HMK-Stommätning 2024 Bilaga C.1.2
+//
+//   u(L) = √[(A + B·L)² + C²]
+//
+// Konstantledet A och det avståndsberoende ledet B·L adderas LINJÄRT; först
+// centreringen C kombineras kvadratiskt. TDOK 2014:0571 §4.6.1.2 bekräftar det
+// linjära med ordet "adderas".
+//
+// HMK:s räkneexempel: A = 2 mm, B = 3 ppm, L = 300 m, C = 3 mm
+//   korrekt (hybrid):    √[(2 + 0,9)² + 3²] = √[8,41 + 9]      = 4,1725 mm
+//   helt kvadratiskt:    √[2² + 0,9² + 3²]  = √[4 + 0,81 + 9]  = 3,7162 mm
+// Skillnaden är diskriminanten för detta test.
+//
+// Facit är härlett ur C.1.2, INTE ur referensimplementationen – den summerade
+// också helt kvadratiskt och kunde därför inte fånga felet.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F17 – u(L) = √[(A + B·L)² + C²] enligt HMK Bilaga C.1.2', () => {
+  // Uppställning i origo med tre kända mål på exakt 300 m, 120° isär.
+  function nat300(centrering, A_mm, B_ppm) {
+    const pts = [{ id: 'S', type: 'station', E: 0, N: 0, centerErr: centrering }]
+    for (let i = 0; i < 3; i++) {
+      const a = (i * 120) * Math.PI / 180
+      pts.push({ id: 'FP' + (i + 1), type: 'known', E: 300 * Math.sin(a), N: 300 * Math.cos(a), centerErr: centrering })
+    }
+    const meas = [1, 2, 3].map(i => ({
+      id: 'm' + i, from: 'S', to: 'FP' + i, obsType: 'both',
+      sigDist_mm: A_mm, sigDist_ppm: B_ppm, sigHz_mgon: 0.3, numSatser: 1, instrPreset: 'ts16_1'
+    }))
+    return kor(pts, meas, centrering)
+  }
+
+  it('HMK:s räkneexempel: A=2 mm, B=3 ppm, L=300 m, C=3 mm → 4,17 mm', () => {
+    const sr = nat300(3.0, 2.0, 3.0)
+    expect(sr.error).toBeUndefined()
+    const rd = sr.redund.find(r => r.type === 'dist')
+    expect(rd.sig * 1000).toBeCloseTo(Math.sqrt((2.0 + 0.9) ** 2 + 3.0 ** 2), 9)
+    expect(rd.sig * 1000).toBeCloseTo(4.1725, 3)
+    // Diskriminant: helt kvadratisk summering ger 3,7162 mm.
+    expect(rd.sig * 1000).not.toBeCloseTo(3.7162, 2)
+  })
+
+  it('A och B·L adderas linjärt – u_D före centrering = A + B·L exakt', () => {
+    // Utan centrering (C = 0) ska σ_D vara exakt A + B·L.
+    const sr = nat300(0, 2.0, 3.0)
+    const rd = sr.redund.find(r => r.type === 'dist')
+    expect(rd.sig * 1000).toBeCloseTo(2.0 + 3.0 * 300 * 1e-3, 12)   // = 2,9 mm exakt
+    expect(rd.sig * 1000).toBeCloseTo(2.9, 12)
+  })
+
+  it('linjäriteten gäller över flera avstånd', () => {
+    // A + B·L är linjär i L; kvadratisk summering är det inte.
+    for (const [L, A, B] of [[100, 1, 1.5], [500, 1, 1.5], [1000, 2, 2]]) {
+      const pts = [
+        { id: 'S', type: 'station', E: 0, N: 0, centerErr: 0 },
+        { id: 'FP1', type: 'known', E: 0, N: L, centerErr: 0 },
+        { id: 'FP2', type: 'known', E: L * 0.866, N: -L * 0.5, centerErr: 0 },
+        { id: 'FP3', type: 'known', E: -L * 0.866, N: -L * 0.5, centerErr: 0 }
+      ]
+      const meas = [1, 2, 3].map(i => ({
+        id: 'm' + i, from: 'S', to: 'FP' + i, obsType: 'both',
+        sigDist_mm: A, sigDist_ppm: B, sigHz_mgon: 0.3, numSatser: 1, instrPreset: 'ts16_1'
+      }))
+      const sr = kor(pts, meas, 0)
+      const rd = sr.redund.find(r => r.type === 'dist')
+      expect(rd.sig * 1000, `L=${L} m, A=${A} mm, B=${B} ppm`).toBeCloseTo(A + B * L * 1e-3, 9)
+    }
+  })
+
+  it('centreringen kombineras fortfarande kvadratiskt (F4 orörd)', () => {
+    // A = B = 0 ⇒ σ_D ska vara exakt C.
+    const sr = nat300(3.0, 0, 0)
+    const rd = sr.redund.find(r => r.type === 'dist')
+    expect(rd.sig * 1000).toBeCloseTo(3.0, 9)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F8 – YT för riktningar redovisas i mgon
+//
+// HMK-Stommätning 2024 F.4.1: tillförlitlighetsmåtten ges i samma enhet som
+// mätningarna. Riktningarnas u(l) är i mgon, alltså är även MUF och YT i mgon.
+// Etiketten "gon" är 1000× fel. Endast märkning – talvärdet är oförändrat.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F8 – enhetsmärkning av YT för riktningsobservationer', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+  const pts = [
+    { id: 'P1', type: 'station', E: 0, N: 0, centerErr: 2 },
+    { id: 'A', type: 'known', E: 100, N: 0, centerErr: 2 },
+    { id: 'B', type: 'known', E: 50, N: 100, centerErr: 2 },
+    { id: 'C', type: 'known', E: -50, N: 80, centerErr: 2 }
+  ]
+  const meas = ['A', 'B', 'C'].map((t, i) => ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I }))
+
+  const lasBlob = blob => new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(String(fr.result))
+    fr.onerror = () => reject(fr.error)
+    fr.readAsText(blob)
+  })
+
+  async function simrapport() {
+    const { exportSimReport } = await import('../src/reports/sim-report.js')
+    let blob = null
+    const origCreate = URL.createObjectURL
+    const origClick = HTMLAnchorElement.prototype.click
+    URL.createObjectURL = b => { blob = b; return 'blob:facit' }
+    HTMLAnchorElement.prototype.click = () => {}
+    try { exportSimReport() } finally {
+      URL.createObjectURL = origCreate
+      HTMLAnchorElement.prototype.click = origClick
+    }
+    return blob ? await lasBlob(blob) : ''
+  }
+
+  it('simuleringsrapportens YT-kolumn märks mgon för riktningar', async () => {
+    kor(pts, meas, 2)
+    const txt = await simrapport()
+    // Riktningsrader har MUF märkt mgon; YT måste bära samma enhet.
+    const riktRader = txt.split('\n').filter(l => l.includes('Riktning'))
+    expect(riktRader.length).toBeGreaterThan(0)
+    riktRader.forEach(rad => {
+      expect(rad, rad).toMatch(/\d+mgon\s+[\d.]+mgon/)  // MUF mgon, YT mgon
+      // Ingen siffra får följas direkt av "gon" – då saknas m:et.
+      expect(rad, rad).not.toMatch(/\d\s*gon/)
+    })
+  })
+
+  it('YT-talvärdet är oförändrat: YT = MUF × (1 − r)', () => {
+    const sr = kor(pts, meas, 2)
+    sr.redund.filter(r => r.type === 'hz').forEach(rd => {
+      // mdb.val är i mgon för riktningar; YT ärver enheten.
+      expect(rd.mdb.val * (1 - rd.ri)).toBeGreaterThan(0)
+      // yt_m är samma storhet i bågmeter – kvoten är siktlängden × radiankonstant.
+      expect(rd.yt_m).toBeCloseTo((1 - rd.ri) * rd.mdb.val * rd.d / (200000 / Math.PI), 12)
+    })
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F9 – rapporten ska märka σ_pos, MUF och YT som standardosäkerheter (1σ)
+//
+// HMK-Stommätning 2024 Bilaga B.3.3 redovisar dessa storheter som
+// standardosäkerheter. simulation.js sätter k_ell = 1.0, så de utskrivna
+// värdena ÄR 1σ – rubriken "(95%, k=2.45)" lovade utvidgad osäkerhet.
+// Värdena blåses inte upp; endast märkningen rättas.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F9 – konfidensmärkning i simuleringsrapporten', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+  const pts = [
+    { id: 'P1', type: 'station', E: 0, N: 0, centerErr: 2 },
+    { id: 'A', type: 'known', E: 100, N: 0, centerErr: 2 },
+    { id: 'B', type: 'known', E: 50, N: 100, centerErr: 2 },
+    { id: 'C', type: 'known', E: -50, N: 80, centerErr: 2 }
+  ]
+  const meas = ['A', 'B', 'C'].map((t, i) => ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I }))
+
+  const lasBlob = blob => new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(String(fr.result))
+    fr.onerror = () => reject(fr.error)
+    fr.readAsText(blob)
+  })
+
+  async function simrapport() {
+    const { exportSimReport } = await import('../src/reports/sim-report.js')
+    let blob = null
+    const origCreate = URL.createObjectURL
+    const origClick = HTMLAnchorElement.prototype.click
+    URL.createObjectURL = b => { blob = b; return 'blob:facit' }
+    HTMLAnchorElement.prototype.click = () => {}
+    try { exportSimReport() } finally {
+      URL.createObjectURL = origCreate
+      HTMLAnchorElement.prototype.click = origClick
+    }
+    return blob ? await lasBlob(blob) : ''
+  }
+
+  it('rubriken utlovar inte 95 % när värdena är 1σ', async () => {
+    kor(pts, meas, 2)
+    const txt = await simrapport()
+    expect(txt).not.toMatch(/95\s*%/)
+    expect(txt).not.toMatch(/k\s*=\s*2[.,]45/)
+    expect(txt).toMatch(/PUNKTOSÄKERHETER.*(1σ|standardosäkerhet)/i)
+  })
+
+  it('utskrivna σ_pos är exakt kärnans 1σ-värde, inte uppblåst', async () => {
+    const sr = kor(pts, meas, 2)
+    const txt = await simrapport()
+    const p = sr.ptResults.find(x => x.id === 'P1')
+    // 2,117 mm efter F5 – ska stå oförändrat i rapporten.
+    expect(txt).toContain((p.sigPos * 1000).toFixed(2))
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F18 – LÅSTEST: δ₀ = 2,80 är HMK-konventionen och ska INTE ändras
+//
+// HMK-Stommätning 2024 Formel F.16 sätter α = 5 %, β = 80 %:
+//   δ₀ = λ(α/2) + λ(β) = 1,96 + 0,84 = 2,80
+// Tabell 55 visar hela fältet av risknivåer. Baardas klassiska 4,13 svarar mot
+// α = 0,1 % – en annan risknivå som HMK medvetet valt bort. Att byta till 4,13
+// skulle göra NätSim icke-HMK-kompatibelt.
+//
+// Detta test fångar ingen bugg. Det är en regressionsspärr som ska passera
+// direkt och hindra att konstanten "rättas" av misstag i framtiden.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F18 – δ₀ = 2,80 låst enligt HMK Formel F.16', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+  const pts = [
+    { id: 'P1', type: 'station', E: 0, N: 0, centerErr: 2 },
+    { id: 'A', type: 'known', E: 100, N: 0, centerErr: 2 },
+    { id: 'B', type: 'known', E: 50, N: 100, centerErr: 2 },
+    { id: 'C', type: 'known', E: -50, N: 80, centerErr: 2 }
+  ]
+  const meas = ['A', 'B', 'C'].map((t, i) => ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I }))
+
+  it('κ = 2,80 = λ(2,5 %) + λ(20 %) = 1,96 + 0,84', () => {
+    const sr = kor(pts, meas, 2)
+    expect(sr.kappa).toBe(2.80)
+    expect(sr.kappa).toBeCloseTo(1.96 + 0.84, 10)
+  })
+
+  it('MUF = κ · σ / √r med κ = 2,80', () => {
+    const sr = kor(pts, meas, 2)
+    sr.redund.filter(r => r.type === 'dist').forEach(rd => {
+      expect(rd.mdb.val).toBeCloseTo(2.80 * rd.sig / Math.sqrt(rd.ri), 12)
+    })
+  })
+
+  it('κ är INTE Baardas 4,13 (annan risknivå, α = 0,1 %)', () => {
+    const sr = kor(pts, meas, 2)
+    expect(sr.kappa).not.toBe(4.13)
+  })
+})
