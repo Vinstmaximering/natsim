@@ -3,6 +3,7 @@
 import { getState } from '../state/store.js';
 import { CRS_DEFS, INSTRUMENTS, PT } from '../core/constants.js';
 import { fG } from '../core/designmatrix.js';
+import { stationIds } from '../core/simulation.js';
 
 const D = r => r * 180 / Math.PI;
 
@@ -112,7 +113,9 @@ export function exportCalcReport() {
   r += "\n";
 
   const freePts_ = pts.filter(p => p.type !== "known" && p.type !== "simstation");
-  const stnIds   = [...new Set(meas.map(m => m.from))];
+  // Delad med kärnan – får inte byggas lokalt, då divergerar rapportens
+  // obekantförteckning och Q_xx-indexering från den faktiska beräkningen.
+  const stnIds   = stationIds(meas);
 
   r += `${SEP}\n2. OBEKANTA  (totalt ${sr.unkn_n} st)\n${sep}\n`;
   r += `Koordinatobekanta: ${sr.nCoordUnkn} st  (${sr.freeCount} fria punkter × 2)\n`;

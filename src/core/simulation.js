@@ -13,6 +13,21 @@ import { checkDatumDefect } from './datum-check.js';
 import { runSimStations } from './stations.js';
 import { getState, setState } from '../state/store.js';
 
+// Uppställningar som får en orienteringsobekant i obekantvektorn.
+// Endast uppställningar som faktiskt ger minst en riktningsrad räknas: en
+// uppställning med enbart dist_only bidrar aldrig till någon riktningsrad, så
+// dess kolumn i A skulle bli identiskt noll och göra N singulär trots att
+// nätet är väl bestämt.
+//
+// Delad med src/reports/sim-report.js så att beräkningsrapportens
+// obekantförteckning och Q_xx-indexering inte kan divergera från kärnans.
+// Ordningen är signifikant – den definierar kolumnordningen i block 2.
+export function stationIds(meas) {
+  return [...new Set(
+    meas.filter(m => (m.obsType || "both") !== "dist_only").map(m => m.from)
+  )];
+}
+
 export function runSimulation() {
   const { pts, meas, centerErr } = getState();
 
@@ -52,13 +67,7 @@ export function runSimulation() {
   freePts.forEach((p, i) => { freeIdx[p.id] = i; });
   const nFree = freePts.length;
 
-  // Endast uppställningar som faktiskt ger minst en riktningsrad får en
-  // orienteringsobekant. En uppställning med enbart dist_only bidrar aldrig
-  // till någon riktningsrad, så dess kolumn i A skulle bli identiskt noll och
-  // göra N singulär trots att nätet är väl bestämt.
-  const stnIds = [...new Set(
-    meas.filter(m => (m.obsType || "both") !== "dist_only").map(m => m.from)
-  )];
+  const stnIds = stationIds(meas);
   const stnIdx = {};
   stnIds.forEach((id, i) => { stnIdx[id] = i; });
   const nStn = stnIds.length;
