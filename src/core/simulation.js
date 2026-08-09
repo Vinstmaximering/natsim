@@ -52,7 +52,13 @@ export function runSimulation() {
   freePts.forEach((p, i) => { freeIdx[p.id] = i; });
   const nFree = freePts.length;
 
-  const stnIds = [...new Set(meas.map(m => m.from))];
+  // Endast uppställningar som faktiskt ger minst en riktningsrad får en
+  // orienteringsobekant. En uppställning med enbart dist_only bidrar aldrig
+  // till någon riktningsrad, så dess kolumn i A skulle bli identiskt noll och
+  // göra N singulär trots att nätet är väl bestämt.
+  const stnIds = [...new Set(
+    meas.filter(m => (m.obsType || "both") !== "dist_only").map(m => m.from)
+  )];
   const stnIdx = {};
   stnIds.forEach((id, i) => { stnIdx[id] = i; });
   const nStn = stnIds.length;
