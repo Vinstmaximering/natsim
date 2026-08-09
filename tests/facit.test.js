@@ -14,6 +14,7 @@
 import { describe, it, expect } from 'vitest'
 import { runSimulation } from '../src/core/simulation.js'
 import { runSimStations } from '../src/core/stations.js'
+import { exportCalcReport } from '../src/reports/sim-report.js'
 import { setState, getState } from '../src/state/store.js'
 
 // Kör ett nät genom kärnan och returnera simResult.
@@ -294,5 +295,170 @@ describe('F3 – felfortplantning från anslutningspunkter till simstation', () 
     // en tiofaldigad anslutningsosäkerhet ger nära tio gånger större σ_pos –
     // asymptotiskt underifrån, därav 9 och inte 10.
     expect(medAnslutning(1.000).sigPos).toBeGreaterThan(9 * medAnslutning(0.100).sigPos)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F5 – standardosäkerhet i plan enligt HMK-Stommätning 2024 Formel F.23
+//
+//   u(plan) = √[u²(N) + u²(E)]        ← Helmerts punktmedelfel
+//
+// HMK-Ordlistan (april 2022) bekräftar: standardosäkerhet i plan = punktmedelfel.
+// Ingen delning med 2 förekommer. computeEllipse räknade √((Qee+Qnn)/2), vilket
+// är kvadratiska medelvärdet av komponenterna – √2 för litet.
+//
+// σ_E och σ_N är definitionsoberoende och redan validerade mot en oberoende
+// referensimplementation. Facit för σ_pos härleds därför ur F.23 och de
+// validerade komponenterna, INTE ur referensimplementationen – den kodade
+// samma mean-form och kan därför inte fånga felet.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F5 – u(plan) = √(σN² + σE²) enligt HMK Formel F.23', () => {
+  // Referensnätet ur tests/calc.test.js, efter F1 och F4.
+  const refPts = [
+    { id: 'P1', type: 'station', E: 0, N: 0, centerErr: 2 },
+    { id: 'A', type: 'known', E: 100, N: 0, centerErr: 2 },
+    { id: 'B', type: 'known', E: 50, N: 100, centerErr: 2 },
+    { id: 'C', type: 'known', E: -50, N: 80, centerErr: 2 }
+  ]
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+  const refMeas = ['A', 'B', 'C'].map((t, i) =>
+    ({ id: 'm' + (i + 1), from: 'P1', to: t, obsType: 'both', ...I }))
+
+  it('referensnätet: σ_pos = √(1,621² + 1,361²) = 2,117 mm', () => {
+    const sr = kor(refPts, refMeas, 2)
+    const p = sr.ptResults.find(x => x.id === 'P1')
+    // Validerade komponenter (definitionsoberoende):
+    expect(p.sigE * 1000).toBeCloseTo(1.621, 3)
+    expect(p.sigN * 1000).toBeCloseTo(1.361, 3)
+    // Facit ur F.23:
+    expect(p.sigPos * 1000).toBeCloseTo(2.117, 3)
+  })
+
+  it('u(plan) = √(σN² + σE²) för varje punkt i flera nät', () => {
+    const fackverk = {
+      pts: [
+        { id: 'FP1', type: 'known', E: 0, N: 0, centerErr: 1 },
+        { id: 'FP2', type: 'known', E: 200, N: 0, centerErr: 1 },
+        { id: 'NY1', type: 'new', E: 60, N: 120, centerErr: 1 },
+        { id: 'NY2', type: 'new', E: 150, N: 130, centerErr: 1 }
+      ],
+      meas: [['FP1', 'NY1'], ['NY1', 'FP1'], ['FP2', 'NY2'], ['NY2', 'FP2'],
+        ['NY1', 'NY2'], ['NY2', 'NY1'], ['FP1', 'FP2'], ['FP1', 'NY2']]
+        .map(([f, t], i) => ({ id: 'm' + i, from: f, to: t, obsType: 'both', ...I })),
+      ce: 1
+    }
+    for (const { pts, meas, ce } of [{ pts: refPts, meas: refMeas, ce: 2 }, fackverk]) {
+      const sr = kor(pts, meas, ce)
+      expect(sr.error).toBeUndefined()
+      sr.ptResults.forEach(p => {
+        expect(p.sigPos, 'punkt ' + p.id).toBeCloseTo(Math.sqrt(p.sigN ** 2 + p.sigE ** 2), 12)
+      })
+    }
+  })
+
+  it('ellipsens halvaxlar är oförändrade – a=1,729 mm, b=1,222 mm', () => {
+    // F5 rör enbart σ_pos. Halvaxlarna kommer ur egenvärdesuppdelningen och
+    // ska ligga still.
+    const sr = kor(refPts, refMeas, 2)
+    const p = sr.ptResults.find(x => x.id === 'P1')
+    expect(p.aSemi * 1000).toBeCloseTo(1.729, 3)
+    expect(p.bSemi * 1000).toBeCloseTo(1.222, 3)
+  })
+
+  it('invarianten a² + b² = σN² + σE² = σ_pos² håller', () => {
+    // Spåret av 2×2-blocket är invariant under rotation, så summan av
+    // halvaxlarnas kvadrater är samma som komponenternas – och därmed lika med
+    // u(plan)² enligt F.23.
+    const sr = kor(refPts, refMeas, 2)
+    const p = sr.ptResults.find(x => x.id === 'P1')
+    expect(p.aSemi ** 2 + p.bSemi ** 2).toBeCloseTo(p.sigE ** 2 + p.sigN ** 2, 15)
+    expect(p.sigPos ** 2).toBeCloseTo(p.aSemi ** 2 + p.bSemi ** 2, 15)
+  })
+
+  it('simulerade uppställningar använder samma definition', () => {
+    // stations.js går genom computeEllipse och ska följa med till F.23.
+    const pts = [
+      { id: 'SS1', type: 'simstation', E: 50, N: 50, centerErr: 0 },
+      { id: 'NY1', type: 'new', E: 0, N: 0, centerErr: 0 },
+      { id: 'NY2', type: 'new', E: 100, N: 0, centerErr: 0 },
+      { id: 'NY3', type: 'new', E: 50, N: 130, centerErr: 0 }
+    ]
+    const meas = [1, 2, 3].map(i =>
+      ({ id: 's' + i, from: 'SS1', to: 'NY' + i, obsType: 'both', ...I }))
+    const Q = Array.from({ length: 6 }, (_, i) =>
+      Array.from({ length: 6 }, (_, j) => (i === j ? 1e-6 : 0)))
+    const ss = runSimStations(Q, ['NY1', 'NY2', 'NY3'], [], { pts, meas, centerErr: 0 })[0]
+    expect(ss.sigPos).toBeCloseTo(Math.sqrt(ss.sigN ** 2 + ss.sigE ** 2), 12)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Rapportkonsistens – stnIds i beräkningsrapporten mot kärnans
+//
+// F2 gav enbart uppställningar med minst en riktningsobservation en
+// orienteringsobekant. sim-report.js byggde fortsatt sin egen stnIds ur det
+// ofiltrerade uttrycket och kan därför lista en orienteringsobekant som kärnan
+// inte har – med felaktig Q_xx-indexering som följd.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('Rapportkonsistens – orienteringsobekanta i beräkningsrapporten', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+
+  // Nät där FP3 enbart mäter avstånd ⇒ ingen orienteringsobekant för FP3.
+  const pts = [
+    { id: 'NY1', type: 'new', E: 50, N: 60, centerErr: 0 },
+    { id: 'FP1', type: 'known', E: 0, N: 0, centerErr: 0 },
+    { id: 'FP2', type: 'known', E: 100, N: 0, centerErr: 0 },
+    { id: 'FP3', type: 'known', E: 50, N: 140, centerErr: 0 }
+  ]
+  const meas = [
+    { id: 'm1', from: 'FP1', to: 'NY1', obsType: 'both', ...I },
+    { id: 'm2', from: 'FP2', to: 'NY1', obsType: 'both', ...I },
+    { id: 'm3', from: 'FP3', to: 'NY1', obsType: 'dist_only', ...I }
+  ]
+
+  // jsdom:s Blob saknar .text(), så FileReader används för att läsa innehållet.
+  const lasBlob = blob => new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => resolve(String(fr.result))
+    fr.onerror = () => reject(fr.error)
+    fr.readAsText(blob)
+  })
+
+  // Fångar texten som exportCalcReport() skickar till nedladdning.
+  async function rapporttext() {
+    let blob = null
+    const origCreate = URL.createObjectURL
+    const origClick = HTMLAnchorElement.prototype.click
+    URL.createObjectURL = b => { blob = b; return 'blob:facit' }
+    HTMLAnchorElement.prototype.click = () => {}
+    try {
+      exportCalcReport()
+    } finally {
+      URL.createObjectURL = origCreate
+      HTMLAnchorElement.prototype.click = origClick
+    }
+    return blob ? await lasBlob(blob) : ''
+  }
+
+  it('rapporten listar exakt kärnans orienteringsobekanta', async () => {
+    const sr = kor(pts, meas, 0)
+    expect(sr.error).toBeUndefined()
+    expect(sr.nOrientUnkn).toBe(2)          // FP1 och FP2, inte FP3
+
+    const txt = await rapporttext()
+    const zRader = [...txt.matchAll(/z_(\S+)\s+\S+\s+\(orienteringskonstant\)/g)].map(m => m[1])
+    expect(zRader).toEqual(['FP1', 'FP2'])
+    expect(zRader).toHaveLength(sr.nOrientUnkn)
+    expect(zRader).not.toContain('FP3')
+  })
+
+  it('rapportens obekantindex sammanfaller med kärnans Q_xx-index', async () => {
+    const sr = kor(pts, meas, 0)
+    const txt = await rapporttext()
+    // Koordinatobekanta upptar index 0..nCoordUnkn-1, sedan följer z-raderna.
+    // Divergerar listorna hamnar z-indexen fel.
+    const zIndex = [...txt.matchAll(/^\s*(\d+)\s+z_/gm)].map(m => Number(m[1]))
+    expect(zIndex).toEqual([sr.nCoordUnkn, sr.nCoordUnkn + 1])
+    expect(Math.max(...zIndex)).toBe(sr.unkn_n - 1)
   })
 })
