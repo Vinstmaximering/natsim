@@ -2,6 +2,7 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng }        from '../../map/leaflet-setup.js';
 import { calcM }                  from '../../core/designmatrix.js';
+import { klassificeraKtal }       from '../../core/constants.js';
 import { sortByColumn, filterByText, exportToCSV } from '../table-utils.js';
 
 const TYPE_COLOR = { known:'#00ff88', station:'#4fc3f7', new:'#ce93d8', detail:'#ffb74d', simstation:'#ff6090' };
@@ -9,7 +10,7 @@ const TYPE_LABEL = { known:'Känd', station:'Station', new:'Ny', detail:'Detalj'
 
 const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
 const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
-const kClass   = kv => kv > 1.14 ? 'val-purple' : kv >= 0.5 ? 'val-good' : kv >= 0.3 ? 'val-caution' : kv >= 0.1 ? 'val-warn' : 'val-danger';
+const kClass   = kv => klassificeraKtal(kv).cssKlass;
 
 let _subTab     = 'pts';
 let _sortPts    = { key:'id',  dir:'asc' };

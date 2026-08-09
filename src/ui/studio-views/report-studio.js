@@ -1,11 +1,11 @@
 // RAPPORT studio-vy – simuleringsdata i läsbart fullskärmsformat med sektionsnavigering.
 import { getState, setState } from '../../state/store.js';
-import { CRS_DEFS }           from '../../core/constants.js';
+import { CRS_DEFS, klassificeraKtal } from '../../core/constants.js';
 import { fG }                 from '../../core/designmatrix.js';
 
 const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
 const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
-const kClass   = kv => kv > 1.14 ? 'val-purple' : kv >= 0.5 ? 'val-good' : kv >= 0.3 ? 'val-caution' : kv >= 0.1 ? 'val-warn' : 'val-danger';
+const kClass   = kv => klassificeraKtal(kv).cssKlass;
 const rLabel   = r  => r  >= 0.5 ? 'Starkt' : r >= 0.3 ? 'Acceptabelt' : r >= 0.1 ? 'Svagt' : 'Otillräckligt';
 const D        = r  => r * 180 / Math.PI;
 

@@ -15,6 +15,7 @@ import { describe, it, expect } from 'vitest'
 import { runSimulation } from '../src/core/simulation.js'
 import { runSimStations } from '../src/core/stations.js'
 import { exportCalcReport } from '../src/reports/sim-report.js'
+import { klassificeraKtal, K_NAT_GOLV } from '../src/core/constants.js'
 import { setState, getState } from '../src/state/store.js'
 
 // Kör ett nät genom kärnan och returnera simResult.
@@ -704,5 +705,108 @@ describe('F18 – δ₀ = 2,80 låst enligt HMK Formel F.16', () => {
   it('κ är INTE Baardas 4,13 (annan risknivå, α = 0,1 %)', () => {
     const sr = kor(pts, meas, 2)
     expect(sr.kappa).not.toBe(4.13)
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F7 – klassificeringen av kontrollerbarhetstalet k = f/n
+//
+// k ligger per definition i [0, 1]: k = (n − u)/n med u ≥ 1. Den gamla översta
+// gränsen "k > 1,14" var därför en död gren – nät kunde aldrig nå högsta klass.
+// 1,14 är i själva verket maxvärdet för VIKTSENHETENS standardosäkerhet u₀ vid
+// f = 70 i HMK Tabell 53. Det är en annan storhet, prövad i ett efterberäknings-
+// test på residualer (HMK F.3.1), och den existerar inte i ett simuleringsverktyg
+// utan observationer – u₀ ≡ 1 per konstruktion i en residualfri simulering.
+//
+// Normens golv för k:
+//   SIS-TS 21143:2016 §6.2.2      – k > 0,5 för nätet (k > 0,35 för enskild mätning)
+//   HMK-Stommätning 2024 §3.2.2 b) – k ≥ 0,5 för triangel-/fackverksnät
+//
+// Testerna låser normgolvet och klassificeringens totalitet. Bandgränsen för
+// högsta klassen är ett PRODUKTVAL och låses medvetet INTE här – se
+// K_OVERBESTAMD_PRELIMINAR i src/core/constants.js.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F7 – klassificering av k-talet', () => {
+  const I = { sigDist_mm: 1, sigDist_ppm: 1, sigHz_mgon: 0.3, numSatser: 3, instrPreset: 'ts16_1' }
+
+  it('normgolvet är k ≥ 0,50 (SIS-TS §6.2.2, HMK §3.2.2 b)', () => {
+    expect(K_NAT_GOLV).toBe(0.50)
+  })
+
+  it('klassificeringen är total över hela k ∈ [0, 1]', () => {
+    for (let k = 0; k <= 1.0000001; k += 0.005) {
+      const r = klassificeraKtal(k)
+      expect(r, `k=${k.toFixed(3)}`).toBeDefined()
+      expect(typeof r.klass, `k=${k.toFixed(3)}`).toBe('string')
+      expect(r.klass.length, `k=${k.toFixed(3)}`).toBeGreaterThan(0)
+      expect(typeof r.cssKlass).toBe('string')
+      expect(typeof r.farg).toBe('string')
+    }
+  })
+
+  it('högsta klassen är nåbar för något k ≤ 1', () => {
+    // Kärnan i den gamla buggen: "k > 1,14" kunde aldrig uppfyllas.
+    const klasser = new Set()
+    for (let k = 0; k <= 1.0000001; k += 0.001) klasser.add(klassificeraKtal(k).klass)
+    const hogsta = klassificeraKtal(1.0).klass
+    expect(klasser.size).toBeGreaterThan(1)
+    // Högsta klassen vid k = 1 får inte vara samma som den vid normgolvet,
+    // annars finns ingen översta klass alls.
+    expect(hogsta).not.toBe(klassificeraKtal(K_NAT_GOLV).klass)
+  })
+
+  it('k ≥ 0,50 uppfyller normen, k < 0,50 gör det inte', () => {
+    for (const k of [0.50, 0.55, 0.70, 0.85, 1.00]) {
+      expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(true)
+    }
+    for (const k of [0, 0.05, 0.15, 0.30, 0.45, 0.4999]) {
+      expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(false)
+    }
+  })
+
+  it('klassificeringen är monoton – bättre k ger aldrig sämre klass', () => {
+    const rang = ['Otillräckligt', 'Svagt', 'Acceptabelt', 'Starkt', 'Överbestämt']
+    let forra = -1
+    for (let k = 0; k <= 1.0000001; k += 0.005) {
+      const i = rang.indexOf(klassificeraKtal(k).klass)
+      expect(i, `okänd klass vid k=${k.toFixed(3)}`).toBeGreaterThanOrEqual(0)
+      expect(i, `klassen sjönk vid k=${k.toFixed(3)}`).toBeGreaterThanOrEqual(forra)
+      forra = i
+    }
+  })
+
+  it('kärnans K_class kommer ur samma klassificering', () => {
+    // Nät med k = 0,25: n = 8, u = 6, f = 2.
+    const pts = [
+      { id: 'NY1', type: 'new', E: 50, N: 50, centerErr: 0 },
+      { id: 'FP1', type: 'known', E: 0, N: 0, centerErr: 0 },
+      { id: 'FP2', type: 'known', E: 100, N: 0, centerErr: 0 },
+      { id: 'FP3', type: 'known', E: 50, N: 120, centerErr: 0 },
+      { id: 'FP4', type: 'known', E: -40, N: 90, centerErr: 0 }
+    ]
+    const meas = ['FP1', 'FP2', 'FP3', 'FP4'].map((f, i) =>
+      ({ id: 'a' + i, from: f, to: 'NY1', obsType: 'both', ...I }))
+    const sr = kor(pts, meas, 0)
+    expect(sr.K_global).toBeCloseTo(0.25, 10)
+    const facit = klassificeraKtal(sr.K_global)
+    expect(sr.K_class).toBe(facit.klass)
+    expect(sr.K_col).toBe(facit.farg)
+  })
+
+  it('k kan aldrig överstiga 1 i ett verkligt nät', () => {
+    // k = (n − u)/n < 1 eftersom u ≥ 1. Detta är grunden till att 1,14 var död.
+    const pts = [
+      { id: 'S', type: 'known', E: 0, N: 0, centerErr: 0 },
+      { id: 'FP1', type: 'known', E: 100, N: 0, centerErr: 0 },
+      { id: 'FP2', type: 'known', E: -50, N: 86.6, centerErr: 0 },
+      { id: 'FP3', type: 'known', E: -50, N: -86.6, centerErr: 0 }
+    ]
+    const meas = [1, 2, 3].map(i =>
+      ({ id: 'm' + i, from: 'S', to: 'FP' + i, obsType: 'hz_only', ...I }))
+    const sr = kor(pts, meas, 0)
+    // n = 3, u = 1 (enbart orienteringskonstant) ⇒ k = 2/3, det högsta som
+    // rimligen går att konstruera. Fortfarande < 1.
+    expect(sr.K_global).toBeCloseTo(2 / 3, 10)
+    expect(sr.K_global).toBeLessThan(1)
   })
 })

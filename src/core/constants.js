@@ -120,3 +120,54 @@ export const MATKLASSER = {
 // Vinkelkonvertering – används av calcM och hela beräkningskärnan
 export const R = d => d * Math.PI / 180;
 export const D = r => r * 180 / Math.PI;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KONTROLLERBARHETSTALET k = f/n – klassificering
+//
+// k ligger per definition i [0, 1]: k = (n − u)/n med u ≥ 1.
+//
+// Normens golv för nätet:
+//   SIS-TS 21143:2016 §6.2.2       – k > 0,5 för nätet (k > 0,35 för enskild mätning)
+//   HMK-Stommätning 2024 §3.2.2 b) – k ≥ 0,5 för triangel- och fackverksnät
+//
+// HISTORIK: översta gränsen var tidigare hårdkodad till "k > 1,14" på sju
+// ställen. 1,14 är maxvärdet för VIKTSENHETENS standardosäkerhet u₀ vid f = 70
+// i HMK Tabell 53 – en helt annan storhet, prövad i ett efterberäkningstest på
+// residualer (HMK F.3.1). I ett simuleringsverktyg finns inga observationer och
+// därmed inga residualer; u₀ ≡ 1 per konstruktion. Gränsen var alltså både fel
+// storhet och matematiskt onåbar, vilket gjorde att högsta klassen aldrig kunde
+// nås och att nät systematiskt underklassificerades.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Normgolv – nätet underkänns under detta värde. Normstyrt, ändra inte.
+export const K_NAT_GOLV = 0.50;
+
+// PRELIMINÄR gräns för högsta klassen ("Överbestämt"). Detta är ett PRODUKTVAL,
+// inte normstyrt – varken SIS-TS eller HMK anger någon övre k-gräns.
+// Värdet är satt genom att förlänga den befintliga bandstrukturen, som har
+// bandbredden 0,2 ovanför 0,1 (0,1 → 0,3 → 0,5 → 0,7). Det motsvarar n ≈ 3⅓·u.
+// VÄNTAR PÅ BESTÄLLARENS BESLUT. Facittesterna låser medvetet inte detta värde,
+// bara att högsta klassen är nåbar för något k ≤ 1.
+export const K_OVERBESTAMD_PRELIMINAR = 0.70;
+
+// Bandgränser under normgolvet. Befintligt produktval, oförändrat.
+// OBS: samtliga dessa band ligger UNDER normgolvet och underkänns av
+// SIS-TS §6.2.2 – etiketten "Acceptabelt" vid k ∈ [0,30, 0,50) är därför
+// missvisande mot normen. Omdöpning är ett produktbeslut och gjordes inte här.
+const K_BAND_ACCEPTABELT = 0.30;
+const K_BAND_SVAGT       = 0.10;
+
+// Delad klassificering – används av kärnan, alla paneler och valideringen, så
+// att de sju ställena inte kan divergera (samma DRY-skäl som stationIds()).
+// Returnerar { klass, cssKlass, farg, uppfyllerNorm }.
+export function klassificeraKtal(k) {
+  if (k >= K_OVERBESTAMD_PRELIMINAR)
+    return { klass: "Överbestämt",   cssKlass: "val-purple",  farg: "#ce93d8", uppfyllerNorm: true  };
+  if (k >= K_NAT_GOLV)
+    return { klass: "Starkt",        cssKlass: "val-good",    farg: "#00ff88", uppfyllerNorm: true  };
+  if (k >= K_BAND_ACCEPTABELT)
+    return { klass: "Acceptabelt",   cssKlass: "val-caution", farg: "#ffcc00", uppfyllerNorm: false };
+  if (k >= K_BAND_SVAGT)
+    return { klass: "Svagt",         cssKlass: "val-warn",    farg: "#ff9900", uppfyllerNorm: false };
+  return   { klass: "Otillräckligt", cssKlass: "val-danger",  farg: "#ff5050", uppfyllerNorm: false };
+}

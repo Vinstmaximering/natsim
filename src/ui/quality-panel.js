@@ -3,17 +3,12 @@
 import { getState } from '../state/store.js';
 import { setAutoSim } from '../state/undo.js';
 import { hasLineOfSight } from '../core/visibility.js';
+import { klassificeraKtal } from '../core/constants.js';
 
 export { setAutoSim };
 
-// Returnerar CSS-klass baserat på K-tal-nivå.
-function kClass(k) {
-  return k > 1.14 ? 'val-purple'  // Starkt överbestämt
-       : k >= 0.5 ? 'val-good'
-       : k >= 0.3 ? 'val-caution'
-       : k >= 0.1 ? 'val-warn'
-       :             'val-danger';
-}
+// Returnerar CSS-klass baserat på K-tal-nivå – delad klassificering.
+const kClass = k => klassificeraKtal(k).cssKlass;
 
 // Returnerar CSS-klass baserat på redundanstal (r_i).
 function rClass(r) {

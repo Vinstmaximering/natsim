@@ -2,7 +2,7 @@
 // rad 1679–2215 (renderTab) + rad 1116–1151 (suggestMeasurements) + rad 3332–3352 (instrument)
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
-import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS } from '../core/constants.js';
+import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal } from '../core/constants.js';
 import { calcM, fG, fD, d2EN, brgEN } from '../core/designmatrix.js';
 import { rColor, rLabel } from '../core/redundancy.js';
 import { runSimulation } from '../core/simulation.js';
@@ -248,7 +248,7 @@ export function renderTab() {
     const rClass    = r  => r  >= 0.5 ? "val-good" : r  >= 0.3 ? "val-caution" : r  >= 0.1 ? "val-warn" : "val-danger";
     const sigClass  = mm => mm <  5   ? "val-good" : mm <  20  ? "val-caution" : "val-danger";
     const precClass = (mm, req) => mm < req * 0.5 ? "val-good" : mm <= req ? "val-caution" : "val-danger";
-    const kCls      = kv => kv > 1.14 ? "val-purple" : kv >= 0.5 ? "val-good" : kv >= 0.3 ? "val-caution" : kv >= 0.1 ? "val-warn" : "val-danger";
+    const kCls      = kv => klassificeraKtal(kv).cssKlass;
     const relClass  = (nObs, hasRed, rMean) => {
       if (!nObs || !hasRed) return "val-danger";
       return rMean < 0.15 ? "val-warn" : rMean < 0.35 ? "val-caution" : "val-good";

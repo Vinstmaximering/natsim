@@ -5,7 +5,7 @@
 //   – draw()-anrop borttagna (UI-ansvar, ej kärna)
 //   – Omätta kända punkter kontrolleras tidigt (före n_obs<nu) för testbarhet
 // Matematiken är oförändrad.
-import { INSTRUMENTS } from './constants.js';
+import { INSTRUMENTS, klassificeraKtal } from './constants.js';
 import { invertMatrix } from './matrix.js';
 import { calcM } from './designmatrix.js';
 import { computeEllipse } from './ellipses.js';
@@ -231,8 +231,10 @@ export function runSimulation() {
   // ── Kontrollerbarhetstalet k = f/n – rad 1068–1085 ──
   const dof      = n_obs - nu;
   const K_global = n_obs > 0 ? dof / n_obs : 0;
-  const K_class  = K_global > 1.14 ? "Överbestämt" : K_global >= 0.5 ? "Starkt" : K_global >= 0.3 ? "Acceptabelt" : K_global >= 0.1 ? "Svagt" : "Otillräckligt";
-  const K_col    = K_global > 1.14 ? "#ce93d8" : K_global >= 0.5 ? "#00ff88" : K_global >= 0.3 ? "#ffcc00" : K_global >= 0.1 ? "#ff9900" : "#ff5050";
+  // Delad klassificering – se klassificeraKtal() i core/constants.js.
+  const K_klass  = klassificeraKtal(K_global);
+  const K_class  = K_klass.klass;
+  const K_col    = K_klass.farg;
 
   const measR    = redund.map(r => r.ri);
   const rMean    = measR.reduce((a, b) => a + b, 0) / measR.length;

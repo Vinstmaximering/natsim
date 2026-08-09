@@ -1,6 +1,6 @@
 // D7: Validera nät – rad 824–866 exakt
 import { getState } from '../state/store.js';
-import { MATKLASSER } from '../core/constants.js';
+import { MATKLASSER, klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR } from '../core/constants.js';
 import { hasLineOfSight } from '../core/visibility.js';
 
 export function validateNetwork() {
@@ -12,8 +12,11 @@ export function validateNetwork() {
   const warnings = [];
   const sr = simResult;
 
-  if (sr.K_global < 0.5)  issues.push(`Kontrollerbarhet k=${sr.K_global.toFixed(3)} < 0,50 – nätet uppfyller inte SIS-TS-kravet.`);
-  if (sr.K_global > 1.14) warnings.push(`k=${sr.K_global.toFixed(3)} > 1,14 – överbestämt nät utan mervärde.`);
+  // Normgolv enligt SIS-TS 21143:2016 §6.2.2 och HMK-Stommätning 2024 §3.2.2 b).
+  if (!klassificeraKtal(sr.K_global).uppfyllerNorm)
+    issues.push(`Kontrollerbarhet k=${sr.K_global.toFixed(3)} < ${K_NAT_GOLV.toFixed(2).replace(".", ",")} – nätet uppfyller inte SIS-TS-kravet.`);
+  if (sr.K_global >= K_OVERBESTAMD_PRELIMINAR)
+    warnings.push(`k=${sr.K_global.toFixed(3)} ≥ ${K_OVERBESTAMD_PRELIMINAR.toFixed(2).replace(".", ",")} – överbestämt nät, kontrollera att mätinsatsen ger mervärde.`);
 
   const weak = (sr.redund || []).filter(r => r.ri < 0.3);
   if (weak.length) issues.push(`${weak.length} mätning(ar) har r_i < 0,30: ` +
