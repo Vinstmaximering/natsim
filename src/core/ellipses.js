@@ -10,7 +10,12 @@ export function computeEllipse(Qee, Qnn, Qen, k_ell = 1.0) {
   const aSemi = k_ell * Math.sqrt(lam1);
   const bSemi = k_ell * Math.sqrt(lam2);
   const theta = 0.5 * Math.atan2(2 * Qen, Qee - Qnn);
-  // σ_pos = sqrt((σ_E²+σ_N²)/2) – medellägesfel per Geo Professional
-  const sigPos = Math.sqrt(Math.max(0, (Qee + Qnn) / 2));
+  // Standardosäkerhet i plan enligt HMK-Stommätning 2024 Formel F.23:
+  //   u(plan) = √[u²(N) + u²(E)]
+  // dvs. Helmerts punktmedelfel. HMK-Ordlistan (april 2022) bekräftar att
+  // standardosäkerhet i plan är detsamma som punktmedelfel. Ingen delning
+  // med 2 – tidigare räknades √((Qee+Qnn)/2), vilket är komponenternas
+  // kvadratiska medelvärde och √2 för litet.
+  const sigPos = Math.sqrt(Math.max(0, Qee + Qnn));
   return { sigE, sigN, aSemi, bSemi, theta, sigPos };
 }

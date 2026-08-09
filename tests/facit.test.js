@@ -257,14 +257,15 @@ describe('F3 – felfortplantning från anslutningspunkter till simstation', () 
     return runSimStations(Q, ['NY1', 'NY2', 'NY3'], [], { pts, meas, centerErr: 0 })[0]
   }
 
-  // Observationernas bästafall. stations.js rapporterar sigPos_obs som Helmerts
-  // form √(Qee+Qnn) medan computeEllipse ger √((Qee+Qnn)/2) – den skillnaden är
-  // F5 och ligger utanför detta uppdrag. Golvet uttrycks därför i samma definition
-  // som sigPos, dvs. sigPos_obs/√2.
-  // "Perfekt" anslutning. 1e-9 m ger ett variansbidrag på 1e-18 m², vilket är
+  // Observationernas bästafall, dvs. golvet. Efter F5 ligger computeEllipse och
+  // stations.js i samma definition – båda är u(plan) = √(σN²+σE²) enligt
+  // HMK F.23 – så golvet är den literala jämförelsen mot sigPos_obs.
+  // Uttrycktes tidigare som sigPos_obs/√2 eftersom de två låg i olika
+  // definitioner; den tillfälliga lösningen behövs inte längre.
+  // "Perfekt" anslutning: 1e-9 m ger ett variansbidrag på 1e-18 m², vilket är
   // försumbart mot observationernas σ² ≈ 5,8e-8 m².
   const PERFEKT = 1e-9
-  const golv = () => medAnslutning(PERFEKT).sigPos_obs / Math.SQRT2
+  const golv = () => medAnslutning(PERFEKT).sigPos_obs
 
   it('σ_pos växer monotont när anslutningen försämras', () => {
     const nivaer = [0.0005, 0.001, 0.002, 0.005, 0.020]
@@ -275,10 +276,14 @@ describe('F3 – felfortplantning från anslutningspunkter till simstation', () 
     }
   })
 
-  it('σ_pos underskrider aldrig observationernas bästafall', () => {
+  it('σ_pos underskrider aldrig observationernas bästafall (σ_pos ≥ σ_pos_obs)', () => {
     const g = golv()
     for (const s of [0.0005, 0.001, 0.002, 0.005, 0.020, 0.100]) {
-      expect(medAnslutning(s).sigPos, `σ_conn = ${s * 1000} mm`).toBeGreaterThanOrEqual(g)
+      const r = medAnslutning(s)
+      expect(r.sigPos, `σ_conn = ${s * 1000} mm`).toBeGreaterThanOrEqual(g)
+      // Golvet gäller mot uppställningens egen sigPos_obs, inte bara mot det
+      // gemensamma referensvärdet – samma definition efter F5.
+      expect(r.sigPos, `σ_conn = ${s * 1000} mm`).toBeGreaterThanOrEqual(r.sigPos_obs)
     }
   })
 

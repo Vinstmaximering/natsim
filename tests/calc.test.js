@@ -59,17 +59,26 @@ describe('Beräkningskärna – referensnät 1: P1 fri + A,B,C kända', () => {
   //             (HMK Bilaga C.1.1/C.1.2). Med centerErr = 2 mm på båda ändar
   //             går e_c från 2,828 till 2,000 mm, dvs. kärnan var √2 för
   //             pessimistisk. Punktosäkerheten förbättras därmed ~26 %.
-  // Samtliga värden är verifierade mot en oberoende referensimplementation
-  // skriven från lärobokens formler (avvikelse < 5e-16 på alla storheter).
-  it('P1 σ_pos = 1.497 mm', () => {
+  //   Efter F5  1,621 / 1,361 / 2,117  – σ_pos är u(plan) = √(σN²+σE²) enligt
+  //             HMK Formel F.23. Endast σ_pos rör sig; σ_E och σ_N är
+  //             definitionsoberoende och ligger still.
+  // σ_E och σ_N är verifierade mot en oberoende referensimplementation
+  // (avvikelse < 5e-16). σ_pos är härlett ur F.23 och de validerade
+  // komponenterna – referensimplementationen kodade tidigare samma mean-form
+  // och dög därför inte som facit för just σ_pos.
+  it('P1 σ_pos = 2.117 mm (HMK F.23)', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
     expect(p1.sigE * 1000).toBeCloseTo(1.621, 2)
     expect(p1.sigN * 1000).toBeCloseTo(1.361, 2)
-    expect(p1.sigPos * 1000).toBeCloseTo(1.497, 2)
+    expect(p1.sigPos * 1000).toBeCloseTo(2.117, 2)
+    // u(plan) = √[u²(N) + u²(E)] – ingen delning med 2.
+    expect(p1.sigPos).toBeCloseTo(Math.sqrt(p1.sigN ** 2 + p1.sigE ** 2), 12)
   })
 
   // OMSKRIVET av F1 (2,283/1,684 → 2,327/1,684) och av F4 (→ 1,729/1,222).
+  // F5 rörde INTE halvaxlarna – de kommer ur egenvärdesuppdelningen och är
+  // oberoende av hur σ_pos definieras.
   it('Felellips a=1.729 mm, b=1.222 mm (1σ)', () => {
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
@@ -191,12 +200,14 @@ describe('NUMERISK REGRESSIONSTEST - exakt matchning mot facit', () => {
     })
     runSimulation()
     const p1 = getState().simResult.ptResults.find(p => p.id === 'P1')
-    // Facit med korrekt orienteringspartial ∂(d·φ)/∂z = −d (F1) och
-    // centreringen som en enda C-term enligt HMK Bilaga C.1.1/C.1.2 (F4).
+    // Facit med korrekt orienteringspartial ∂(d·φ)/∂z = −d (F1), centreringen
+    // som en enda C-term enligt HMK Bilaga C.1.1/C.1.2 (F4) och u(plan) =
+    // √(σN²+σE²) enligt HMK Formel F.23 (F5).
     // Ursprungliga (felaktiga) värden: 0.002166 / 0.001832 / 0.002006.
     // Efter enbart F1:                  0.002191 / 0.001858 / 0.002031.
+    // Efter F1+F4:                      0.001621 / 0.001361 / 0.001497.
     expect(p1.sigE.toFixed(6)).toBe('0.001621')
     expect(p1.sigN.toFixed(6)).toBe('0.001361')
-    expect(p1.sigPos.toFixed(6)).toBe('0.001497')
+    expect(p1.sigPos.toFixed(6)).toBe('0.002117')
   })
 })
