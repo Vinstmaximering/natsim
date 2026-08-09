@@ -260,10 +260,9 @@ describe('F3 – felfortplantning från anslutningspunkter till simstation', () 
   // form √(Qee+Qnn) medan computeEllipse ger √((Qee+Qnn)/2) – den skillnaden är
   // F5 och ligger utanför detta uppdrag. Golvet uttrycks därför i samma definition
   // som sigPos, dvs. sigPos_obs/√2.
-  // 1e-6 m (0,001 mm) som "perfekt" anslutning – inte mindre, eftersom
-  // stations.js hoppar över propagationen helt när det(Q_k) < 1e-30 och testet
-  // då skulle passera av fel skäl.
-  const PERFEKT = 1e-6
+  // "Perfekt" anslutning. 1e-9 m ger ett variansbidrag på 1e-18 m², vilket är
+  // försumbart mot observationernas σ² ≈ 5,8e-8 m².
+  const PERFEKT = 1e-9
   const golv = () => medAnslutning(PERFEKT).sigPos_obs / Math.SQRT2
 
   it('σ_pos växer monotont när anslutningen försämras', () => {
@@ -289,7 +288,11 @@ describe('F3 – felfortplantning från anslutningspunkter till simstation', () 
   it('σ_pos växer obegränsat när anslutningen blir godtyckligt dålig', () => {
     // 100 mm osäkra anslutningspunkter måste ge en klart obestämd uppställning,
     // inte ett mättat värde strax under observationernas bästafall.
-    expect(medAnslutning(0.100).sigPos).toBeGreaterThan(10 * golv())
-    expect(medAnslutning(1.000).sigPos).toBeGreaterThan(10 * medAnslutning(0.100).sigPos)
+    expect(medAnslutning(0.100).sigPos).toBeGreaterThan(100 * golv())
+    // När anslutningen dominerar helt växer σ_pos linjärt med den. Kvoten
+    // σ_pos/σ_anslutning går mot en konstant (≈0,5785 för denna geometri), så
+    // en tiofaldigad anslutningsosäkerhet ger nära tio gånger större σ_pos –
+    // asymptotiskt underifrån, därav 9 och inte 10.
+    expect(medAnslutning(1.000).sigPos).toBeGreaterThan(9 * medAnslutning(0.100).sigPos)
   })
 })

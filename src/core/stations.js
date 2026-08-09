@@ -24,8 +24,8 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
     }
 
     // Obekanta: [E_stn, N_stn, z_k]
-    const N_obs  = [[0,0,0],[0,0,0],[0,0,0]];
-    const N_prop = [[0,0,0],[0,0,0],[0,0,0]];
+    const N_obs = [[0,0,0],[0,0,0],[0,0,0]];   // enbart observationerna
+    const N_tot = [[0,0,0],[0,0,0],[0,0,0]];   // inkl. anslutningsosäkerhet
     let nObs = 0;
     const measUsed = [];
 
@@ -56,46 +56,55 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
 
       const ex = dE / d_m, ey = dN / d_m;
 
-      // ── Designmatrisrad för SIMSTATIONEN [E_stn, N_stn, z_k] – rad 674–683 ──
+      // ── Anslutningspunktens osäkerhet – felfortplantning till observationen ──
+      // Osäkerheten hos den punkt vi siktar mot FÖRSÄMRAR observationen. Korrekt
+      // felfortplantning inflaterar därför observationens varians:
+      //     σ²_eff = σ²_obs + aᵀ Q_k a
+      // där a är observationens partialderivata mot MÅLPUNKTENS koordinater och
+      // Q_k målpunktens 2×2-kofaktorblock ur primärnätet. Kända målpunkter har
+      // inget block i Q_k och bidrar därmed inte alls.
+      //
+      // Tidigare byggdes i stället en separat normalmatris N_prop som ADDERADES
+      // till N_obs. Normalmatrisaddition modellerar TILLFÖRD information, så
+      // resultatet kunde bara bli bättre – med två omöjliga gränsvärden:
+      // perfekt anslutning gav σ_pos → 0, och usel anslutning mättade mot
+      // observationernas bästafall i stället för att växa obegränsat.
+      let varAddD = 0, varAddH = 0;
+      if (freeIdxPrim[p2.id] !== undefined) {
+        const i2  = freeIdxPrim[p2.id];
+        const q11 = Qxx_prim[i2*2][i2*2],     q12 = Qxx_prim[i2*2][i2*2+1];
+        const q21 = Qxx_prim[i2*2+1][i2*2],   q22 = Qxx_prim[i2*2+1][i2*2+1];
+        // Kvadratformen aᵀ Q_k a – projektionen av punktosäkerheten på
+        // observationens riktning.
+        const kvadratform = (a1, a2) =>
+          a1 * (q11 * a1 + q12 * a2) + a2 * (q21 * a1 + q22 * a2);
+        varAddD = kvadratform(ex,  ey);   // längd: radiell komponent
+        varAddH = kvadratform(ey, -ex);   // riktning i bågmeter: tvärkomponent
+      }
+      const sigD_eff   = Math.sqrt(sigD * sigD + varAddD);
+      const sigArc_eff = Math.sqrt(sigH_arc * sigH_arc + varAddH);
+
+      // ── Designmatrisrad för SIMSTATIONEN [E_stn, N_stn, z_k] ──
+      // N_obs bär enbart observationernas bidrag och ger bästafallet
+      // (sigPos_obs). N_tot har samma rader men vikter från σ_eff, dvs. med
+      // anslutningsosäkerheten inräknad.
       if (obsType === "both" || obsType === "dist_only") {
         const aD = [-ex, -ey, 0];
-        const PD = 1 / (sigD * sigD);
-        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) N_obs[r][c] += PD * aD[r] * aD[c];
+        const PD = 1 / (sigD * sigD), PD_eff = 1 / (sigD_eff * sigD_eff);
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+          N_obs[r][c] += PD     * aD[r] * aD[c];
+          N_tot[r][c] += PD_eff * aD[r] * aD[c];
+        }
         nObs++;
       }
       if (obsType === "both" || obsType === "hz_only") {
         const aH = [ey, -ex, -dist_m];
-        const PH = 1 / (sigH_arc * sigH_arc);
-        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) N_obs[r][c] += PH * aH[r] * aH[c];
+        const PH = 1 / (sigH_arc * sigH_arc), PH_eff = 1 / (sigArc_eff * sigArc_eff);
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+          N_obs[r][c] += PH     * aH[r] * aH[c];
+          N_tot[r][c] += PH_eff * aH[r] * aH[c];
+        }
         nObs++;
-      }
-
-      // ── Felfortplantning från anslutningspunktens osäkerhet – rad 691–728 ──
-      if (freeIdxPrim[p2.id] !== undefined) {
-        const idx2 = freeIdxPrim[p2.id];
-        const Qk = [
-          [Qxx_prim[idx2*2][idx2*2],     Qxx_prim[idx2*2][idx2*2+1]],
-          [Qxx_prim[idx2*2+1][idx2*2],   Qxx_prim[idx2*2+1][idx2*2+1]]
-        ];
-        const det = Qk[0][0] * Qk[1][1] - Qk[0][1] * Qk[1][0];
-        if (Math.abs(det) < 1e-30) return;
-        const Qk_inv = [[Qk[1][1]/det, -Qk[0][1]/det], [-Qk[1][0]/det, Qk[0][0]/det]];
-
-        const aPt_rows = [];
-        if (obsType === "both" || obsType === "dist_only") aPt_rows.push({ a: [ex, ey],   P: 1/(sigD*sigD) });
-        if (obsType === "both" || obsType === "hz_only")   aPt_rows.push({ a: [-ey, ex],  P: 1/(sigH_arc*sigH_arc) });
-
-        aPt_rows.forEach(({ a }) => {
-          const v = a[0] * (Qk_inv[0][0]*a[0] + Qk_inv[0][1]*a[1]) +
-                    a[1] * (Qk_inv[1][0]*a[0] + Qk_inv[1][1]*a[1]);
-          let aStn;
-          if (Math.abs(a[0] - ex) < 0.01 && Math.abs(a[1] - ey) < 0.01) {
-            aStn = [-ex, -ey, 0];
-          } else {
-            aStn = [ey, -ex, -dist_m];
-          }
-          for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) N_prop[r][c] += v * aStn[r] * aStn[c];
-        });
       }
       measUsed.push(m.id);
     });
@@ -104,7 +113,6 @@ export function runSimStations(Qxx_prim, freeIds_prim, knownPts, ctx) {
       return { id: stn.id, error: "Minst 2 mätningar (vinkel+avstånd) krävs för positionsbestämning", E: stn.E, N: stn.N };
     }
 
-    const N_tot = N_obs.map((row, r) => row.map((v, c) => v + N_prop[r][c]));
     const Qss = invertMatrix(N_tot);
     if (!Qss) {
       return { id: stn.id, error: "Singulär matris – förbättra geometrin", E: stn.E, N: stn.N };
