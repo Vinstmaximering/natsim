@@ -18,6 +18,7 @@ import { exportCalcReport } from '../src/reports/sim-report.js'
 import { klassificeraKtal, K_NAT_GOLV } from '../src/core/constants.js'
 import { setState, getState } from '../src/state/store.js'
 import { reference } from './ref.mjs'
+import { referenceAngle } from './ref-angle.mjs'
 
 // Kör ett nät genom kärnan och returnera simResult.
 function kor(pts, meas, centerErr = 0) {
@@ -907,5 +908,109 @@ describe('F19 – kärnan mot HMK-förankrad referens', () => {
       const kMuf = rd.type === 'dist' ? rd.mdb.val : rd.mdb.val * rd.d / (200000 / Math.PI)
       expect(kMuf, `obs ${i}`).toBeCloseTo(rf.redund[i].muf, 12)
     })
+  })
+})
+
+// ═════════════════════════════════════════════════════════════════════════════
+// F20 – test1_baseline: k-tal för riktningar mot SBG Geo och mot en
+//        VINKELparameteriserad referens
+//
+// Testfallet isolerar r-talsdiskrepansen mot SBG Geo för riktningar. Låset har
+// två oberoende ben, så att en framtida extraktion ur NätSim_Beta_2.html inte
+// tyst kan återinföra ∂/∂z = −1 i den bågmeterskalade raden:
+//
+//   BEN 1 (extern):  k_i jämförs med SBG Geos uppmätta värden.
+//   BEN 2 (teori):   k_i jämförs med tests/ref-angle.mjs, som räknar i mgon och
+//                    därför aldrig multiplicerar riktningsraden med d. Den kan
+//                    per konstruktion inte ärva ett fel i bågmeterskalningen.
+//
+// Att båda benen håller samtidigt är det som gör låset meningsfullt: −1 i
+// bågmeterraden bryter mot båda (A↔B går från 0,224 till 0,365).
+//
+// HMK-Stommätning 2024 Formel F.6: Σk_i = f. Härledning (ej citat):
+// k_i = diag(R), R = Q_vv·P = I − A(AᵀPA)⁻¹AᵀP.
+// ═════════════════════════════════════════════════════════════════════════════
+describe('F20 – test1_baseline: riktningarnas k-tal mot Geo och vinkelreferens', () => {
+  const pts = [
+    { id: 'A',  type: 'known', N: 7000000.0, E: 100000.0, centerErr: 1.0 },
+    { id: 'B',  type: 'known', N: 7000000.0, E: 100200.0, centerErr: 1.0 },
+    { id: 'N1', type: 'new',   N: 7000100.0, E: 100100.0, centerErr: 1.0 }
+  ]
+  const par = [['A', 'B'], ['A', 'N1'], ['B', 'A'], ['B', 'N1'], ['N1', 'A'], ['N1', 'B']]
+  const meas = par.map(([f, t], i) => ({
+    id: 'm' + i, from: f, to: t, obsType: 'both',
+    sigHz_mgon: 0.135, numSatser: 3, sigDist_mm: 1.0, sigDist_ppm: 1.0, instrPreset: 'ts16_1'
+  }))
+
+  // SBG Geo, uppmätta k-tal (3 decimaler). Mätklass G2, σ_c = 1,0 mm/punkt.
+  const GEO = { abH: 0.224, nyH: 0.435, utH: 0.304, abL: 1.000, nyL: 0.769 }
+
+  const hz = (sr, f, t) => sr.redund.find(r => r.type === 'hz' && r.fromId === f && r.toId === t).ri
+  const ln = (sr, f, t) => sr.redund.find(r => r.type === 'dist' && r.fromId === f && r.toId === t).ri
+
+  it('nätgeometrin är den avsedda: n = 12, u = 5, f = 7', () => {
+    const sr = kor(pts, meas, 1.0)
+    expect(sr.error).toBeUndefined()
+    expect(sr.meas_n).toBe(12)
+    expect(sr.unkn_n).toBe(5)        // N1:s E,N + orienteringsobekant i A, B, N1
+    expect(sr.nCoordUnkn).toBe(2)
+    expect(sr.nOrientUnkn).toBe(3)
+    expect(sr.redundancy).toBe(7)
+  })
+
+  it('riktningarnas k-tal sammanfaller med SBG Geo (±0,001)', () => {
+    const sr = kor(pts, meas, 1.0)
+    // Riktning mellan fixpunkterna – den sikt där −1-felet slår hårdast.
+    expect(hz(sr, 'A', 'B'),  'A→B').toBeCloseTo(GEO.abH, 3)
+    expect(hz(sr, 'B', 'A'),  'B→A').toBeCloseTo(GEO.abH, 3)
+    // Riktning från fixpunkt mot nypunkt.
+    expect(hz(sr, 'A', 'N1'), 'A→N1').toBeCloseTo(GEO.nyH, 3)
+    expect(hz(sr, 'B', 'N1'), 'B→N1').toBeCloseTo(GEO.nyH, 3)
+    // Riktning från nypunkt mot fixpunkt.
+    expect(hz(sr, 'N1', 'A'), 'N1→A').toBeCloseTo(GEO.utH, 3)
+    expect(hz(sr, 'N1', 'B'), 'N1→B').toBeCloseTo(GEO.utH, 3)
+  })
+
+  it('längdernas k-tal sammanfaller med SBG Geo (±0,001)', () => {
+    const sr = kor(pts, meas, 1.0)
+    // A↔B mäts två gånger utan andra obekanta i vägen ⇒ full kontroll.
+    expect(ln(sr, 'A', 'B'),  'A→B').toBeCloseTo(GEO.abL, 3)
+    expect(ln(sr, 'B', 'A'),  'B→A').toBeCloseTo(GEO.abL, 3)
+    ;[['A', 'N1'], ['B', 'N1'], ['N1', 'A'], ['N1', 'B']].forEach(([f, t]) => {
+      expect(ln(sr, f, t), `${f}→${t}`).toBeCloseTo(GEO.nyL, 3)
+    })
+  })
+
+  it('Σk_i = f = 7 (HMK Formel F.6)', () => {
+    const sr = kor(pts, meas, 1.0)
+    expect(sr.redund.reduce((a, r) => a + r.ri, 0)).toBeCloseTo(7, 10)
+  })
+
+  it('kärnan sammanfaller med vinkelreferensen observation för observation', () => {
+    const sr = kor(pts, meas, 1.0)
+    const rf = referenceAngle(pts, meas, { C_mm: 1.0 })
+    expect(rf.singular).toBe(false)
+    expect(rf.n).toBe(sr.meas_n)
+    expect(rf.nu).toBe(sr.unkn_n)
+    sr.redund.forEach((rd, i) => {
+      expect(rd.ri, `obs ${i} (${rd.fromId}→${rd.toId} ${rd.type})`)
+        .toBeCloseTo(rf.redund[i].ki, 12)
+    })
+    expect(rf.sumK).toBeCloseTo(7, 10)
+  })
+
+  it('bågmeterraden med ∂/∂z = −1 återger INTE facit – låset biter', () => {
+    // Bevisar att låset ovan faktiskt fångar återfallet. En bågmeterrad med
+    // felaktigt −1 är, dividerad med d, en vinkelrad med −1/d (se ref-angle.mjs).
+    const fel = referenceAngle(pts, meas, { C_mm: 1.0, orientPartial: d => -1 / d })
+    const g = (f, t) => fel.redund.find(r => r.type === 'hz' && r.from === f && r.to === t).ki
+
+    // Modellfelet ger k(A→B) ≈ 0,365 i stället för Geos 0,224.
+    expect(g('A', 'B')).toBeCloseTo(0.3647, 3)
+    expect(Math.abs(g('A', 'B')  - GEO.abH), 'A→B').toBeGreaterThan(0.10)
+    expect(Math.abs(g('A', 'N1') - GEO.nyH), 'A→N1').toBeGreaterThan(0.05)
+
+    // Σk_i = f överlever felet – summan ensam duger alltså inte som lås.
+    expect(fel.sumK).toBeCloseTo(7, 10)
   })
 })

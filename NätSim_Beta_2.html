@@ -656,9 +656,10 @@ function runSimStations(Qxx_prim, freeIds_prim, knownPts){
       const d_m=Math.sqrt(dE*dE+dN*dN)||1;
       const dist_m=m.measDist!=null?m.measDist:d_m;
 
+      // EN C-term enligt HMK-Stommätning 2024 Bilaga C.1.1 – se huvudsimuleringen.
       const e_from=(stn.centerErr!=null?stn.centerErr:centerErr)/1000;
       const e_to  =(p2.centerErr!=null?p2.centerErr:centerErr)/1000;
-      const e_c   =Math.sqrt(e_from*e_from+e_to*e_to);
+      const e_c   =Math.sqrt((e_from*e_from+e_to*e_to)/2);
 
       const sigD=Math.sqrt((sDmm/1000)**2+(dist_m*sDppm*1e-6)**2+e_c*e_c);
       const sigH_c_mgon=e_c/dist_m*(200000/Math.PI);
@@ -906,11 +907,13 @@ function runSimulation(){
     const d_m=Math.sqrt(dE*dE+dN*dN)||1;
     const dist_m=m.measDist!=null?m.measDist:d_m;
 
-    // Centreringsfel: totalt bidrag = sqrt(e_from²+e_to²)
-    // HMK/Geo Professional adderar kvadraterna direkt (ej medelvärde)
+    // Centreringen enligt HMK-Stommätning 2024 Bilaga C.1.1 (riktning) och
+    // C.1.2 (längd): C är gemensam för instrument och reflektor/signal och
+    // ingår med EN C-term – inte en gång per ände. Skiljer sig ändarnas värden
+    // åt används deras kvadratiska medelvärde, vilket är exakt C när de är lika.
     const e_from=(p1.centerErr!=null?p1.centerErr:centerErr)/1000;
     const e_to  =(p2.centerErr!=null?p2.centerErr:centerErr)/1000;
-    const e_c   =Math.sqrt(e_from*e_from+e_to*e_to);
+    const e_c   =Math.sqrt((e_from*e_from+e_to*e_to)/2);
 
     const sigD=Math.sqrt((sDmm/1000)**2+(dist_m*sDppm*1e-6)**2+e_c*e_c);
     const sigH_mgon_eff=sHmg/Math.sqrt(nSat);
@@ -947,8 +950,12 @@ function runSimulation(){
         const i2=freeIdx[p2.id];rowH[i2*2]-=ey;rowH[i2*2+1]+=ex;
       }
       if(stnIdx[p1.id]!==undefined){
-        // Orienteringskonstant z_k: ∂f_hz/∂z_k = -1 (bågmeter/bågmeter, enhetslöst)
-        rowH[nFree*2+stnIdx[p1.id]]=-1;
+        // Orienteringskonstant z_k. Raden är bågmeterskalad – koordinatleden är
+        // multiplicerade med d och σ skalas som σ_arc = d·σ_rad – så även
+        // orienteringsledet måste skalas: ∂(d·φ)/∂z_k = -d.
+        // HMK-Stommätning 2024 Formel 3.3 / Bilaga F. Samma konvention som
+        // rad 681/723 ovan och som src/core/simulation.js.
+        rowH[nFree*2+stnIdx[p1.id]]=-dist_m;
       }
       obsRows.push({row:rowH,sig:sigH_arc,type:"hz",measId:m.id,
         fromId:p1.id,toId:p2.id,d:dist_m,sigH_mgon_eff:sigH_tot_mgon});
