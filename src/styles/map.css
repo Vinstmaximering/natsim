@@ -23,11 +23,6 @@ canvas { display: block; touch-action: none; }
 .map-zoom-ctrl button:hover { background:color-mix(in srgb,var(--bg-selected) 80%,transparent); }
 .sug-line { position:absolute;pointer-events:none;z-index:2; }
 
-/* Resize-handles */
-.resize-handle { background:transparent;cursor:col-resize;flex-shrink:0;position:relative;z-index:30; }
-.resize-handle:hover,.resize-handle.dragging { background:var(--border-emphasis); }
-.resize-handle::after { content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;background:color-mix(in srgb,var(--border-emphasis) 60%,var(--border-strong));border-radius:2px; }
-
 /* Mobile toolbar (synlighet styrs av responsive.css) */
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }

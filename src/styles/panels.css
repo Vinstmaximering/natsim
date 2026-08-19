@@ -42,10 +42,11 @@
 .bd  { flex:1;padding:8px;font-size:13px;background:color-mix(in srgb,var(--color-danger) 9%,transparent);border:1px solid var(--color-danger);color:var(--color-danger);border-radius:3px;cursor:pointer; }
 .bc  { flex:1;padding:8px;font-size:13px;background:transparent;border:1px solid var(--color-cancel-border);color:var(--color-cancel-text);border-radius:3px;cursor:pointer; }
 
-/* Resize-handle */
-.resize-handle          { width:4px;flex-shrink:0;cursor:col-resize;background:transparent;transition:background .15s; }
-.resize-handle:hover    { background:color-mix(in srgb,var(--accent) 25%,transparent); }
-.resize-handle:active   { background:color-mix(in srgb,var(--accent) 40%,transparent); }
+/* Resize-handle (#lrh / #rrh) – enda definitionen; låg tidigare dubblerad i map.css */
+.resize-handle          { width:4px;flex-shrink:0;cursor:col-resize;background:transparent;transition:background .15s;position:relative;z-index:30; }
+.resize-handle:hover,
+.resize-handle.dragging { background:var(--border-emphasis); }
+.resize-handle::after   { content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:40px;background:color-mix(in srgb,var(--border-emphasis) 60%,var(--border-strong));border-radius:2px; }
 
 /* Scrollbar */
 ::-webkit-scrollbar       { width:4px; }

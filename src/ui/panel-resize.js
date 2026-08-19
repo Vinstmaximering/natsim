@@ -1,7 +1,13 @@
 import { draw } from '../map/leaflet-setup.js';
 
-const MIN_W = 240;
-const MAX_W = 600;
+export const MIN_W = 240;
+export const MAX_W = 600;
+
+// De statiska handtagen i index.html. Tidigare skapade initResize ett eget
+// handtag bredvid dem, vilket gav två .resize-handle per sida där bara det
+// dynamiska hade lyssnare. Vi återanvänder det statiska i stället – då behålls
+// tooltip, id och studio.css-reglerna som döljer #lrh/#rrh.
+const HANDLE_ID = { lp: 'lrh', rp: 'rrh' };
 
 export function initResize(panelId, side) {
   const panel = document.getElementById(panelId);
@@ -13,9 +19,14 @@ export function initResize(panelId, side) {
     panel.style.width = saved + 'px';
   }
 
-  const handle = document.createElement('div');
-  handle.className = 'resize-handle';
-  side === 'right' ? panel.after(handle) : panel.before(handle);
+  let handle = document.getElementById(HANDLE_ID[panelId]);
+  if (!handle) {
+    // Fallback för DOM:er utan det statiska handtaget (t.ex. inbäddade vyer)
+    handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.title = 'Dra för att ändra bredd';
+    side === 'right' ? panel.after(handle) : panel.before(handle);
+  }
 
   const obs = new MutationObserver(() => {
     handle.style.display = panel.classList.contains('hidden') ? 'none' : '';
