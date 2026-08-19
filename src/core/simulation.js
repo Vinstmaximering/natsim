@@ -4,7 +4,11 @@
 //   – Skriver simResult via setState() (ej global mutation)
 //   – draw()-anrop borttagna (UI-ansvar, ej kärna)
 //   – Omätta kända punkter kontrolleras tidigt (före n_obs<nu) för testbarhet
-// Matematiken är oförändrad.
+// Matematiken var oförändrad vid utbrytningen, men beräkningskärnan har därefter
+// korrigerats mot HMK-Stommätning 2024:
+//   – F1:  orienteringspartialen -1 → -dist_m (riktningsraden skalas till meter)
+//   – F4:  centreringsbidraget C·√2 → enkel C (RMS av de två uppställningarna)
+//   – F17: längdosäkerheten kvadratisk → linjär hybrid √[(A+B·L)² + C²]
 import { INSTRUMENTS, klassificeraKtal } from './constants.js';
 import { invertMatrix } from './matrix.js';
 import { calcM } from './designmatrix.js';
