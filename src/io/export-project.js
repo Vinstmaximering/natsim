@@ -2,6 +2,9 @@
 // JSON-format ver:3 – bakåtkompatibelt med ver:1 och ver:2.
 //   ver:3 (Fas 5): lägger till obstacles-array
 //   ver:2/1:       obstacles sätts till [] vid laddning
+// Nya fält läggs till utan versionshöjning så länge de har en default vid
+// laddning – filer utan fältet ska ge samma resultat som före tillägget:
+//   maxSuggestDist (Etapp A): saknas → 500 m
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
@@ -20,6 +23,8 @@ export function _buildSnapshot() {
     activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
     centerErr:      s.centerErr      ?? 1.0,
+    // Etapp A: null = obegränsat. Fältet saknas i äldre filer → default 500 m.
+    maxSuggestDist: s.maxSuggestDist === undefined ? 500 : s.maxSuggestDist,
     defaultInstr:   s.defaultInstr   || "ts16_1",
     symSize:        s.symSize        ?? 10,
     ellScale:       s.ellScale       ?? 50,
@@ -43,6 +48,15 @@ export function _buildSnapshot() {
   };
 }
 
+// Sanerar maxSuggestDist ur en projektfil: positivt tal behålls, allt annat
+// (null, 0, negativt, sträng som inte är tal) blir null = obegränsat.
+function _normalizeSuggestDist(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : parseFloat(v);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 // ── Applicera snapshot till state – ren funktion utan DOM/leaflet ─────────────
 // Exporteras för tester. loadProject() anropar denna och sköter sedan
 // DOM-sliders och kartvy separat.
@@ -64,6 +78,9 @@ export function _applySnapshot(s) {
     activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
     centerErr:      s.centerErr  != null ? s.centerErr : 1.0,
+    // Bakåtkompatibilitet: fältet saknas helt i ver:1/2/3-filer sparade före
+    // Etapp A → 500 m. Explicit null i filen betyder obegränsat och bevaras.
+    maxSuggestDist: "maxSuggestDist" in s ? _normalizeSuggestDist(s.maxSuggestDist) : 500,
     defaultInstr:   s.defaultInstr   || "ts16_1",
     symSize:        s.symSize        ?? 10,
     ellScale:       s.ellScale       ?? 50,
@@ -154,6 +171,11 @@ export function loadProject(text) {
   if (ellSlider) { ellSlider.value = s.ellScale || 50; const ev=document.getElementById("ell-val"); if(ev)ev.textContent=(s.ellScale||50)+"×"; }
   const ceEl = document.getElementById("center-err");
   if (ceEl) ceEl.value = s.centerErr ?? 1.0;
+  const msd = getState().maxSuggestDist;
+  ["max-sugg-dist", "max-sugg-dist-net"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = msd == null ? "" : String(msd);
+  });
 
   // Uppdatera karta
   import('../map/leaflet-setup.js').then(({ buildCRSSel, setMapLayer, resetView, map: leafletMap }) => {

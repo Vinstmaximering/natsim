@@ -9,6 +9,9 @@ let _state = {
   simResult: null,
   centerErr: 1.0,
   activeMatklass: null,
+  // Maxavstånd (m) för automatiskt föreslagna mätningar. null = obegränsat.
+  // Långsträckta nät (tunnlar) fick tidigare förslag på flera km.
+  maxSuggestDist: 500,
   suggestedMeas: [],
   blockedSuggestions: [], // [{from, to, blockedBy}] – siktlinje blockerad av hinder
 
