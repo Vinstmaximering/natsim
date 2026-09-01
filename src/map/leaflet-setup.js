@@ -153,10 +153,20 @@ export function resetView() {
   } catch { map.setView([59.33, 18.07], 14); }
 }
 
+// Simuleringen som ska VISAS. I förslagsvyn (Etapp E) är det förslagets egen
+// simulering, annars statens. Delad av drawPt och draw() så att punktringar,
+// linjefärger och felellipser aldrig kan visa olika nät.
+export function viewSimResult(state = getState()) {
+  return state.netView === 'optimized' && state.optimizerProposal
+    ? state.optimizerProposal.simResult
+    : state.simResult;
+}
+
 // ── Punkt-rendering ───────────────────────────────────────────────────────────
 // rad 1590–1657 exakt
 export function drawPt(ctx, pt, sel, showL, labelRects) {
-  const { symSize, simResult, selId } = getState();
+  const { symSize, selId } = getState();
+  const simResult = viewSimResult();
   const c = PT[pt.type].c;
   const locked = document.getElementById("sym-lock")?.checked || false;
   const mpp = mppAtCenter();
@@ -247,9 +257,20 @@ export function draw() {
   ctx.clearRect(0, 0, W, H);
 
   const state = getState();
-  const { pts, meas, simResult, suggestedMeas, selId, selMId, measFrom,
+  const { pts, meas, suggestedMeas, selId, selMId, measFrom,
           ellScale, ellipsMode, au, obstacles = [], selObsId, symSize,
-          blockedSuggestions = [] } = state;
+          blockedSuggestions = [], optimizerProposal, netView } = state;
+
+  // ── Etapp E: förslagsvyn ──
+  // "Behåll som förslag" ritar det optimerade nätet i stället för det aktiva,
+  // med förslagets egen simulering så att r-talsfärger och felellipser hör
+  // ihop med det man ser. Nätet i state är orört – bara vyn byts.
+  const proposal  = netView === 'optimized' && optimizerProposal ? optimizerProposal : null;
+  const drawMeas  = proposal ? proposal.meas : meas;
+  const simResult = viewSimResult(state);
+  const addedIds  = proposal ? new Set(proposal.addedIds) : null;
+  const keptIds   = proposal ? new Set(proposal.meas.map(m => m.id)) : null;
+  const removedMeas = proposal ? proposal.baseMeas.filter(m => !keptIds.has(m.id)) : [];
 
   const showA = document.getElementById("tga")?.checked ?? true;
   const showD = document.getElementById("tgd")?.checked ?? true;
@@ -288,7 +309,19 @@ export function draw() {
 
   // ── Mätningslinjer ──
   if (showC) {
-    meas.forEach(m => {
+    // Etapp E: i förslagsvyn ritas först de mätningar förslaget TAR BORT, som
+    // blek streckad linje, så att skillnaden syns direkt i kartan.
+    removedMeas.forEach(m => {
+      const md = calcM(m, pts); if (!md) return;
+      const px1 = ptPixel(md.p1), px2 = ptPixel(md.p2);
+      ctx.save();
+      ctx.setLineDash([3, 6]); ctx.strokeStyle = "rgba(255,80,80,0.45)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px1.x, px1.y); ctx.lineTo(px2.x, px2.y); ctx.stroke();
+      ctx.font = "14px monospace"; ctx.fillStyle = "rgba(255,80,80,0.8)"; ctx.textAlign = "center";
+      ctx.fillText("✕", (px1.x + px2.x) / 2, (px1.y + px2.y) / 2 - 6);
+      ctx.restore();
+    });
+    drawMeas.forEach(m => {
       const md = calcM(m, pts); if (!md) return;
       const { p1, p2, dist } = md;
       if (!typeVisible[p1.type] || !typeVisible[p2.type]) return;
@@ -305,7 +338,8 @@ export function draw() {
       }
       ctx.setLineDash(obsType === "hz_only" ? [8,4] : obsType === "dist_only" ? [2,4] : []);
       ctx.beginPath(); ctx.moveTo(px1.x, px1.y); ctx.lineTo(px2.x, px2.y);
-      ctx.strokeStyle = isSel ? "#ffffff" : hasM ? "#ff9900" : lineCol;
+      const isAdded = addedIds ? addedIds.has(m.id) : false;
+      ctx.strokeStyle = isSel ? "#ffffff" : isAdded ? "#ce93d8" : hasM ? "#ff9900" : lineCol;
       ctx.lineWidth = isSel ? 3 : 2; ctx.stroke(); ctx.setLineDash([]);
 
       // Riktningspil
@@ -313,7 +347,7 @@ export function draw() {
       const mx = (px1.x+px2.x)/2, my = (px1.y+px2.y)/2, aw = 9;
       ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
       ctx.beginPath(); ctx.moveTo(aw,0); ctx.lineTo(0,-aw*0.4); ctx.lineTo(0,aw*0.4); ctx.closePath();
-      ctx.fillStyle = isSel ? "#fff" : hasM ? "#ff9900" : "rgba(79,195,247,0.8)"; ctx.fill();
+      ctx.fillStyle = isSel ? "#fff" : isAdded ? "#ce93d8" : hasM ? "#ff9900" : "rgba(79,195,247,0.8)"; ctx.fill();
       ctx.restore();
 
       if (showD) {

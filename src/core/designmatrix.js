@@ -5,6 +5,14 @@ import { R, D } from './constants.js';
 // Avstånd i meter direkt från E,N – rad 561
 export const d2EN = (a, b) => Math.sqrt((b.E - a.E) ** 2 + (b.N - a.N) ** 2);
 
+// Returnerar true för typ "station" och för känd punkt med isStation: true.
+// Används för att identifiera alla uppställningspunkter oavsett ursprungstyp.
+// Låg i ui/right-panel.js till Etapp E; optimeringskärnan behöver samma
+// predikat och core/ får inte importera från ui/.
+export function isStationPoint(p) {
+  return p.type === "station" || (p.type === "known" && p.isStation === true);
+}
+
 // Bäring i grader (norr=0, medsols) från E,N – rad 563
 export const brgEN = (a, b) => {
   let v = D(Math.atan2(b.E - a.E, b.N - a.N));

@@ -7,9 +7,11 @@
 //   maxSuggestDist (Etapp A): saknas → 500 m
 //   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
+//   optimizerConfig (Etapp E): saknas → vikterna 50/50
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
+import { normalizeWeights } from '../core/optimizer.js';
 import { showToast } from '../ui/toast.js';
 import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
 import { _sanitizeVisual, _nextCounter, syncLinkedObstacles } from '../state/visual.js';
@@ -32,6 +34,8 @@ export function _buildSnapshot() {
     // Etapp A: null = obegränsat. Fältet saknas i äldre filer → default 500 m.
     maxSuggestDist: s.maxSuggestDist === undefined ? 500 : s.maxSuggestDist,
     defaultInstr:   s.defaultInstr   || "ts16_1",
+    // Etapp E: optimeringens vikter. Saknas fältet i en äldre fil laddas 50/50.
+    optimizerConfig: _normalizeOptimizerConfig(s.optimizerConfig),
     symSize:        s.symSize        ?? 10,
     ellScale:       s.ellScale       ?? 50,
     ellipsMode:     s.ellipsMode     || "1sig",
@@ -65,6 +69,14 @@ function _normalizeSuggestDist(v) {
   return n;
 }
 
+// Sanerar optimeringens viktpar. Saknad sektion, ogiltiga tal eller 0/0 ger
+// defaultvärdena 50/50 – samma normalisering som optimeringskärnan använder,
+// så att projektfilen aldrig kan innehålla vikter som kärnan tolkar annorlunda.
+export function _normalizeOptimizerConfig(c) {
+  const w = normalizeWeights({ sigma: c?.weightSigma, r: c?.weightR });
+  return { weightSigma: w.sigma, weightR: w.r };
+}
+
 // ── Applicera snapshot till state – ren funktion utan DOM/leaflet ─────────────
 // Exporteras för tester. loadProject() anropar denna och sköter sedan
 // DOM-sliders och kartvy separat.
@@ -94,6 +106,8 @@ export function _applySnapshot(s) {
     // Etapp A → 500 m. Explicit null i filen betyder obegränsat och bevaras.
     maxSuggestDist: "maxSuggestDist" in s ? _normalizeSuggestDist(s.maxSuggestDist) : 500,
     defaultInstr:   s.defaultInstr   || "ts16_1",
+    // Etapp E: filer sparade före optimeringen saknar sektionen → 50/50.
+    optimizerConfig: _normalizeOptimizerConfig(s.optimizerConfig),
     symSize:        s.symSize        ?? 10,
     ellScale:       s.ellScale       ?? 50,
     ellipsMode:     s.ellipsMode     || "1sig",
@@ -109,6 +123,9 @@ export function _applySnapshot(s) {
     simResult:      null,
     selObsId:       null,
     blockedSuggestions: [],
+    // Ett optimeringsförslag hör till sessionen, inte till projektet.
+    optimizerProposal: null,
+    netView:        'original',
   });
 
   // Projicera kopplade visuella linjer på sina hinder direkt efter laddning,

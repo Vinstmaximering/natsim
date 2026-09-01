@@ -3,7 +3,7 @@
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
 import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal } from '../core/constants.js';
-import { calcM, fG, fD, d2EN, brgEN } from '../core/designmatrix.js';
+import { calcM, fG, fD, d2EN, brgEN, isStationPoint } from '../core/designmatrix.js';
 import { rColor, rLabel } from '../core/redundancy.js';
 import { runSimulation } from '../core/simulation.js';
 import { saveUndo } from '../state/undo.js';
@@ -13,12 +13,11 @@ import { showValidationDialog } from './validation.js';
 import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
 import { hasLineOfSight, findBlockedMeasurements } from '../core/visibility.js';
 import { renderClassInfo } from './sis-ts-info.js';
+import { comparisonRows, setNetView, applyProposal, discardProposal } from '../state/optimizer-proposal.js';
 
-// Returnerar true för typ "station" och för känd punkt med isStation: true.
-// Används för att identifiera alla uppställningspunkter oavsett ursprungstyp.
-export function isStationPoint(p) {
-  return p.type === "station" || (p.type === "known" && p.isStation === true);
-}
+// isStationPoint bor i kärnan sedan Etapp E – re-exporteras här eftersom
+// paneler och tester importerar den härifrån.
+export { isStationPoint } from '../core/designmatrix.js';
 
 // ── Maxavstånd för mätförslag ─────────────────────────────────────────────
 // Fritt inmatat värde i meter. Tomt fält = null = obegränsat.
@@ -104,6 +103,64 @@ export function renderClearBlockedButton() {
       ⛔ Ta bort blockerade mätningar
     </button>
     <div class="val-muted" style="font-size:11px;margin-bottom:8px;">${why}</div>`;
+}
+
+// ── Nätoptimering (Etapp E) ───────────────────────────────────────────────
+// Knappen som öppnar optimeringsdialogen. Ligger i mätningspanelen eftersom
+// optimeringen ändrar just mätningsuppsättningen.
+export function renderOptimizeButton() {
+  const { pts = [], meas = [] } = getState();
+  const enabled = pts.length >= 2 && meas.length >= 1;
+  if (!enabled) {
+    return `<button disabled title="Optimering kräver minst 2 punkter och 1 mätning"
+      style="width:100%;padding:7px;font-size:12px;background:transparent;border:1px solid var(--border-default);color:#4a6070;border-radius:3px;cursor:not-allowed;margin-bottom:8px;">
+      🧮 Optimera nät
+    </button>`;
+  }
+  return `<button onclick="window._openOptimizer()"
+    style="width:100%;padding:7px;font-size:12px;background:#ce93d818;border:1px solid #ce93d866;color:#ce93d8;border-radius:3px;cursor:pointer;margin-bottom:8px;">
+    🧮 Optimera nät
+  </button>`;
+}
+
+// Vy-växlaren för ett sparat optimeringsförslag. Tom sträng när inget förslag
+// finns – panelen ska se ut precis som före Etapp E då.
+export function renderProposalSection() {
+  const { optimizerProposal: p, netView } = getState();
+  if (!p) return '';
+  const opt = netView === 'optimized';
+  const rows = comparisonRows(p.baseMetrics, p.finalMetrics, p.criteria);
+  const tab = (on, label, id) => `<button onclick="window._setNetView('${id}')"
+    style="flex:1;padding:5px;font-size:11px;border-radius:3px;cursor:pointer;
+    border:1px solid ${on ? 'var(--color-measure)' : 'var(--border-strong)'};
+    background:${on ? 'color-mix(in srgb,var(--color-measure) 14%,transparent)' : 'transparent'};
+    color:${on ? 'var(--color-measure)' : 'var(--text-muted)'};">${label}</button>`;
+
+  return `<div class="sl">OPTIMERAT FÖRSLAG</div>
+    <div style="display:flex;gap:4px;margin-bottom:6px;">
+      ${tab(!opt, 'Original', 'original')}
+      ${tab(opt, `Optimerat (+${p.addedIds.length}/−${p.removedIds.length})`, 'optimized')}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:6px;">
+      <tr style="border-bottom:1px solid var(--border-strong);">
+        <th class="val-muted" style="text-align:left;font-weight:normal;">Storhet</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;">Original</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;">Optimerat</th>
+      </tr>
+      ${rows.map(r => `<tr style="border-bottom:1px solid var(--border-default);">
+        <td class="val-secondary" style="padding:2px 0;">${r.label}</td>
+        <td class="val-value" style="text-align:right;font-family:monospace;">${r.base}</td>
+        <td class="${r.ok ? 'val-good' : 'val-danger'}" style="text-align:right;font-family:monospace;font-weight:bold;">${r.opt}</td>
+      </tr>`).join('')}
+    </table>
+    <div style="display:flex;gap:4px;margin-bottom:8px;">
+      <button onclick="window._applyOptProposal()"
+        style="flex:2;padding:6px;font-size:12px;background:#00ff8818;border:1px solid #00ff8866;color:#00ff88;border-radius:3px;cursor:pointer;">
+        ✓ Tillämpa förslag</button>
+      <button onclick="window._discardOptProposal()"
+        style="flex:1;padding:6px;font-size:12px;background:transparent;border:1px solid var(--border-strong);color:#7090a8;border-radius:3px;cursor:pointer;">
+        ✕ Förkasta</button>
+    </div>`;
 }
 
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
@@ -264,6 +321,8 @@ export function renderTab() {
       <div class="sl" style="margin:0">MÄTNINGAR (${meas.length})</div>
     </div>
     ${renderClearBlockedButton()}
+    ${renderOptimizeButton()}
+    ${renderProposalSection()}
     ${meas.length === 0 ? '<div style="color:#7090a8;font-size:12px;text-align:center;padding:20px 0;">Inga mätningar ännu.<br><br>Välj 📏 och klicka på två punkter.</div>' : ""}
     ${meas.map(m => {
       const md = calcM(m, pts); if (!md) return "";
@@ -766,6 +825,19 @@ export function initRightPanel() {
     draw();
     renderTab();
   };
+  // ── Nätoptimering (Etapp E) ──
+  window._openOptimizer      = () => import('./optimizer-modal.js').then(m => m.openOptimizerDialog());
+  window._setNetView         = view => { setNetView(view); draw(); renderTab(); };
+  window._applyOptProposal   = () => {
+    const p = getState().optimizerProposal;
+    if (!p) return;
+    if (!confirm(`Tillämpa det optimerade nätet? ${p.addedIds.length} mätningar läggs till och ` +
+                 `${p.removedIds.length} tas bort. Kan bara ångras via ↩ Ångra.`)) return;
+    applyProposal(p);
+    import('./toast.js').then(m => m.showToast('✓ Optimerat nät tillämpat', '#00ff88'));
+    draw(); renderTab();
+  };
+  window._discardOptProposal = () => { discardProposal(); draw(); renderTab(); };
   window._setEllipsMode    = mode => { setState({ ellipsMode: mode }); draw(); renderTab(); };
   window._setSigReq        = val  => { setState({ sigReq: val }); renderTab(); };
   window._showValidationDialog = showValidationDialog;

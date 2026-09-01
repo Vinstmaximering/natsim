@@ -129,6 +129,8 @@ export function clearAll() {
       selId: null, selMId: null, selObsId: null,
       measFrom: null, simResult: null,
       suggestedMeas: [], blockedSuggestions: [],
+      // Etapp E: ett förslag som pekar på borttagna punkter är meningslöst.
+      optimizerProposal: null, netView: 'original',
     });
     draw();
   }

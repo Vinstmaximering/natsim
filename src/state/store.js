@@ -23,6 +23,16 @@ let _state = {
   nVid: 1,
   nVlid: 1,
 
+  // ── Nätoptimering (Etapp E) ──
+  // Vikterna styr optimeringens avvägning mellan sänkt punktosäkerhet och
+  // höjda redundanstal. Sparas i projektfilen; äldre filer laddas med 50/50.
+  optimizerConfig: { weightSigma: 0.5, weightR: 0.5 },
+  // Sparat förslag från "Behåll som förslag": { meas, simResult, log, ... }.
+  // Lever bara i sessionen – ett förslag är inte ett projekttillstånd.
+  optimizerProposal: null,
+  // Vilket nät kartan och statistiken visar: "original" eller "optimized".
+  netView: 'original',
+
   // ── Hinder-selektion ──
   selObsId: null,
 

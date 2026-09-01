@@ -1,7 +1,7 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 868–1106.
 // Strukturella ändringar:
-//   – Läser pts/meas/centerErr från store (ej globaler)
-//   – Skriver simResult via setState() (ej global mutation)
+//   – Läser pts/meas/centerErr från argument (ej globaler)
+//   – computeSimulation() är ren; runSimulation() är store-skalet (Etapp E)
 //   – draw()-anrop borttagna (UI-ansvar, ej kärna)
 //   – Omätta kända punkter kontrolleras tidigt (före n_obs<nu) för testbarhet
 // Matematiken var oförändrad vid utbrytningen, men beräkningskärnan har därefter
@@ -32,20 +32,16 @@ export function stationIds(meas) {
   )];
 }
 
-export function runSimulation() {
-  const { pts, meas, centerErr } = getState();
-
+export function computeSimulation({ pts, meas, centerErr }) {
   const knownPts = pts.filter(p => p.type === "known");
   const freePts  = pts.filter(p => p.type !== "known");
 
   // ── Grundläggande kontroller – rad 872–877 ──
   if (pts.length < 2 || meas.length < 1) {
-    setState({ simResult: { error: "Minst 2 punkter och 1 mätning krävs." } });
-    return;
+    return { error: "Minst 2 punkter och 1 mätning krävs." };
   }
   if (knownPts.length < 1) {
-    setState({ simResult: { error: "Minst 1 känd punkt (fixpunkt) krävs.\n\nMarkera minst en punkt som 'Känd punkt'." } });
-    return;
+    return { error: "Minst 1 känd punkt (fixpunkt) krävs.\n\nMarkera minst en punkt som 'Känd punkt'." };
   }
 
   // ── Tidig kontroll av omätta kända punkter ──
@@ -56,12 +52,11 @@ export function runSimulation() {
   meas.forEach(m => { measuredIdsEarly.add(m.from); measuredIdsEarly.add(m.to); });
   const unusedKnownEarly = knownPts.filter(p => !measuredIdsEarly.has(p.id));
   if (unusedKnownEarly.length > 0) {
-    setState({ simResult: {
+    return {
       error: "Nätet har dolda datumdefekter (rotation/translation/skala kan inte bestämmas).\n\n" +
              "ORSAK: Kända punkter ingår inte i några mätningar: " + unusedKnownEarly.map(p => p.id).join(", ") + "\n\n" +
              "ÅTGÄRD: Mät in minst en känd punkt från en uppställning så att nätet anknyts till det kända koordinatsystemet."
-    }});
-    return;
+    };
   }
 
   // ── Index för obekanta – rad 882–892 ──
@@ -161,8 +156,7 @@ export function runSimulation() {
   const n_obs = obsRows.length;
 
   if (n_obs < nu) {
-    setState({ simResult: { error: `Underdeterminerat nät.\nObekanta: ${nu} (${nFree*2} koordinater + ${nStn} orienteringskonstanter)\nObservationer: ${n_obs}\n\nLägg till fler mätningar.` } });
-    return;
+    return { error: `Underdeterminerat nät.\nObekanta: ${nu} (${nFree*2} koordinater + ${nStn} orienteringskonstanter)\nObservationer: ${n_obs}\n\nLägg till fler mätningar.` };
   }
 
   // ── Normalmatrisen N = A^T P A – rad 965–973 ──
@@ -177,15 +171,13 @@ export function runSimulation() {
 
   const Qxx = invertMatrix(Nmat);
   if (!Qxx) {
-    setState({ simResult: { error: "Normalmatrisen är singulär.\n\n• Saknar tillräcklig koppling till kända punkter\n• En fri punkt saknar mätningar i ≥2 ej-parallella riktningar\n• En uppställning saknar minst 2 mätningar" } });
-    return;
+    return { error: "Normalmatrisen är singulär.\n\n• Saknar tillräcklig koppling till kända punkter\n• En fri punkt saknar mätningar i ≥2 ej-parallella riktningar\n• En uppställning saknar minst 2 mätningar" };
   }
 
   // ── Datumdefekt-check (Qxx-diagonal) – rad 981–1015 ──
   const { ok: datumOk, message: datumMsg } = checkDatumDefect(Qxx, nu, knownPts, meas);
   if (!datumOk) {
-    setState({ simResult: { error: datumMsg } });
-    return;
+    return { error: datumMsg };
   }
 
   // ── r_i = 1 - H_ii (HMK F.9/F.10) – rad 1017–1050 ──
@@ -277,5 +269,15 @@ export function runSimulation() {
     );
   }
 
-  setState({ simResult: result });
+  return result;
+}
+
+// ── Store-kopplat skal ───────────────────────────────────────────────────────
+// Kör simuleringen på aktuellt state och skriver resultatet till store.
+// Matematiken ligger i computeSimulation() ovan, som är en REN funktion: den
+// läser inget state och skriver inget. Optimeraren (Etapp E) måste kunna räkna
+// om Q_xx för hypotetiska mätuppsättningar utan att röra store, och
+// utbrytningen är därför rent strukturell – samma indata ger samma resultat.
+export function runSimulation() {
+  setState({ simResult: computeSimulation(getState()) });
 }

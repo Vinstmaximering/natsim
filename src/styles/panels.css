@@ -52,3 +52,9 @@
 ::-webkit-scrollbar       { width:4px; }
 ::-webkit-scrollbar-track { background:var(--scrollbar-track); }
 ::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb);border-radius:2px; }
+
+/* Optimeringsdialogen – Etapp E */
+.opt-sec { font-size:10px;letter-spacing:1.5px;color:var(--text-muted);margin:12px 0 5px;
+           border-bottom:1px solid var(--border-default);padding-bottom:3px; }
+.opt-box { background:var(--bg-card);border:1px solid var(--border-default);border-radius:3px;
+           padding:6px 8px;margin-bottom:6px; }

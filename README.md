@@ -78,6 +78,125 @@ som också används av kvalitetspanelens sikt-räknare och nätvalideringen — 
 kan därmed inte räkna olika. Mätningar vars punkter saknas hoppas över och
 rensas alltså inte bort som blockerade.
 
+## Optimera nät
+
+Knappen **🧮 Optimera nät** i fliken **MÄTNINGAR** föreslår en optimal
+mätningsuppsättning för nätets geometri: den lägger till de mätningar som
+behövs för att projektets acceptanskriterier ska hållas, och tar bort de som
+inte längre behövs.
+
+### Metod och referenser
+
+Området heter *second-order design* (SOD) i den geodetiska litteraturen och
+handlar om att välja mätningskonfiguration till en GIVEN punktgeometri.
+NätSim använder **greedy iterative optimization**, den etablerade numeriska
+ansatsen i produktionsprogram:
+
+- Cross, P. A. (1994) *Advanced Least Squares Applied to Position-Fixing*,
+  University of East London, Working Paper No. 6.
+- Kuang, S. (1996) *Geodetic Network Analysis and Optimal Design: Concepts and
+  Applications*, Ann Arbor Press.
+
+Analytiska SOD-lösningar (vikttilldelning via pseudoinvers) ger negativa vikter
+som saknar fysikalisk tolkning – en observation kan inte utföras "minus en
+gång". Den giriga sökningen ger alltid en utförbar mätplan, är reproducerbar
+och kan motiveras rad för rad i beslutsloggen. Det är den egenskapen som gör
+metoden användbar i planeringsrapporter enligt SIS-TS 21143:2016 §6.2.5 och vid
+granskning enligt TDOK 2014:0571.
+
+### Acceptanskriterier
+
+Kriterierna ställs inte in i dialogen – de FÖLJER av projektets mätklass och
+visas där som läsvärden:
+
+| Storhet | Krav | Källa |
+|---|---|---|
+| Minsta r-tal per observation | r ≥ 0,30 | NätSims gräns för svag kontrollerbarhet (HMK Stommätning 2024) |
+| Största punktosäkerhet σ_pos (1σ) | G1 2 mm · G2 3 mm · G3 5 mm · G4 8 mm | SIS-TS 21143:2016 Tabell A.9, spridning längd |
+| Kontrollerbarhet k = f/n | k ≥ 0,50 | SIS-TS 21143:2016 §6.2.2 |
+| MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | SIS-TS 21143:2016 §6.2.2 |
+
+Saknar projektet mätklass används G2:s krav, och dialogen säger att kravnivån
+är antagen.
+
+MUF och YT **redovisas** men spärrar inte optimeringen som default. Skälet är
+matematiskt: i simuleringen är MUF_i = κ·σ_i/√r_i och YT_i = (1−r_i)·MUF_i med
+κ = 2,80, så kraven MUF ≤ 4σ och YT ≤ 2σ är ekvivalenta med r_i ≥ 0,49
+respektive r_i ≥ 0,46 för VARJE observation. Eftersom medelvärdet av r_i per
+definition är k = f/n vore det kravet ouppnåeligt i praktiken. Gränserna kan
+slås på via `criteria.enforceMufYt` i `src/core/optimizer-criteria.js`.
+
+### Algoritmen
+
+**Fas 1 – additiv.** Håller kriterierna inte, byggs en pool av alla möjliga
+mätningar mellan befintliga punkter: från varje uppställningspunkt till varje
+annan punkt som inte redan mäts. Varje kandidat simuleras, och den som ger högst
+poäng läggs till permanent. Sedan räknas allt om. Taket är 50 tillägg.
+
+**Fas 2 – subtraktiv.** När kriterierna håller prövas varje aktiv mätning genom
+att simulera att den tas bort. Mätningarna sorteras efter minst bidrag, och den
+som bidrar minst tas bort – men bara om alla kriterier fortfarande håller efter
+borttagningen. Annars prövas nästa. När ingen mätning längre kan tas bort är
+det optimerade nätet hittat. Faserna delar ett tak på 200 iterationer.
+
+Poängformeln är densamma i båda faserna:
+
+```
+poäng = w_σ · Δσ_pos/σ_max  +  w_r · Δr_min/r_min
+```
+
+Båda leden relativiseras mot kravnivån så att millimeter och dimensionslösa
+r-tal blir jämförbara – annars skulle 50/50 betyda olika saker i ett
+millimeternät och ett centimeternät. I Fas 2 kastas argumenten om, så att
+poängen blir mätningens *bidrag*: hur mycket sämre nätet blir utan den.
+Vikterna ställs med reglaget i dialogen (default 50/50) och sparas i
+projektfilen som `optimizerConfig`. Projektfiler utan sektionen laddas med
+50/50.
+
+Varje beräkning går genom `computeSimulation()` – exakt samma kärna som den
+vanliga simuleringen, ingen förenklad modell.
+
+### Maxavstånd och hinder
+
+Maxavståndet från fliken NÄT/INSTRUMENT (`maxSuggestDist`) är en **hård
+gräns**: en mätning längre än så föreslås aldrig, även om den skulle förbättra
+nätet. Gränsen finns för att utesluta fysikaliskt omöjliga sikten, exempelvis
+genom en tunnelvägg. Siktlinjer som skärs av ett hinder utesluts på samma sätt.
+Kan kriterierna inte nås inom gränserna avbryts optimeringen med ett
+felmeddelande som säger vilka krav som brister och föreslår åtgärder – till
+exempel att höja maxavståndet eller lägga till fler anslutningspunkter. Nätet
+lämnas då orört.
+
+### Resultatet: tre utgångar
+
+Dialogen visar en beslutsspårningslogg med varje operation i ordning:
+
+```
+Iteration 1 (Fas 2): Tog bort mätning S2→FP2. Bidrog minst till nätet:
+σ_pos-effekt +0.14 mm, r-tal-effekt -0.022. Alla kriterier hålls fortfarande.
+```
+
+- **Tillämpa** – ändrar nätet direkt. Går bara att ta tillbaka med ↩ Ångra.
+- **Behåll som förslag** – lägger det optimerade nätet i ett eget visningslager.
+  Fliken MÄTNINGAR får då en växlare mellan *Original* och *Optimerat förslag*
+  med en jämförelsetabell (minsta r-tal, största σ_pos, k, MUF, YT). I kartan
+  ritas tillagda mätningar lila och borttagna som blek röd streckad linje, och
+  felellipserna hör till den vy som visas. Nätet i projektet är orört tills du
+  trycker *Tillämpa förslag*.
+- **Avbryt** – stänger utan att ändra något.
+
+Förslaget lever bara i sessionen och sparas inte i projektfilen: ett förslag är
+inte ett projekttillstånd.
+
+### Prestanda
+
+Optimeringen räknar om Q_xx efter varje operation, vilket är O(u³) per
+inversion. Nät under 30 punkter körs direkt i webbläsaren (typiskt långt under
+en sekund). Från 30 punkter flyttas körningen till en Web Worker
+(`src/core/optimizer.worker.js`) så att UI:t inte fryser; misslyckas workern
+körs samma generator på huvudtråden i tidsskivor. Progress visas i dialogen i
+båda fallen.
+
 ## Visuellt lager
 
 Punkter och linjer som ritas för hand enbart för dokumentation — vägkanter,
