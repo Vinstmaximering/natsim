@@ -11,7 +11,7 @@ import { draw } from '../map/leaflet-setup.js';
 import { openMM, delM } from './modals.js';
 import { showValidationDialog } from './validation.js';
 import { renderObstaclePanel, initObstaclePanel } from './obstacle-panel.js';
-import { hasLineOfSight } from '../core/visibility.js';
+import { hasLineOfSight, findBlockedMeasurements } from '../core/visibility.js';
 import { renderClassInfo } from './sis-ts-info.js';
 
 // Returnerar true för typ "station" och för känd punkt med isStation: true.
@@ -78,6 +78,32 @@ export function renderSuggestSummary() {
     </div>`;
   }
   return html;
+}
+
+// Knappen "Ta bort blockerade mätningar" i mätningspanelen.
+// Inaktiverad med förklarande text när det inte finns något att rensa, så att
+// användaren ser skillnad på "inga hinder utplacerade" och "allt har fri sikt".
+export function renderClearBlockedButton() {
+  const { meas = [], pts = [], obstacles = [] } = getState();
+  const n = findBlockedMeasurements(meas, pts, obstacles).length;
+
+  if (n > 0) {
+    return `<button onclick="window._clearBlockedMeas()"
+      style="width:100%;padding:7px;font-size:12px;background:#ff505018;border:1px solid #ff505066;color:#ff7070;border-radius:3px;cursor:pointer;margin-bottom:8px;">
+      ⛔ Ta bort ${n} ${n === 1 ? 'blockerad mätning' : 'blockerade mätningar'}
+    </button>`;
+  }
+
+  const why = obstacles.length === 0
+    ? "Inga hinder utplacerade – rita väggar i fliken HINDER."
+    : meas.length === 0
+      ? "Inga mätningar att kontrollera."
+      : "Alla mätningar har fri sikt.";
+  return `<button disabled title="${why}"
+      style="width:100%;padding:7px;font-size:12px;background:transparent;border:1px solid var(--border-default);color:#4a6070;border-radius:3px;cursor:not-allowed;margin-bottom:3px;">
+      ⛔ Ta bort blockerade mätningar
+    </button>
+    <div class="val-muted" style="font-size:11px;margin-bottom:8px;">${why}</div>`;
 }
 
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
@@ -237,6 +263,7 @@ export function renderTab() {
     tc.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <div class="sl" style="margin:0">MÄTNINGAR (${meas.length})</div>
     </div>
+    ${renderClearBlockedButton()}
     ${meas.length === 0 ? '<div style="color:#7090a8;font-size:12px;text-align:center;padding:20px 0;">Inga mätningar ännu.<br><br>Välj 📏 och klicka på två punkter.</div>' : ""}
     ${meas.map(m => {
       const md = calcM(m, pts); if (!md) return "";
@@ -695,6 +722,24 @@ export function initRightPanel() {
     setState({ maxSuggestDist: null });
     renderTab();
     refreshSuggestions();
+  };
+  window._clearBlockedMeas = () => {
+    const { meas, pts, obstacles = [], selMId } = getState();
+    const blocked = findBlockedMeasurements(meas, pts, obstacles);
+    if (!blocked.length) return;
+    const n = blocked.length;
+    if (!confirm(`Ta bort ${n} blockerad${n === 1 ? ' mätning' : 'e mätningar'}?`)) return;
+
+    const ids = new Set(blocked.map(b => b.meas.id));
+    saveUndo(`Ta bort ${n} blockerade mätningar`);
+    setState({
+      meas:    meas.filter(m => !ids.has(m.id)),
+      selMId:  ids.has(selMId) ? null : selMId,
+      simResult: null,
+    });
+    import('./toast.js').then(m => m.showToast(`⛔ ${n} blockerade mätningar borttagna`, '#ff7070'));
+    draw();
+    renderTab();
   };
   window._importAllSugg   = () => {
     const { suggestedMeas, meas, defaultInstr, nMid } = getState();

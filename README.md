@@ -55,13 +55,28 @@ betongvägg, planerad struktur och så vidare). Öppna dialogen med **✎** på 
 i fliken **HINDER**; där sätts även hindrets namn.
 
 Dialogen har sex förval — Standard, Bergvägg, Betongvägg, Byggnad, Planerad
-struktur, Övrigt — samt ett fritt hex-fält (`#abc`, `#aabbcc`, med eller utan
-brädgård). **✕** eller tomt fält återställer till standardfärgen.
+struktur, Övrigt. **✕** återställer till standardfärgen.
 
 Färgen sparas per hinder-objekt (`obstacles[].color`) i projektfilen och slår
 igenom både i kartan och i nätbilden i rapporterna. Hinder utan färg — inklusive
 alla i projektfiler skapade före funktionen — ritas med den tidigare
 standardfärgen.
+
+### Rensa blockerade mätningar
+
+Fliken **MÄTNINGAR** har en knapp som tar bort alla mätningar vars siktlinje
+skärs av ett hinder. Knappen visar antalet innan bekräftelse — "Ta bort 14
+blockerade mätningar" — och kräver ett OK i dialogen. Borttagningen läggs på
+ångra-stacken.
+
+Finns inget att rensa är knappen inaktiverad med en förklaring till varför:
+inga hinder utplacerade, inga mätningar att kontrollera, eller att allt har
+fri sikt.
+
+Underlaget kommer från `findBlockedMeasurements()` i `src/core/visibility.js`,
+som också används av kvalitetspanelens sikt-räknare och nätvalideringen — de tre
+kan därmed inte räkna olika. Mätningar vars punkter saknas hoppas över och
+rensas alltså inte bort som blockerade.
 
 ## Struktur
 

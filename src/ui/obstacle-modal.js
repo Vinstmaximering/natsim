@@ -7,8 +7,8 @@ import { updateObstacle, removeObstacle,
 import { saveUndo }                     from '../state/undo.js';
 import { draw }                         from '../map/leaflet-setup.js';
 
-// Färgen som redigeras just nu. Hålls utanför DOM:en så att paletten och
-// hex-fältet kan hållas synkade utan att bygga om hela dialogen.
+// Färgen som redigeras just nu. Hålls utanför DOM:en så att palettmarkeringen
+// kan ritas om utan att bygga om hela dialogen (namnfältet skulle tappa fokus).
 let _editColor = null;
 let _editId    = null;
 
@@ -16,7 +16,7 @@ const esc = v => String(v ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').
 
 function mi() { return document.getElementById('mi'); }
 
-// Förhandsvisning + palett ritas om separat vid varje färgval.
+// Paletten ritas om separat vid varje färgval.
 function renderColorSection() {
   const cur = _editColor;
   const swatches = OBSTACLE_COLORS.map(c => {
@@ -33,15 +33,6 @@ function renderColorSection() {
         style="width:30px;height:30px;padding:0;font-size:11px;border-radius:4px;cursor:pointer;
                background:transparent;color:#7090a8;
                border:2px solid ${cur === null ? '#e8f4fd' : '#1e3850'};">✕</button>
-    </div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <input id="obs-color-hex" type="text" maxlength="7" placeholder="Standard"
-        value="${cur == null ? '' : cur}"
-        oninput="window._setObsColorHex(this.value)"
-        style="flex:1;margin-bottom:0;font-family:monospace;">
-      <span style="width:26px;height:26px;border-radius:3px;flex:none;
-                   background:${cur || 'rgba(80,80,80,0.35)'};
-                   border:1px solid ${cur ? '#00000055' : '#1e3850'};"></span>
     </div>`;
 }
 
@@ -71,7 +62,7 @@ export function openEditObstacle(id) {
     </div>
     <div style="margin-bottom:8px;">
       <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">
-        Färg — tomt fält eller ✕ ger standardfärg
+        Färg — ✕ ger standardfärg
       </div>
       <div id="obs-color-section">${renderColorSection()}</div>
     </div>
@@ -89,26 +80,6 @@ export function initObstacleModal(onChanged) {
   window._setObsColor = hex => {
     _editColor = normalizeObstacleColor(hex);
     refreshColorSection();
-  };
-
-  // Hex-fältet skriver direkt till _editColor men bygger INTE om sektionen –
-  // fältet ligger i den och skulle tappa fokus mitt i skrivandet. Endast
-  // förhandsvisningen och palettmarkeringen behöver följa med.
-  window._setObsColorHex = val => {
-    _editColor = normalizeObstacleColor(val);
-    const sec = document.getElementById('obs-color-section');
-    if (!sec) return;
-    sec.querySelectorAll('button').forEach(b => {
-      const m = /_setObsColor\('([^']*)'\)/.exec(b.getAttribute('onclick') || '');
-      const hex = m ? normalizeObstacleColor(m[1]) : null;
-      b.style.borderColor = hex === _editColor ? '#e8f4fd'
-        : (hex === null ? '#1e3850' : 'transparent');
-    });
-    const prev = sec.querySelector('span');
-    if (prev) {
-      prev.style.background  = _editColor || 'rgba(80,80,80,0.35)';
-      prev.style.borderColor = _editColor ? '#00000055' : '#1e3850';
-    }
   };
 
   window._saveObsEdit = () => {

@@ -181,3 +181,31 @@ export function hasLineOfSight(from, to, obstacles) {
 
   return { visible: true };
 }
+
+/**
+ * Hittar alla mätningar vars siktlinje skärs av ett hinder.
+ *
+ * Ren funktion utan store-beroende. Samma genomgång gjordes tidigare på tre
+ * ställen (kvalitetspanelen, validate­ringen och nu rensa-knappen) – samlad här
+ * så att de alltid räknar likadant.
+ *
+ * Mätningar vars from/to saknas bland punkterna hoppas över: de är trasiga på
+ * ett annat sätt och ska inte rensas bort som blockerade.
+ *
+ * @param {Array<{id:string,from:string,to:string}>} meas
+ * @param {Array<{id:string,E:number,N:number}>} pts
+ * @param {Array<{id:string,type:string,points:Array}>} obstacles
+ * @returns {Array<{meas:object, blockedBy:string|undefined}>}
+ */
+export function findBlockedMeasurements(meas = [], pts = [], obstacles = []) {
+  if (!obstacles.length || !meas.length) return [];
+  const byId = new Map(pts.map(p => [p.id, p]));
+  const out  = [];
+  for (const m of meas) {
+    const p1 = byId.get(m.from), p2 = byId.get(m.to);
+    if (!p1 || !p2) continue;
+    const los = hasLineOfSight(p1, p2, obstacles);
+    if (!los.visible) out.push({ meas: m, blockedBy: los.blockedBy });
+  }
+  return out;
+}

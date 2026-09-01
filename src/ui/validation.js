@@ -1,7 +1,7 @@
 // D7: Validera nät – rad 824–866 exakt
 import { getState } from '../state/store.js';
 import { MATKLASSER, klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR } from '../core/constants.js';
-import { hasLineOfSight } from '../core/visibility.js';
+import { findBlockedMeasurements } from '../core/visibility.js';
 
 export function validateNetwork() {
   const { simResult, pts, meas = [], activeMatklass, obstacles = [] } = getState();
@@ -31,17 +31,8 @@ export function validateNetwork() {
 
   // Siktlinje-kontroll mot hinder (körs bara om hinder finns)
   if (obstacles.length > 0) {
-    const blockedMeas = [];
-    for (const m of meas) {
-      const p1 = pts.find(p => p.id === m.from);
-      const p2 = pts.find(p => p.id === m.to);
-      if (p1 && p2) {
-        const los = hasLineOfSight(p1, p2, obstacles);
-        if (!los.visible) {
-          blockedMeas.push(`${m.from}→${m.to} (${los.blockedBy || 'hinder'})`);
-        }
-      }
-    }
+    const blockedMeas = findBlockedMeasurements(meas, pts, obstacles)
+      .map(b => `${b.meas.from}→${b.meas.to} (${b.blockedBy || 'hinder'})`);
     if (blockedMeas.length > 0) {
       issues.push(`${blockedMeas.length} mätning(ar) saknar siktlinje: ` +
         blockedMeas.slice(0, 3).join(', ') +

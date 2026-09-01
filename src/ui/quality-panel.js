@@ -2,7 +2,7 @@
 // Bevaras exakt per krav
 import { getState } from '../state/store.js';
 import { setAutoSim } from '../state/undo.js';
-import { hasLineOfSight } from '../core/visibility.js';
+import { findBlockedMeasurements } from '../core/visibility.js';
 import { klassificeraKtal } from '../core/constants.js';
 
 export { setAutoSim };
@@ -56,12 +56,7 @@ export function updateQualityPanel() {
     if (obstacles.length === 0) {
       sightEl.textContent = "–";
     } else {
-      let blocked = 0;
-      for (const m of meas) {
-        const p1 = ptList.find(p => p.id === m.from);
-        const p2 = ptList.find(p => p.id === m.to);
-        if (p1 && p2 && !hasLineOfSight(p1, p2, obstacles).visible) blocked++;
-      }
+      const blocked = findBlockedMeasurements(meas, ptList, obstacles).length;
       sightEl.innerHTML =
         `<span class="${blocked > 0 ? 'val-danger' : 'val-good'}">${blocked}</span>`;
     }

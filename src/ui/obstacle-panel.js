@@ -50,8 +50,7 @@ export function renderObstaclePanel() {
           </div>`).join('')
     }
     <div style="margin-top:10px;font-size:10px;color:#40607880;line-height:1.6;">
-      Obs: hinder påverkar inte simuleringen förrän Fas 3.<br>
-      Hinder sparas ej i projekt förrän Fas 5.
+      Hinder bryter siktlinjer i mätförslag och validering, och sparas i projektfilen.
     </div>`;
 }
 
