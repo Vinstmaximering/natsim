@@ -33,17 +33,17 @@ Alla formler är numeriskt verifierade mot NumPy-referens, se `tests/calc.test.j
 ### Maxavstånd för föreslagna mätningar
 
 Funktionen "Analysera och föreslå mätningar" genererar bara förslag mellan
-punkter som ligger inom ett valbart maxavstånd. Standard är **500 m**; övriga
-val är 100, 250, 1000, 2000 m samt *Obegränsat*. Långa par filtreras bort helt
-och räknas alltså varken som förslag eller som blockerade av hinder.
+punkter som ligger inom ett maxavstånd som skrivs in fritt i meter. Standard är
+**500 m**. Tomt fält – eller ∞-knappen – betyder obegränsat. Långa par filtreras
+bort helt och räknas alltså varken som förslag eller som blockerade av hinder.
 
 Kontrollen finns på två ställen och styr samma inställning (`maxSuggestDist`):
 
 - fliken **NÄT** → *Föreslå mätningar*
 - fliken **INSTRUMENT** → *Maxavstånd föreslagna mätningar*
 
-Ändras tröskeln räknas förslagen om direkt, förutsatt att förslag redan är
-framtagna eller att lagret "Föreslagna mätningar" är påslaget.
+Förslagen räknas om direkt när värdet ändras, i båda riktningarna: en höjning
+lägger till förslag, en sänkning tar bort de som hamnar utanför tröskeln.
 
 Inställningen sparas i projektfilen. Projektfiler skapade före funktionen
 saknar fältet och laddas med 500 m.

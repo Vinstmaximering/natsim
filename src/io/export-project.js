@@ -174,7 +174,7 @@ export function loadProject(text) {
   const msd = getState().maxSuggestDist;
   ["max-sugg-dist", "max-sugg-dist-net"].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = msd == null ? "" : String(msd);
+    if (el) el.value = msd == null ? "" : String(msd);   // tomt fält = obegränsat
   });
 
   // Uppdatera karta

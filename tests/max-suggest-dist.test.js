@@ -8,7 +8,6 @@ import {
   suggestMeasurements,
   normalizeMaxSuggestDist,
   withinSuggestRange,
-  MAX_SUGGEST_DIST_OPTIONS,
 } from '../src/ui/right-panel.js';
 import { getState, setState } from '../src/state/store.js';
 import { _buildSnapshot, _applySnapshot } from '../src/io/export-project.js';
@@ -36,12 +35,24 @@ describe('normalizeMaxSuggestDist', () => {
     expect(normalizeMaxSuggestDist(2000)).toBe(2000);
   });
 
-  it('tolkar strängar från <select>', () => {
+  it('tolkar fritt inmatade strängar', () => {
     expect(normalizeMaxSuggestDist('1000')).toBe(1000);
+    expect(normalizeMaxSuggestDist('750')).toBe(750);
+    expect(normalizeMaxSuggestDist(' 1234 ')).toBe(1234);
+  });
+
+  it('accepterar godtyckliga värden, inte bara fasta steg', () => {
+    expect(normalizeMaxSuggestDist(137)).toBe(137);
+    expect(normalizeMaxSuggestDist('42.5')).toBe(42.5);
+  });
+
+  it('accepterar decimalkomma', () => {
+    expect(normalizeMaxSuggestDist('42,5')).toBe(42.5);
   });
 
   it('ger null (obegränsat) för tomt, null, noll och skräp', () => {
     expect(normalizeMaxSuggestDist('')).toBeNull();
+    expect(normalizeMaxSuggestDist('   ')).toBeNull();
     expect(normalizeMaxSuggestDist(null)).toBeNull();
     expect(normalizeMaxSuggestDist(undefined)).toBeNull();
     expect(normalizeMaxSuggestDist(0)).toBeNull();
@@ -141,6 +152,35 @@ describe('suggestMeasurements – maxavstånd', () => {
     expect(getState().suggestedMeas.map(s => s.to)).toEqual(['FP1']);
   });
 
+  // Regression: omräkningen var tidigare villkorad av att förslag redan fanns
+  // i state, vilket gjorde tröskeln enkelriktad – en sänkning som tömde listan
+  // låste läget så att en höjning inte gav tillbaka något.
+  it('höjd tröskel efter en sänkning som tömde listan ger tillbaka förslagen', () => {
+    setState({ pts: NET, maxSuggestDist: null });
+    suggestMeasurements();
+    const nAll = getState().suggestedMeas.length;
+    expect(nAll).toBeGreaterThan(0);
+
+    setState({ maxSuggestDist: 1 });        // tömmer listan helt
+    suggestMeasurements();
+    expect(getState().suggestedMeas).toHaveLength(0);
+
+    setState({ maxSuggestDist: null });     // tillbaka till obegränsat
+    suggestMeasurements();
+    expect(getState().suggestedMeas).toHaveLength(nAll);
+  });
+
+  it('sänkning och höjning är symmetriska över flera steg', () => {
+    setState({ pts: NET });
+    const count = d => { setState({ maxSuggestDist: d }); suggestMeasurements(); return getState().suggestedMeas.length; };
+    const seq = [null, 2000, 1000, 500, 250, 100];
+    const down = seq.map(count);
+    const up   = seq.slice().reverse().map(count).reverse();
+    expect(up).toEqual(down);
+    // Monotont fallande när tröskeln sänks
+    expect(down).toEqual([...down].sort((a, b) => b - a));
+  });
+
   it('saknat fält i state behandlas som obegränsat, inte som noll', () => {
     setState({ pts: NET, maxSuggestDist: undefined });
     suggestMeasurements();
@@ -190,11 +230,5 @@ describe('maxSuggestDist – serialisering', () => {
   it('ogiltigt värde i filen saneras till obegränsat', () => {
     _applySnapshot({ ver: 3, pts: [], meas: [], obstacles: [], maxSuggestDist: -5 });
     expect(getState().maxSuggestDist).toBeNull();
-  });
-});
-
-describe('MAX_SUGGEST_DIST_OPTIONS', () => {
-  it('innehåller de efterfrågade stegen samt obegränsat', () => {
-    expect(MAX_SUGGEST_DIST_OPTIONS.map(o => o.v)).toEqual([100, 250, 500, 1000, 2000, null]);
   });
 });

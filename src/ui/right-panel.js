@@ -21,21 +21,14 @@ export function isStationPoint(p) {
 }
 
 // ── Maxavstånd för mätförslag ─────────────────────────────────────────────
-// Valbara trösklar i UI:t. null = obegränsat (beteendet före Etapp A).
-export const MAX_SUGGEST_DIST_OPTIONS = [
-  { v: 100,  l: "100 m"  },
-  { v: 250,  l: "250 m"  },
-  { v: 500,  l: "500 m"  },
-  { v: 1000, l: "1000 m" },
-  { v: 2000, l: "2000 m" },
-  { v: null, l: "Obegränsat" },
-];
+// Fritt inmatat värde i meter. Tomt fält = null = obegränsat.
 
 // Normaliserar ett godtyckligt värde till ett giltigt maxSuggestDist.
 // null / 0 / negativt / ogiltigt tal → null (obegränsat).
+// Accepterar decimalkomma eftersom fältet är fritt inmatat.
 export function normalizeMaxSuggestDist(v) {
-  if (v === null || v === undefined || v === "") return null;
-  const n = typeof v === "number" ? v : parseFloat(v);
+  if (v === null || v === undefined) return null;
+  const n = typeof v === "number" ? v : parseFloat(String(v).replace(",", ".").trim());
   if (!Number.isFinite(n) || n <= 0) return null;
   return n;
 }
@@ -46,18 +39,45 @@ export function withinSuggestRange(a, b, maxD) {
   return d2EN(a, b) <= maxD;
 }
 
-// Bygger <select> för maxavstånd. Används på två ställen (NÄT + INSTRUMENT),
-// därför en delad renderare i stället för duplicerad markup.
-export function renderMaxSuggestDistSelect(id, maxD) {
+// Bygger inmatningsfältet för maxavstånd. Används på två ställen
+// (NÄT + INSTRUMENT), därför en delad renderare i stället för duplicerad markup.
+// Tomt fält = obegränsat; ∞-knappen tömmer fältet.
+export function renderMaxSuggestDistInput(id, maxD) {
   const cur = normalizeMaxSuggestDist(maxD);
-  const opts = MAX_SUGGEST_DIST_OPTIONS.map(o => {
-    const val = o.v === null ? "" : String(o.v);
-    const sel = (o.v === null ? cur === null : cur === o.v) ? " selected" : "";
-    return `<option value="${val}"${sel}>${o.l}</option>`;
-  }).join("");
-  return `<select id="${id}" onchange="window._setMaxSuggestDist(this.value)"
-    title="Mätförslag längre än detta avstånd visas inte"
-    style="flex:1;padding:5px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">${opts}</select>`;
+  return `<input id="${id}" type="number" min="1" step="10" inputmode="decimal"
+      value="${cur == null ? "" : cur}" placeholder="Obegränsat"
+      oninput="window._setMaxSuggestDist(this.value)"
+      title="Mätförslag längre än detta avstånd genereras inte. Tomt fält = obegränsat."
+      style="flex:1;min-width:0;padding:5px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
+    <span class="val-muted" style="font-size:12px;">m</span>
+    <button onclick="window._setMaxSuggestDistUnlimited()" title="Obegränsat"
+      style="padding:4px 7px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:${cur == null ? "var(--text-value)" : "var(--text-muted, #7090a8)"};border-radius:3px;cursor:pointer;">∞</button>`;
+}
+
+// Sammanfattningen under Analysera-knappen: antal förslag + antal blockerade.
+// Egen renderare så att tröskeländringar kan uppdatera just den biten utan att
+// bygga om hela panelen – annars tappar inmatningsfältet fokus mitt i skrivandet.
+export function renderSuggestSummary() {
+  const sg = getState().suggestedMeas || [];
+  const bl = getState().blockedSuggestions || [];
+  let html = "";
+  if (sg.length) {
+    html += `<button onclick="window._importAllSugg()"
+      style="width:100%;padding:6px;font-size:12px;background:#00ff8818;border:1px solid #00ff8866;color:#00ff88;border-radius:3px;cursor:pointer;margin-bottom:4px;">
+      ✓ Importera alla ${sg.length} förslag som mätningar
+    </button>`;
+  }
+  if (bl.length) {
+    const on = document.getElementById('tgb')?.checked ?? false;
+    html += `<div style="font-size:11px;color:#ff7070;padding:4px 6px;background:#1e0808;border-radius:3px;margin-bottom:6px;">
+      ⛔ ${bl.length} förslag blockerade av hinder
+      <span style="cursor:pointer;color:#4fc3f7;text-decoration:underline;margin-left:4px;"
+            onclick="window._toggleBlockedSugg()">
+        ${on ? 'dölj' : 'visa'}
+      </span>
+    </div>`;
+  }
+  return html;
 }
 
 // ── Bugg 1-fix: suggestMeasurements – rad 1116–1151 exakt ──────────────────
@@ -200,31 +220,12 @@ export function renderTab() {
     </div>
     ${renderClassInfo(getState().activeMatklass)}
     <div class="sl">FÖRESLÅ MÄTNINGAR</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
       <span class="val-secondary" style="font-size:11px;white-space:nowrap;">Max avstånd</span>
-      ${renderMaxSuggestDistSelect("max-sugg-dist-net", getState().maxSuggestDist)}
+      ${renderMaxSuggestDistInput("max-sugg-dist-net", getState().maxSuggestDist)}
     </div>
     <button onclick="window._suggestMeas()" style="width:100%;padding:7px;font-size:12px;background:#ffdc3218;border:1px solid #ffdc3266;color:#ffdc32;border-radius:3px;cursor:pointer;margin-bottom:4px;">⚡ Analysera och föreslå mätningar</button>
-    ${(() => {
-      const sg = getState().suggestedMeas || [];
-      if (!sg.length) return '';
-      return `<button onclick="window._importAllSugg()"
-        style="width:100%;padding:6px;font-size:12px;background:#00ff8818;border:1px solid #00ff8866;color:#00ff88;border-radius:3px;cursor:pointer;margin-bottom:4px;">
-        ✓ Importera alla ${sg.length} förslag som mätningar
-      </button>`;
-    })()}
-    ${(() => {
-      const bl = getState().blockedSuggestions || [];
-      if (!bl.length) return '';
-      const on = document.getElementById('tgb')?.checked ?? false;
-      return `<div style="font-size:11px;color:#ff7070;padding:4px 6px;background:#1e0808;border-radius:3px;margin-bottom:6px;">
-        ⛔ ${bl.length} förslag blockerade av hinder
-        <span style="cursor:pointer;color:#4fc3f7;text-decoration:underline;margin-left:4px;"
-              onclick="window._toggleBlockedSugg()">
-          ${on ? 'dölj' : 'visa'}
-        </span>
-      </div>`;
-    })()}
+    <div id="sugg-summary">${renderSuggestSummary()}</div>
     <div class="sl">VALIDERING</div>
     <button onclick="window._showValidationDialog()" style="width:100%;padding:7px;font-size:12px;background:#4fc3f718;border:1px solid #4fc3f766;color:#4fc3f7;border-radius:3px;cursor:pointer;">🔍 Validera nät</button>`;
     return;
@@ -527,12 +528,12 @@ export function renderTab() {
         <span class="val-muted" style="font-size:12px;">mm (globalt)</span>
       </div>
       <div class="sl">MAXAVSTÅND FÖRESLAGNA MÄTNINGAR</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-        ${renderMaxSuggestDistSelect("max-sugg-dist", getState().maxSuggestDist)}
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        ${renderMaxSuggestDistInput("max-sugg-dist", getState().maxSuggestDist)}
       </div>
       <div class="val-muted" style="font-size:11px;line-height:1.6;">
         Mätförslag längre än tröskeln genereras inte. Höj värdet för långsträckta
-        nät, sänk det för täta nät.
+        nät, sänk det för täta nät. Tomt fält = obegränsat.
       </div>`;
     updateGlobalInstrInfo();
     document.getElementById("center-err")?.addEventListener("change", e => {
@@ -643,6 +644,24 @@ export function applyMatklass(key) {
   renderTab();
 }
 
+// Räknar om förslagen och uppdaterar kartan + sammanfattningen. Bygger med
+// flit INTE om hela panelen: inmatningsfältet för maxavstånd ligger i samma
+// panel och skulle tappa fokus mitt i skrivandet.
+function refreshSuggestions() {
+  suggestMeasurements();
+  draw();
+  const el = document.getElementById("sugg-summary");
+  if (el) el.innerHTML = renderSuggestSummary();
+}
+
+// Fritt inmatat fält ger ett input-event per tecken. Debounce så att "1000"
+// inte räknar om vid 1, 10 och 100 m på vägen.
+let _suggestRefreshTimer = null;
+function scheduleSuggestRefresh() {
+  clearTimeout(_suggestRefreshTimer);
+  _suggestRefreshTimer = setTimeout(refreshSuggestions, 250);
+}
+
 export function initRightPanel() {
   buildTabs();
   renderTab();
@@ -663,17 +682,19 @@ export function initRightPanel() {
     setState({ simResult: null }); draw();
   };
   window._suggestMeas      = () => { suggestMeasurements(); draw(); renderTab(); };
-  // Ändrad tröskel räknar om förslagen direkt – men bara om förslag redan är
-  // framtagna eller visas, annars skulle en inställning tyst starta analysen.
+  // Ändrad tröskel räknar ALLTID om förslagen. Tidigare hoppades omräkningen
+  // över när inga förslag fanns i state, vilket gjorde ändringen enkelriktad:
+  // en sänkning som tömde listan låste läget så att en höjning inte gav
+  // tillbaka något. Omräkningen är billig och idempotent – ingen anledning
+  // att villkora den.
   window._setMaxSuggestDist = val => {
     setState({ maxSuggestDist: normalizeMaxSuggestDist(val) });
-    const st = getState();
-    const shown = document.getElementById("tgs")?.checked ?? false;
-    if (shown || st.suggestedMeas?.length || st.blockedSuggestions?.length) {
-      suggestMeasurements();
-    }
-    draw();
+    scheduleSuggestRefresh();
+  };
+  window._setMaxSuggestDistUnlimited = () => {
+    setState({ maxSuggestDist: null });
     renderTab();
+    refreshSuggestions();
   };
   window._importAllSugg   = () => {
     const { suggestedMeas, meas, defaultInstr, nMid } = getState();
