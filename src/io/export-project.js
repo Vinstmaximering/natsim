@@ -5,11 +5,12 @@
 // Nya fält läggs till utan versionshöjning så länge de har en default vid
 // laddning – filer utan fältet ska ge samma resultat som före tillägget:
 //   maxSuggestDist (Etapp A): saknas → 500 m
+//   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
-import { _syncObstacleCounter } from '../state/obstacles.js';
+import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
 
 // ── Serialisera state till spara-objekt ──────────────────────────────────────
 // Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
@@ -66,7 +67,8 @@ export function _applySnapshot(s) {
   const meas = s.meas || [];
 
   // Fas 5: ver:3 → läs obstacles; ver:1/2 → bakåtkompatibel tom array
-  const obstacles = s.ver >= 3 ? (s.obstacles || []) : [];
+  // Etapp B: obs.color saneras – ogiltig eller saknad färg ⇒ standardfärg.
+  const obstacles = _sanitizeObstacleColors(s.ver >= 3 ? (s.obstacles || []) : []);
 
   // Synka ID-räknare i obstacles.js för att undvika kollision vid nästa addObstacle
   _syncObstacleCounter(obstacles);

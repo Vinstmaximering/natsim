@@ -4,6 +4,7 @@ import { getState, setState } from '../state/store.js';
 import { removeObstacle, clearObstacleSelection } from '../state/obstacles.js';
 import { draw }               from '../map/leaflet-setup.js';
 import { setTool }            from './toolbar.js';
+import { initObstacleModal } from './obstacle-modal.js';
 
 export function renderObstaclePanel() {
   const tc = document.getElementById('tc');
@@ -30,12 +31,18 @@ export function renderObstaclePanel() {
                style="${obs.id === selObsId ? 'border-color:#ff9900;' : ''}cursor:pointer;"
                onclick="window._selObs('${obs.id}')">
             <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="color:#e8f4fd;font-size:13px;">
+              <span style="color:#e8f4fd;font-size:13px;display:flex;align-items:center;gap:4px;min-width:0;">
+                <span style="width:11px;height:11px;border-radius:2px;flex:none;
+                             background:${obs.color || 'rgba(80,80,80,0.5)'};
+                             border:1px solid ${obs.color ? '#00000055' : '#40607880'};"></span>
                 ${obs.type === 'polygon' ? '🏢' : '━'}
-                <span style="margin-left:4px;">${obs.label || obs.id}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${obs.label || obs.id}</span>
               </span>
-              <div style="display:flex;align-items:center;gap:4px;">
+              <div style="display:flex;align-items:center;gap:4px;flex:none;">
                 <span style="font-size:10px;color:#6080a0;">${obs.points.length} pt</span>
+                <button onclick="event.stopPropagation();window._openEditObs('${obs.id}')"
+                  title="Redigera namn och färg"
+                  style="padding:2px 6px;font-size:11px;background:transparent;border:1px solid #1e3850;color:#4fc3f7;border-radius:2px;cursor:pointer;">✎</button>
                 <button onclick="event.stopPropagation();window._delObs('${obs.id}')"
                   style="padding:2px 6px;font-size:11px;background:transparent;border:1px solid #3a1010;color:#ff5050;border-radius:2px;cursor:pointer;">🗑</button>
               </div>
@@ -49,6 +56,9 @@ export function renderObstaclePanel() {
 }
 
 export function initObstaclePanel() {
+  // Dialogen ritar om panellistan efter spara/ta bort så att namn och
+  // färgprick följer med direkt.
+  initObstacleModal(renderObstaclePanel);
   window._startObsPolygon = () => { setTool('obstacle-polygon'); };
   window._startObsLine    = () => { setTool('obstacle-line'); };
   window._obsFromOSM = () => {

@@ -1,6 +1,22 @@
 // Canvasrendering av hinder (polygoner och linjer).
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
 // Skalning av outline/handtag följer samma formel som drawPt i leaflet-setup.js.
+import { hexToRgba } from '../state/obstacles.js';
+
+// Etapp B: hinder utan obs.color ritas med exakt samma färger som tidigare.
+// Med färg satt används den för både kontur och (för polygoner) fyllning.
+const DEF_STROKE     = 'rgba(40,40,40,0.8)';
+const DEF_STROKE_SEL = 'rgba(255,140,0,0.9)';
+const DEF_FILL       = 'rgba(80,80,80,0.35)';
+const DEF_FILL_SEL   = 'rgba(255,140,0,0.18)';
+
+export function obstacleStroke(obs, isSel) {
+  return hexToRgba(obs?.color, isSel ? 1 : 0.85) || (isSel ? DEF_STROKE_SEL : DEF_STROKE);
+}
+
+export function obstacleFill(obs, isSel) {
+  return hexToRgba(obs?.color, isSel ? 0.3 : 0.25) || (isSel ? DEF_FILL_SEL : DEF_FILL);
+}
 
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -34,14 +50,14 @@ export function drawObstacles(ctx, obstacles, selObsId, helpers) {
 
     if (obs.type === 'polygon') {
       ctx.closePath();
-      ctx.fillStyle   = isSel ? 'rgba(255,140,0,0.18)' : 'rgba(80,80,80,0.35)';
+      ctx.fillStyle   = obstacleFill(obs, isSel);
       ctx.fill();
-      ctx.strokeStyle = isSel ? 'rgba(255,140,0,0.9)' : 'rgba(40,40,40,0.8)';
+      ctx.strokeStyle = obstacleStroke(obs, isSel);
       ctx.lineWidth   = isSel ? lineW + 0.8 : lineW;
       ctx.stroke();
     } else {
       // line-typ: bara stroke
-      ctx.strokeStyle = isSel ? 'rgba(255,140,0,0.9)' : 'rgba(40,40,40,0.8)';
+      ctx.strokeStyle = obstacleStroke(obs, isSel);
       ctx.lineWidth   = isSel ? lineW + 0.8 : lineW;
       ctx.stroke();
     }

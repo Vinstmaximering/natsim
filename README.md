@@ -48,6 +48,21 @@ lägger till förslag, en sänkning tar bort de som hamnar utanför tröskeln.
 Inställningen sparas i projektfilen. Projektfiler skapade före funktionen
 saknar fältet och laddas med 500 m.
 
+### Färg på väggar och byggnader
+
+Varje hinder kan ges en egen färg för att skilja strukturtyper åt (bergvägg,
+betongvägg, planerad struktur och så vidare). Öppna dialogen med **✎** på raden
+i fliken **HINDER**; där sätts även hindrets namn.
+
+Dialogen har sex förval — Standard, Bergvägg, Betongvägg, Byggnad, Planerad
+struktur, Övrigt — samt ett fritt hex-fält (`#abc`, `#aabbcc`, med eller utan
+brädgård). **✕** eller tomt fält återställer till standardfärgen.
+
+Färgen sparas per hinder-objekt (`obstacles[].color`) i projektfilen och slår
+igenom både i kartan och i nätbilden i rapporterna. Hinder utan färg — inklusive
+alla i projektfiler skapade före funktionen — ritas med den tidigare
+standardfärgen.
+
 ## Struktur
 
 Se `STRUCTURE.md` för modul-layout och designprinciper.

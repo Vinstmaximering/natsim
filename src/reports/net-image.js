@@ -12,6 +12,7 @@ import proj4 from 'proj4';
 import { getState } from '../state/store.js';
 import { PT, CRS_DEFS } from '../core/constants.js';
 import { rColor } from '../core/redundancy.js';
+import { hexToRgba } from '../state/obstacles.js';
 
 // Registrera SWEREF99-projektioner (idempotent – görs också av leaflet-setup.js vid start)
 Object.entries(CRS_DEFS).forEach(([, v]) => proj4.defs(v.epsg, v.proj));
@@ -203,12 +204,14 @@ export function generateNetImage(options = {}) {
   // ── 2. Hinder ─────────────────────────────────────────────────────────────
   if (opts.showObstacles && obstacles.length) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(180,60,60,0.7)';
-    ctx.fillStyle   = 'rgba(220,80,80,0.12)';
-    ctx.lineWidth   = 2;
+    ctx.lineWidth = 2;
     ctx.setLineDash([6, 3]);
     obstacles.forEach(obs => {
       if (!obs.points || obs.points.length < 2) return;
+      // Etapp B: hinder med egen färg ritas i den; övriga behåller rapportens
+      // röda standardfärg.
+      ctx.strokeStyle = hexToRgba(obs.color, 0.85) || 'rgba(180,60,60,0.7)';
+      ctx.fillStyle   = hexToRgba(obs.color, 0.18) || 'rgba(220,80,80,0.12)';
       ctx.beginPath();
       obs.points.forEach(([E, N], i) => {
         const s = sc(N, E);
