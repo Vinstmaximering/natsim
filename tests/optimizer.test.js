@@ -11,6 +11,7 @@ import {
 import {
   criteriaForClass, metricsFromSim, checkCriteria, describeCriteria, R_MIN_DEFAULT,
 } from '../src/core/optimizer-criteria.js';
+import { R_OBS_GOLV, R_OBS_GOD } from '../src/core/constants.js';
 import { runOptimization, shouldUseWorker } from '../src/core/optimizer-runner.js';
 import { computeSimulation } from '../src/core/simulation.js';
 import { getState, setState } from '../src/state/store.js';
@@ -20,6 +21,8 @@ import {
 import { renderOptimizeButton, renderProposalSection, renderTab } from '../src/ui/right-panel.js';
 import { _buildSnapshot, _applySnapshot, _normalizeOptimizerConfig } from '../src/io/export-project.js';
 import { openOptimizerDialog, closeOptimizerDialog, _getResult, _isOpen } from '../src/ui/optimizer-modal.js';
+import { validateNetwork } from '../src/ui/validation.js';
+import { runSimulation } from '../src/core/simulation.js';
 
 const INSTR = {
   obsType: 'both', instrPreset: 'ts16_1',
@@ -88,16 +91,19 @@ describe('criteriaForClass', () => {
     expect(criteriaForClass('G3').assumedClass).toBe(false);
   });
 
-  it('har normens k-gräns och produktens r-gräns', () => {
+  it('har normens k-gräns och samma r-gräns som nätvalideringen', () => {
     const c = criteriaForClass('G2');
     expect(c.kMin).toBe(0.50);
     expect(c.rMin).toBe(R_MIN_DEFAULT);
-    expect(c.rMin).toBe(0.30);
+    // Kravet MÅSTE vara valideringens godkända nivå. Ligger det på felgränsen
+    // R_OBS_GOLV levererar optimeringen nät som produkten själv varnar för.
+    expect(c.rMin).toBe(R_OBS_GOD);
+    expect(R_OBS_GOLV).toBeLessThan(R_OBS_GOD);
   });
 
-  it('spärrar inte på MUF/YT som default men redovisar gränserna', () => {
+  it('prövar MUF/YT, som följer av r-kravet', () => {
     const c = criteriaForClass('G2');
-    expect(c.enforceMufYt).toBe(false);
+    expect(c.enforceMufYt).toBe(true);
     expect(c.mufFactorMax).toBe(4);
     expect(c.ytFactorMax).toBe(2);
     expect(describeCriteria(c).join(' ')).toContain('MUF');
@@ -108,8 +114,8 @@ describe('checkCriteria', () => {
   const crit = criteriaForClass('G2');
 
   it('godkänner metrics som klarar alla gränser', () => {
-    const m = { computable: true, minR: 0.4, maxSigPosMm: 2, kGlobal: 0.6,
-                maxMufFactor: 4.4, maxYtFactor: 2.7, nObs: 20, nMeas: 10 };
+    const m = { computable: true, minR: 0.55, maxSigPosMm: 2, kGlobal: 0.6,
+                maxMufFactor: 3.8, maxYtFactor: 1.7, nObs: 20, nMeas: 10 };
     expect(checkCriteria(m, crit).ok).toBe(true);
   });
 
@@ -117,7 +123,7 @@ describe('checkCriteria', () => {
     const m = { computable: true, minR: 0.1, maxSigPosMm: 9, kGlobal: 0.2,
                 maxMufFactor: 8, maxYtFactor: 7, nObs: 10, nMeas: 5 };
     const keys = checkCriteria(m, crit).violations.map(v => v.key);
-    expect(keys).toEqual(['rMin', 'sigmaMax', 'kMin']);
+    expect(keys).toEqual(['rMin', 'sigmaMax', 'kMin', 'muf', 'yt']);
   });
 
   it('behandlar ett oberäkningsbart nät som ett brott', () => {
@@ -128,12 +134,20 @@ describe('checkCriteria', () => {
     expect(res.violations[0].key).toBe('berakning');
   });
 
-  it('spärrar på MUF/YT först när enforceMufYt är satt', () => {
-    const m = { computable: true, minR: 0.31, maxSigPosMm: 1, kGlobal: 0.6,
-                maxMufFactor: 5.0, maxYtFactor: 3.4, nObs: 20, nMeas: 10 };
-    expect(checkCriteria(m, crit).ok).toBe(true);
-    const strict = { ...crit, enforceMufYt: true };
-    expect(checkCriteria(m, strict).violations.map(v => v.key)).toEqual(['muf', 'yt']);
+  it('r ≥ 0,50 medför att MUF- och YT-kraven hålls automatiskt', () => {
+    // MUF/σ = κ/√r och YT/σ = (1−r)·κ/√r med κ = 2,80 (HMK F.16).
+    const kappa = 2.80;
+    [0.50, 0.60, 0.85, 1.0].forEach(r => {
+      const muf = kappa / Math.sqrt(r);
+      const m = { computable: true, minR: r, maxSigPosMm: 1, kGlobal: 0.6,
+                  maxMufFactor: muf, maxYtFactor: (1 - r) * muf, nObs: 20, nMeas: 10 };
+      expect(checkCriteria(m, crit).ok).toBe(true);
+    });
+    // Strax under gränsen binder MUF-kravet i stället.
+    const muf = kappa / Math.sqrt(0.48);
+    const svag = { computable: true, minR: 0.48, maxSigPosMm: 1, kGlobal: 0.6,
+                   maxMufFactor: muf, maxYtFactor: (1 - 0.48) * muf, nObs: 20, nMeas: 10 };
+    expect(checkCriteria(svag, crit).violations.map(v => v.key)).toEqual(['rMin', 'muf', 'yt']);
   });
 });
 
@@ -194,9 +208,9 @@ describe('scoreDelta', () => {
   });
 
   it('relativiserar mot kravnivån så att vikterna betyder samma sak', () => {
-    // 0,3 mm förbättring = 10 % av σ_max; 0,03 i r = 10 % av r_min.
-    const a = scoreDelta(M(0.3, 3.3), M(0.3, 3.0), crit, w);
-    const b = scoreDelta(M(0.30, 3), M(0.33, 3), crit, w);
+    // 0,3 mm förbättring = 10 % av σ_max (3 mm); 0,05 i r = 10 % av r_min (0,50).
+    const a = scoreDelta(M(0.5, 3.3), M(0.5, 3.0), crit, w);
+    const b = scoreDelta(M(0.50, 3), M(0.55, 3), crit, w);
     expect(a).toBeCloseTo(b, 12);
   });
 
@@ -336,7 +350,7 @@ describe('Test 4 – maxavståndet är en hård gräns', () => {
   });
 
   it('ingen tillagd mätning överstiger gränsen när optimeringen lyckas', () => {
-    const limit = 150;
+    const limit = 200;
     const res = run({ meas: SPARSE, maxSuggestDist: limit });
     expect(res.ok).toBe(true);
     const d = (a, b) => Math.hypot(a.E - b.E, a.N - b.N);
@@ -346,10 +360,9 @@ describe('Test 4 – maxavståndet är en hård gräns', () => {
     });
   });
 
-  it('utan gräns får längre sikter användas', () => {
-    const limited = run({ meas: SPARSE, maxSuggestDist: 150 });
-    const free    = run({ meas: SPARSE, maxSuggestDist: null });
-    expect(limited.meas.map(m => m.id)).not.toEqual(free.meas.map(m => m.id));
+  it('en för snäv gräns stoppar optimeringen där en generös lyckas', () => {
+    expect(run({ meas: SPARSE, maxSuggestDist: 150 }).ok).toBe(false);
+    expect(run({ meas: SPARSE, maxSuggestDist: null }).ok).toBe(true);
   });
 });
 
@@ -488,8 +501,50 @@ describe('optimeringsförslag som eget visningslager', () => {
     const rows = comparisonRows(res.baseMetrics, res.finalMetrics, res.criteria);
     const r = rows.find(x => x.label === 'Minsta r-tal');
     expect(rows.map(x => x.label)).toContain('Största σ_pos');
-    expect(r.krav).toBe('≥ 0.30');
+    expect(r.krav).toBe('≥ 0.50');
     expect(r.ok).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Nätvalideringen efter optimering
+//
+// Regressionsskydd för buggen som hittades vid genomgången: optimeringens
+// r-krav låg på felgränsen 0,30 medan valideringen varnar under 0,50, så ett
+// optimerat nät fick varningar direkt av produktens egen validering.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('nätvalidering efter optimering', () => {
+  beforeEach(() => setState({ ...BASE_STATE, pts: PTS, meas: RICH, nMid: 100 }));
+
+  it('ett optimerat nät ger varken fel eller r-varningar', () => {
+    const res = run({ meas: RICH });
+    setState({ meas: res.meas, simResult: null });
+    runSimulation();
+    const v = validateNetwork();
+    expect(v.ok).toBe(true);
+    expect(v.warnings.filter(w => w.includes('r_i'))).toEqual([]);
+  });
+
+  it('inga observationer hamnar i varningsbandet efter optimering', () => {
+    const res = run({ meas: RICH });
+    setState({ meas: res.meas, simResult: null });
+    runSimulation();
+    const band = getState().simResult.redund
+      .filter(r => r.ri >= R_OBS_GOLV && r.ri < R_OBS_GOD);
+    expect(band).toEqual([]);
+  });
+
+  it('valideringen prövar förslaget när förslagsvyn är aktiv', () => {
+    // Originalnätet har en svag mätning som förslaget inte har.
+    setState({ meas: SPARSE, simResult: null });
+    runSimulation();
+    expect(validateNetwork().ok).toBe(false);
+
+    const res = run({ meas: SPARSE });
+    storeProposal(createProposal(res, getState()));
+    const v = validateNetwork();
+    expect(v.ok).toBe(true);
+    expect(v.warnings.join(' ')).toContain('OPTIMERADE FÖRSLAGET');
   });
 });
 

@@ -142,6 +142,24 @@ export const D = r => r * 180 / Math.PI;
 // Normgolv – nätet underkänns under detta värde. Normstyrt, ändra inte.
 export const K_NAT_GOLV = 0.50;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// REDUNDANSTALET r_i PER OBSERVATION – bandgränser
+//
+// r_i säger hur stor del av ett grovfel i observationen som syns i
+// residualerna. Låg redundans = grovfelet slår rakt in i koordinaterna.
+//
+//   r_i < 0,30           Underkänt. Observationen är i praktiken okontrollerad.
+//   0,30 ≤ r_i < 0,50    Svag kontroll – valideringen varnar.
+//   r_i ≥ 0,50           Godkänd nivå, ingen anmärkning.
+//
+// Värdena låg tidigare hårdkodade i valideringen och i studio-vyernas
+// färgsättning. Etapp E flyttade hit dem: optimeringens acceptanskriterium
+// MÅSTE vara samma nivå som valideringen kallar godkänd, annars levererar
+// optimeringen med flit nät som produktens egen validering varnar för.
+// ─────────────────────────────────────────────────────────────────────────────
+export const R_OBS_GOLV = 0.30;   // under detta: fel
+export const R_OBS_GOD  = 0.50;   // vid/över detta: ingen anmärkning
+
 // PRELIMINÄR gräns för högsta klassen ("Överbestämt"). Detta är ett PRODUKTVAL,
 // inte normstyrt – varken SIS-TS eller HMK anger någon övre k-gräns.
 // Värdet är satt genom att förlänga den befintliga bandstrukturen, som har

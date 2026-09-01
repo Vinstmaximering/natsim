@@ -1,16 +1,21 @@
 // D7: Validera nät – rad 824–866 exakt
 import { getState } from '../state/store.js';
-import { MATKLASSER, klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR } from '../core/constants.js';
+import { MATKLASSER, klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR,
+         R_OBS_GOLV, R_OBS_GOD } from '../core/constants.js';
+import { viewNet } from '../state/optimizer-proposal.js';
 import { findBlockedMeasurements } from '../core/visibility.js';
 
 export function validateNetwork() {
-  const { simResult, pts, meas = [], activeMatklass, obstacles = [] } = getState();
+  const { pts, activeMatklass, obstacles = [] } = getState();
+  // Etapp E: i förslagsvyn valideras förslaget, inte originalnätet.
+  const { meas = [], simResult, isProposal } = viewNet();
   if (!simResult || !simResult.ok) {
     return { ok: false, issues: ["Simulering har inte körts ännu – tryck på \"Kör simulering\" eller aktivera auto-sim."] };
   }
   const issues   = [];
   const warnings = [];
   const sr = simResult;
+  if (isProposal) warnings.push('Valideringen avser det OPTIMERADE FÖRSLAGET, inte det aktiva nätet.');
 
   // Normgolv enligt SIS-TS 21143:2016 §6.2.2 och HMK-Stommätning 2024 §3.2.2 b).
   if (!klassificeraKtal(sr.K_global).uppfyllerNorm)
@@ -18,12 +23,14 @@ export function validateNetwork() {
   if (sr.K_global >= K_OVERBESTAMD_PRELIMINAR)
     warnings.push(`k=${sr.K_global.toFixed(3)} ≥ ${K_OVERBESTAMD_PRELIMINAR.toFixed(2).replace(".", ",")} – överbestämt nät, kontrollera att mätinsatsen ger mervärde.`);
 
-  const weak = (sr.redund || []).filter(r => r.ri < 0.3);
+  const weak = (sr.redund || []).filter(r => r.ri < R_OBS_GOLV);
   if (weak.length) issues.push(`${weak.length} mätning(ar) har r_i < 0,30: ` +
     weak.slice(0, 3).map(r => `${r.fromId}→${r.toId} (${r.type}, r=${r.ri.toFixed(2)})`).join(", ") +
     (weak.length > 3 ? " m.fl." : ""));
-  const medium = (sr.redund || []).filter(r => r.ri >= 0.3 && r.ri < 0.5);
-  if (medium.length) warnings.push(`${medium.length} mätning(ar) har 0,30 ≤ r_i < 0,50.`);
+  const medium = (sr.redund || []).filter(r => r.ri >= R_OBS_GOLV && r.ri < R_OBS_GOD);
+  if (medium.length) warnings.push(
+    `${medium.length} mätning(ar) har ${R_OBS_GOLV.toFixed(2).replace(".", ",")} ≤ r_i < ` +
+    `${R_OBS_GOD.toFixed(2).replace(".", ",")}.`);
 
   const knownN = pts.filter(p => p.type === "known").length;
   if (knownN < 1) issues.push("Inga kända punkter – nätet saknar absolut anslutning.");

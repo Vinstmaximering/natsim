@@ -1,6 +1,7 @@
 // D6: Realtids-kvalitetspanel – rad 800–821 exakt
 // Bevaras exakt per krav
 import { getState } from '../state/store.js';
+import { viewNet } from '../state/optimizer-proposal.js';
 import { setAutoSim } from '../state/undo.js';
 import { findBlockedMeasurements } from '../core/visibility.js';
 import { klassificeraKtal } from '../core/constants.js';
@@ -28,7 +29,8 @@ function sClass(mm) {
 export function updateQualityPanel() {
   const panel = document.getElementById("qPanel");
   if (!panel) return;
-  const { simResult } = getState();
+  // Etapp E: panelen följer visningslagret, samma nät som kartan ritar.
+  const { simResult } = viewNet();
   if (!simResult || !simResult.ok) { panel.style.display = "none"; return; }
   panel.style.display = "block";
   const sr = simResult;
@@ -50,7 +52,8 @@ export function updateQualityPanel() {
     : "–";
 
   // Mätningar utan sikt (visas bara när hinder finns)
-  const { meas = [], pts: ptList = [], obstacles = [] } = getState();
+  const { pts: ptList = [], obstacles = [] } = getState();
+  const { meas = [] } = viewNet();
   const sightEl = document.getElementById("qSight");
   if (sightEl) {
     if (obstacles.length === 0) {

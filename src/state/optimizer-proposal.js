@@ -39,6 +39,18 @@ export function storeProposal(proposal) {
   setState({ optimizerProposal: proposal, netView: 'optimized' });
 }
 
+/**
+ * Nätet som VISAS just nu – originalet eller förslaget. Kartan, valideringen
+ * och kvalitetspanelen måste alla läsa härifrån, annars kan användaren titta på
+ * förslaget medan siffrorna beskriver originalnätet.
+ */
+export function viewNet(state = getState()) {
+  const p = state.optimizerProposal;
+  return state.netView === 'optimized' && p
+    ? { meas: p.meas, simResult: p.simResult, isProposal: true }
+    : { meas: state.meas, simResult: state.simResult, isProposal: false };
+}
+
 /** Växlar visningslager. Okänt värde ⇒ original. */
 export function setNetView(view) {
   const v = view === 'optimized' && getState().optimizerProposal ? 'optimized' : 'original';

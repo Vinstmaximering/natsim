@@ -11,10 +11,15 @@
 //   k_min   SIS-TS 21143:2016 §6.2.2 – k > 0,5 för nätet. Samma värde som
 //           K_NAT_GOLV i core/constants.js; hämtas ur SIS_TS_GENERAL_REQS så
 //           att det bara står på ett ställe.
-//   r_min   Minsta redundanstal per observation. 0,30 är den gräns NätSim
-//           redan använder för att flagga svag kontrollerbarhet i punkt- och
-//           mätningstabellerna (rClass/isProb) och motsvarar HMK-Stommätning
-//           2024:s nivå för godtagbar kontrollerbarhet per observation.
+//   r_min   Minsta redundanstal per observation = R_OBS_GOD (0,50), samma
+//           nivå som nätvalideringen kallar godkänd och som studio-vyerna
+//           färgar grönt. Kravet är MEDVETET satt vid den godkända nivån och
+//           inte vid felgränsen R_OBS_GOLV (0,30): Fas 2 bantar per
+//           konstruktion tills kriterierna precis håller, så ett krav på 0,30
+//           skulle leverera nät där större delen av observationerna hamnar i
+//           varningsbandet 0,30 ≤ r_i < 0,50 – produkten skulle alltså varna
+//           för sitt eget optimeringsresultat. Trösklarna bor i
+//           core/constants.js så att de två inte kan divergera igen.
 //           OBS: SIS-TS §6.2.2 anger k > 0,35 för ENSKILD mätning – det är k,
 //           inte r_i, och gränserna är därför inte utbytbara.
 //
@@ -22,16 +27,18 @@
 //     MUF_i = κ·σ_i/√r_i        ⇒  MUF_i/σ_i = κ/√r_i
 //     YT_i  = (1−r_i)·MUF_i     ⇒  YT_i/σ_i  = (1−r_i)·κ/√r_i
 // med κ = 2,80 (HMK F.16). Kraven MUF ≤ 4σ respektive YT ≤ 2σ (SIS-TS §6.2.2)
-// är alltså ekvivalenta med r_i ≥ (κ/4)² = 0,49 respektive r_i ≥ 0,462. Att
-// grinda på dem skulle i praktiken kräva minsta r-tal ≈ 0,49 i HELA nätet,
-// vilket är ouppnåeligt när medelvärdet av r_i per definition är k = f/n.
-// Därför beräknas och redovisas MUF/YT-faktorerna alltid, men de spärrar bara
-// optimeringen om enforceMufYt sätts explicit. Se README, avsnitt Optimera nät.
+// är därmed ekvivalenta med r_i ≥ (κ/4)² = 0,490 respektive r_i ≥ 0,497 (roten
+// till (1−r)κ/√r = 2) – båda alltså svagare än r_min = 0,50. Vid r_i ≥ 0,50
+// gäller MUF ≤ 3,96σ och
+// YT ≤ 1,98σ automatiskt, och gränserna kan därför prövas utan att någonsin
+// binda hårdare än r-kravet. Det var skälet till att de tidigare inte
+// spärrade: med r_min = 0,30 hade de gjort nästan alla nät ogiltiga.
 // ─────────────────────────────────────────────────────────────────────────────
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
+import { R_OBS_GOD } from './constants.js';
 
 // Minsta redundanstal per observation. Produktvärde, se blockkommentaren ovan.
-export const R_MIN_DEFAULT = 0.30;
+export const R_MIN_DEFAULT = R_OBS_GOD;
 
 // Mätklass som används när projektet saknar vald klass. Redovisas i dialogen
 // så att användaren ser att kravnivån är antagen och inte projektstyrd.
@@ -53,7 +60,7 @@ export function criteriaForClass(klass) {
     kMin: g.k_global_min,
     mufFactorMax: g.muf_factor_max,
     ytFactorMax: g.yt_factor_max,
-    enforceMufYt: false,
+    enforceMufYt: true,
     source: `${c._source} + SIS-TS 21143:2016 §6.2.2`,
   };
 }
@@ -125,6 +132,6 @@ export function describeCriteria(criteria) {
     `Största punktosäkerhet: σ_pos ≤ ${criteria.sigmaMaxMm.toFixed(1)} mm (1σ)`,
     `Kontrollerbarhet: k ≥ ${criteria.kMin.toFixed(2)}`,
     `MUF ≤ ${criteria.mufFactorMax} × σ, YT ≤ ${criteria.ytFactorMax} × σ` +
-      (criteria.enforceMufYt ? '' : ' (redovisas, spärrar ej)'),
+      (criteria.enforceMufYt ? ' (följer av r-kravet)' : ' (redovisas, spärrar ej)'),
   ];
 }

@@ -111,7 +111,7 @@ visas där som läsvärden:
 
 | Storhet | Krav | Källa |
 |---|---|---|
-| Minsta r-tal per observation | r ≥ 0,30 | NätSims gräns för svag kontrollerbarhet (HMK Stommätning 2024) |
+| Minsta r-tal per observation | r ≥ 0,50 | `R_OBS_GOD` – samma nivå som nätvalideringen kallar godkänd |
 | Största punktosäkerhet σ_pos (1σ) | G1 2 mm · G2 3 mm · G3 5 mm · G4 8 mm | SIS-TS 21143:2016 Tabell A.9, spridning längd |
 | Kontrollerbarhet k = f/n | k ≥ 0,50 | SIS-TS 21143:2016 §6.2.2 |
 | MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | SIS-TS 21143:2016 §6.2.2 |
@@ -119,12 +119,18 @@ visas där som läsvärden:
 Saknar projektet mätklass används G2:s krav, och dialogen säger att kravnivån
 är antagen.
 
-MUF och YT **redovisas** men spärrar inte optimeringen som default. Skälet är
-matematiskt: i simuleringen är MUF_i = κ·σ_i/√r_i och YT_i = (1−r_i)·MUF_i med
-κ = 2,80, så kraven MUF ≤ 4σ och YT ≤ 2σ är ekvivalenta med r_i ≥ 0,49
-respektive r_i ≥ 0,46 för VARJE observation. Eftersom medelvärdet av r_i per
-definition är k = f/n vore det kravet ouppnåeligt i praktiken. Gränserna kan
-slås på via `criteria.enforceMufYt` i `src/core/optimizer-criteria.js`.
+**r-kravet ligger på 0,50, inte på felgränsen 0,30.** Fas 2 bantar per
+konstruktion tills kriterierna precis håller. Med kravet på 0,30 hamnade därför
+huvuddelen av observationerna i valideringens varningsband 0,30 ≤ r_i < 0,50 –
+produkten varnade alltså för sitt eget optimeringsresultat. Trösklarna
+`R_OBS_GOLV` (0,30, felgräns) och `R_OBS_GOD` (0,50, godkänd nivå) bor i
+`src/core/constants.js` och används av både optimeringen och
+`validateNetwork()`, så de kan inte divergera igen.
+
+MUF och YT prövas också, men de kan aldrig binda hårdare än r-kravet: i
+simuleringen är MUF_i = κ·σ_i/√r_i och YT_i = (1−r_i)·MUF_i med κ = 2,80, så
+MUF ≤ 4σ svarar mot r_i ≥ 0,490 och YT ≤ 2σ mot r_i ≥ 0,497. Vid r_i ≥ 0,50
+gäller alltså MUF ≤ 3,96σ och YT ≤ 1,98σ automatiskt.
 
 ### Algoritmen
 
@@ -181,8 +187,10 @@ Iteration 1 (Fas 2): Tog bort mätning S2→FP2. Bidrog minst till nätet:
   Fliken MÄTNINGAR får då en växlare mellan *Original* och *Optimerat förslag*
   med en jämförelsetabell (minsta r-tal, största σ_pos, k, MUF, YT). I kartan
   ritas tillagda mätningar lila och borttagna som blek röd streckad linje, och
-  felellipserna hör till den vy som visas. Nätet i projektet är orört tills du
-  trycker *Tillämpa förslag*.
+  felellipserna hör till den vy som visas. Även kvalitetspanelen och *Validera
+  nät* följer växlaren – de beskriver alltid det nät du tittar på, och
+  valideringen säger uttryckligen när den avser förslaget. Nätet i projektet är
+  orört tills du trycker *Tillämpa förslag*.
 - **Avbryt** – stänger utan att ändra något.
 
 Förslaget lever bara i sessionen och sparas inte i projektfilen: ett förslag är

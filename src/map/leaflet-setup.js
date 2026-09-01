@@ -17,6 +17,7 @@ import { drawBlockedSuggestions } from './lines.js';
 import { getDragSnapTarget } from './obstacle-editing.js';
 import { drawVisualLayer } from './visual-canvas.js';
 import { drawVisualPreview } from './visual-drawing.js';
+import { viewNet } from '../state/optimizer-proposal.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
@@ -157,9 +158,7 @@ export function resetView() {
 // simulering, annars statens. Delad av drawPt och draw() så att punktringar,
 // linjefärger och felellipser aldrig kan visa olika nät.
 export function viewSimResult(state = getState()) {
-  return state.netView === 'optimized' && state.optimizerProposal
-    ? state.optimizerProposal.simResult
-    : state.simResult;
+  return viewNet(state).simResult;
 }
 
 // ── Punkt-rendering ───────────────────────────────────────────────────────────
