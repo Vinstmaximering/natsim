@@ -15,6 +15,14 @@ let _state = {
   suggestedMeas: [],
   blockedSuggestions: [], // [{from, to, blockedBy}] – siktlinje blockerad av hinder
 
+  // ── Visuellt lager (Etapp D) ──
+  // Enbart för visuell dokumentation – simuleringen läser aldrig dessa.
+  visualPts: [],
+  visualLines: [],
+  selVisualId: null,
+  nVid: 1,
+  nVlid: 1,
+
   // ── Hinder-selektion ──
   selObsId: null,
 

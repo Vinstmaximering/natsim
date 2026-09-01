@@ -27,6 +27,8 @@
     <button class="tb" id="btn-simstation" onclick="window.setTool('simstation')" style="--c:#ff6090;margin-top:2px;">🔴 Simulerad uppställning</button>
     <button class="tb" id="btn-obs-polygon" onclick="window._setTool('obstacle-polygon')" style="--c:#ff9900;margin-top:2px;">🏢 Rita byggnad</button>
     <button class="tb" id="btn-obs-line"    onclick="window._setTool('obstacle-line')"    style="--c:#8aa8c0;margin-top:2px;">━ Rita vägg</button>
+    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Rita visuell punkt</button>
+    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">⤺ Rita visuell linje</button>
   </div>
   <div class="dv"></div>
   <div class="sec">
@@ -59,6 +61,7 @@
     <label class="tg"><input type="checkbox" id="tge" checked> Felellipser</label>
     <label class="tg"><input type="checkbox" id="tgs"> Föreslagna mätningar</label>
     <label class="tg"><input type="checkbox" id="tgb"> Blockerade förslag</label>
+    <label class="tg"><input type="checkbox" id="tgv" checked> Visuella objekt</label>
     <div class="dv" style="margin:4px 0;"></div>
     <div class="sl" style="margin-top:2px;">PUNKTTYPER</div>
     <label class="tg"><input type="checkbox" id="tv_known"     checked> <span style="color:#00ff88;">▲</span> Kända punkter</label>

@@ -2,6 +2,7 @@
 // addObstacle/removeObstacle kallar setState vilket triggar draw via subscribers.
 // AutoSim-koppling till simulering sker i Fas 3.
 import { getState, setState } from './store.js';
+import { normalizeHexColor, hexToRgba } from '../core/colors.js';
 
 let _nObs = 1;
 
@@ -19,24 +20,10 @@ export const OBSTACLE_COLORS = [
   { hex: '#ba68c8', label: 'Övrigt' },
 ];
 
-// Normaliserar en färgsträng till "#rrggbb" i gemener.
-// Accepterar "#abc", "abc", "#AABBCC", "AABBCC". Allt annat → null (standardfärg).
-export function normalizeObstacleColor(v) {
-  if (typeof v !== 'string') return null;
-  const hit = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v.trim());
-  if (!hit) return null;
-  let h = hit[1].toLowerCase();
-  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  return '#' + h;
-}
-
-// "#rrggbb" + alfa → "rgba(r,g,b,a)". Returnerar null för ogiltig hex.
-export function hexToRgba(hex, alpha) {
-  const h = normalizeObstacleColor(hex);
-  if (!h) return null;
-  const n = parseInt(h.slice(1), 16);
-  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
-}
+// Hex-hanteringen är gemensam med det visuella lagret och bor i core/colors.js.
+// Aliaset behålls för hinder-specifika anropsställen och tester.
+export const normalizeObstacleColor = normalizeHexColor;
+export { hexToRgba };
 
 export function addObstacle(obs) {
   const id = `obs_${_nObs++}`;

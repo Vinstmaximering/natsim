@@ -15,6 +15,8 @@ import { drawObstacles } from './obstacles-canvas.js';
 import { drawPreview } from './obstacle-drawing.js';
 import { drawBlockedSuggestions } from './lines.js';
 import { getDragSnapTarget } from './obstacle-editing.js';
+import { drawVisualLayer } from './visual-canvas.js';
+import { drawVisualPreview } from './visual-drawing.js';
 
 // ── Kartlager – Lantmäteriets WMS + öppna alternativ ──
 export const LAYERS = {
@@ -391,6 +393,13 @@ export function draw() {
   // ── Hinder (under punkter) ──
   drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10, dragSnapTarget: getDragSnapTarget() });
   drawPreview(ctx);
+
+  // ── Visuellt lager (under punkter, egen toggle tgv) ──
+  const showV = document.getElementById("tgv")?.checked ?? true;
+  if (showV) {
+    drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10, showLabels: showL });
+    drawVisualPreview(ctx);
+  }
 
   // ── Punkter ──
   pts.forEach(pt => {

@@ -10,6 +10,12 @@ import { ptPixel, latLngToEN, ENtoLatLng, draw } from './leaflet-setup.js';
 import { isDrawing, handleMapClick, completeDraw, cancelDraw, updateMousePos } from './obstacle-drawing.js';
 import { clearObstacleSelection, getObstacles } from '../state/obstacles.js';
 import {
+  isDrawingVisual, handleVisualMapClick, cancelVisualDraw,
+  updateVisualMousePos, hasPendingChain, breakVisualChain,
+} from './visual-drawing.js';
+import { syncLinkedObstacles } from '../state/visual.js';
+import { hitTestVisualPt, hitTestVisualLine } from './visual-canvas.js';
+import {
   hitTestHandle, hitTestEdge, hitTestObstacle,
   startNodeDrag, updateNodeDrag, endNodeDrag, isDraggingNode,
   insertNode, deleteNode,
@@ -28,6 +34,8 @@ const cb = {
   showToast:     null,   // rad 1273, 1333, 1342, 1349: notiser
   renderObsPanel: null,  // obstacle-panel re-render efter selektion ändras
   renderTab:     null,   // höger-panel re-render efter mätnings-selektion ändras
+  openVisualMenu: null,  // högerklick på visuellt objekt → kontextmeny (Etapp D4)
+  openEditVisual: null,  // dubbelklick på visuellt objekt → redigeringsdialog
 };
 export function setInteractionCallbacks(callbacks) { Object.assign(cb, callbacks); }
 
@@ -69,7 +77,7 @@ export function initInteractions(map) {
 
   // ── Drag – rad 1254–1290 ──
   map.on("mousedown", e => {
-    if (isDrawing()) return; // hindra drag under ritläge
+    if (isDrawing() || isDrawingVisual()) return; // hindra drag under ritläge
 
     // Prioritet 1: hörn-drag på markerat hinder
     const { selObsId } = getState();
@@ -106,6 +114,13 @@ export function initInteractions(map) {
     if (isDrawing()) {
       const px = map.latLngToContainerPoint(e.latlng);
       updateMousePos(e.latlng, px);
+      draw();
+    }
+
+    // Förhandsvisning under ritning av visuella objekt
+    if (isDrawingVisual()) {
+      const px = map.latLngToContainerPoint(e.latlng);
+      updateVisualMousePos(e.latlng, px);
       draw();
     }
 
@@ -148,7 +163,13 @@ export function initInteractions(map) {
     const en = latLngToEN(e.latlng);
     const { pts } = getState();
     const pt = pts.find(p => p.id === dragPt);
-    if (pt) { pt.E = en.E; pt.N = en.N; draw(); }
+    if (pt) {
+      pt.E = en.E; pt.N = en.N;
+      // En visuell linje kan vara fäst i nätpunkten och i sin tur styra en
+      // vägg – projektionen måste följa med under draget.
+      syncLinkedObstacles();
+      draw();
+    }
   });
 
   map.on("mouseup", () => {
@@ -173,6 +194,14 @@ export function initInteractions(map) {
   // ── Klick – rad 1293–1356 ──
   map.on("click", e => {
     if (dragMoved) { dragMoved = false; return; }
+
+    // Ritning av visuella objekt: intercepta klick. Läget står kvar tills
+    // användaren avslutar med Esc eller högerklick.
+    if (isDrawingVisual()) {
+      handleVisualMapClick(e.latlng);
+      draw();
+      return;
+    }
 
     // Hinder-ritning: intercepta klick
     if (isDrawing()) {
@@ -237,6 +266,18 @@ export function initInteractions(map) {
       draw();
       return;
     }
+
+    // ── Träff på visuellt objekt → markera det (lägst prioritet: mätdata går
+    // alltid före visuell dokumentation) ──
+    const stateNow = getState();
+    const hitV = hitTestVisualPt(px.x, px.y, stateNow, map, ENtoLatLng)
+              || hitTestVisualLine(px.x, px.y, stateNow, map, ENtoLatLng);
+    if (hitV) {
+      setState({ selVisualId: stateNow.selVisualId === hitV.id ? null : hitV.id });
+      draw();
+      return;
+    }
+    if (stateNow.selVisualId) setState({ selVisualId: null });
 
     // ── Ingen träff → rensa hinder-selektion ──
     if (selObsId) { clearObstacleSelection(); if (cb.renderObsPanel) cb.renderObsPanel(); }
@@ -309,12 +350,30 @@ export function initInteractions(map) {
     }
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 24);
-    if (n && cb.openEditPt) cb.openEditPt(n.id);
+    if (n && cb.openEditPt) { cb.openEditPt(n.id); return; }
+
+    // Dubbelklick på visuellt objekt → redigeringsdialog
+    const st   = getState();
+    const hitV = hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng);
+    if (hitV && cb.openEditVisual) cb.openEditVisual(hitV.id);
   });
 
   // ── Högerklick → ta bort hörn på hinder, annars openEditPt ──
   map.on("contextmenu", e => {
     if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
+
+    // Högerklick avslutar ritläget för visuella objekt. Har en linjekedja
+    // påbörjats bryts först kedjan, så att ett andra högerklick lämnar läget.
+    if (isDrawingVisual()) {
+      e.originalEvent.preventDefault();
+      if (hasPendingChain()) { breakVisualChain(); draw(); return; }
+      cancelVisualDraw();
+      setState({ tool: 'pan' });
+      if (cb.buildTools) cb.buildTools();
+      draw();
+      return;
+    }
     // Ta bort hörn på markerat hinder
     const { selObsId } = getState();
     if (selObsId) {
@@ -332,16 +391,35 @@ export function initInteractions(map) {
     }
     const px = map.latLngToContainerPoint(e.latlng);
     const n  = near(px.x, px.y, 24);
-    if (n) { e.originalEvent.preventDefault(); if (cb.openEditPt) cb.openEditPt(n.id); }
+    if (n) { e.originalEvent.preventDefault(); if (cb.openEditPt) cb.openEditPt(n.id); return; }
+
+    // Högerklick på visuellt objekt → kontextmeny (Etapp D4)
+    const st   = getState();
+    const hitV = hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng);
+    if (hitV && cb.openVisualMenu) {
+      e.originalEvent.preventDefault();
+      setState({ selVisualId: hitV.id });
+      draw();
+      cb.openVisualMenu(hitV.id, e.originalEvent.clientX, e.originalEvent.clientY);
+    }
   });
 
   // ── Tangentbord: Esc/Enter – prioritetsordning: ritläge > hinder > mätning ──
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      if (isDrawing()) {
+      if (isDrawingVisual()) {
+        cancelVisualDraw();
+        setState({ tool: 'pan' });
+        if (cb.buildTools) cb.buildTools();
+        draw();
+      } else if (isDrawing()) {
         cancelDraw();
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();
+        draw();
+      } else if (getState().selVisualId) {
+        setState({ selVisualId: null });
         draw();
       } else if (getState().selObsId) {
         clearObstacleSelection();

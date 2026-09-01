@@ -31,12 +31,19 @@ export function setAutoSim(on) {
 
 // ── Undo-stack – rad 367–395 exakt ──
 export function saveUndo(label = "") {
-  const { pts, meas, nMid, nId } = getState();
+  const { pts, meas, nMid, nId,
+          obstacles = [], visualPts = [], visualLines = [], nVid, nVlid } = getState();
   _undoStack.push({
     label,
     pts:  JSON.parse(JSON.stringify(pts)),
     meas: JSON.parse(JSON.stringify(meas)),
-    nMid, nId
+    // Hinder och det visuella lagret låg tidigare utanför ångra-stacken, så
+    // hörn-flyttar och hinder-redigering gick inte att ångra trots att de
+    // anropade saveUndo. Etapp D tar med båda.
+    obstacles:   JSON.parse(JSON.stringify(obstacles)),
+    visualPts:   JSON.parse(JSON.stringify(visualPts)),
+    visualLines: JSON.parse(JSON.stringify(visualLines)),
+    nMid, nId, nVid, nVlid
   });
   if (_undoStack.length > UNDO_MAX) _undoStack.shift();
   updateUndoBtn();
@@ -49,11 +56,21 @@ export function undo() {
     return;
   }
   const s = _undoStack.pop();
+  const cur = getState();
   setState({
     pts: s.pts,
     meas: s.meas,
-    nMid: s.nMid ?? getState().nMid,
-    nId:  s.nId  ?? getState().nId,
+    // Äldre stack-poster saknar fälten – falla tillbaka på nuvarande state
+    // i stället för att nolla lagret.
+    obstacles:   s.obstacles   ?? cur.obstacles,
+    visualPts:   s.visualPts   ?? cur.visualPts,
+    visualLines: s.visualLines ?? cur.visualLines,
+    nMid:  s.nMid  ?? cur.nMid,
+    nId:   s.nId   ?? cur.nId,
+    nVid:  s.nVid  ?? cur.nVid,
+    nVlid: s.nVlid ?? cur.nVlid,
+    selObsId:    null,
+    selVisualId: null,
     simResult: null
   });
   updateUndoBtn();

@@ -3,6 +3,7 @@ import { getState, setState } from '../state/store.js';
 import { PT, INSTRUMENTS } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
+import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw } from '../map/visual-drawing.js';
 
 export { toggleMapLayer };
 
@@ -50,12 +51,25 @@ export function buildTools() {
     obsLineBtn.style.cssText = '--c:#8aa8c0;margin-top:2px;' + (tool === 'obstacle-line' ? 'border-color:#8aa8c0;background:rgba(160,184,208,0.15);color:#8aa8c0' : '');
   }
 
+  const visPtBtn = document.getElementById('btn-visual-point');
+  if (visPtBtn) {
+    visPtBtn.className = 'tb' + (tool === 'visual-point' ? ' act' : '');
+    visPtBtn.style.cssText = '--c:#cfd8dc;margin-top:2px;' + (tool === 'visual-point' ? 'border-color:#cfd8dc;background:rgba(207,216,220,0.15);color:#cfd8dc' : '');
+  }
+  const visLineBtn = document.getElementById('btn-visual-line');
+  if (visLineBtn) {
+    visLineBtn.className = 'tb' + (tool === 'visual-line' ? ' act' : '');
+    visLineBtn.style.cssText = '--c:#cfd8dc;margin-top:2px;' + (tool === 'visual-line' ? 'border-color:#cfd8dc;background:rgba(207,216,220,0.15);color:#cfd8dc' : '');
+  }
+
   const hints = { pan:"🖐 Dra kartan | Dubbelklick på punkt: redigera", known:"➕ Klicka: lägg Känd punkt | Dra: flytta",
     station:"➕ Klicka: lägg Uppställning | Dra: flytta", detail:"➕ Klicka: lägg Detaljpunkt | Dra: flytta",
     new:"➕ Klicka: lägg Ny punkt | Dra: flytta", simstation:"🔴 Klicka: lägg Simulerad uppställning",
     measure:"📏 Klicka FRÅN-punkt → klicka TILL-punkt",
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
-    'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)" };
+    'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
+    'visual-point':     "○ Klicka för att placera visuella punkter · Esc/högerklick: avsluta",
+    'visual-line':      "⤺ Klicka för att kedja visuella linjer · Esc/högerklick: avsluta" };
   const hint = document.getElementById("hint");
   if (hint) hint.textContent = hints[tool] || "";
 
@@ -67,8 +81,9 @@ export function buildTools() {
 }
 
 export function setTool(t) {
-  // Avbryt pågående hinder-ritning om verktyget byts
+  // Avbryt pågående ritning om verktyget byts
   if (isDrawing()) cancelDraw();
+  if (isDrawingVisual()) cancelVisualDraw();
 
   if (t !== "measure") setState({ measFrom: null });
   setState({ tool: t });
@@ -76,6 +91,8 @@ export function setTool(t) {
   // Starta ritläge direkt
   if (t === 'obstacle-polygon') startPolygonDraw();
   else if (t === 'obstacle-line') startLineDraw();
+  else if (t === 'visual-point') startVisualPointDraw();
+  else if (t === 'visual-line')  startVisualLineDraw();
 
   import('../map/leaflet-setup.js').then(({ map: m }) => {
     if (m) { m.dragging.enable(); m.getContainer().style.cursor = t === "pan" ? "grab" : "crosshair"; }
@@ -105,9 +122,10 @@ function _updateBackdrop() {
 }
 
 export function clearAll() {
-  if (confirm("Rensa alla punkter, mätningar och hinder?")) {
+  if (confirm("Rensa alla punkter, mätningar, hinder och visuella objekt?")) {
     setState({
       pts: [], meas: [], obstacles: [],
+      visualPts: [], visualLines: [], selVisualId: null,
       selId: null, selMId: null, selObsId: null,
       measFrom: null, simResult: null,
       suggestedMeas: [], blockedSuggestions: [],
@@ -126,7 +144,7 @@ export function toggleAU() {
 }
 
 export function initToolbar() {
-  ["tgc","tga","tgd","tgl","tge","tgs","tgb","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
+  ["tgc","tga","tgd","tgl","tge","tgs","tgb","tgv","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
     .forEach(id => document.getElementById(id)?.addEventListener("change", () => draw()));
 
   const symSlider = document.getElementById("sym-size");

@@ -5,6 +5,7 @@ import { INSTRUMENTS, PT } from '../core/constants.js';
 import { calcM } from '../core/designmatrix.js';
 import { saveUndo } from '../state/undo.js';
 import { draw } from '../map/leaflet-setup.js';
+import { syncLinkedObstacles } from '../state/visual.js';
 
 function mi() { return document.getElementById("mi"); }
 
@@ -163,6 +164,11 @@ export function savePM(id) {
   if (ni && ni !== id) {
     if (pts.find(p => p.id === ni && p.id !== id)) { alert("ID finns redan!"); return; }
     allMeas.forEach(m => { if (m.from === id) m.from = ni; if (m.to === id) m.to = ni; });
+    // Visuella linjer kan vara fästa i punkten via {ref:'net', id} – följ med
+    // i namnbytet, annars tappar linjen sin ändpunkt.
+    const { visualLines = [] } = getState();
+    const remap = ep => (ep?.ref === 'net' && ep.id === id) ? { ...ep, id: ni } : ep;
+    setState({ visualLines: visualLines.map(l => ({ ...l, from: remap(l.from), to: remap(l.to) })) });
     pt.id = ni;
     const { selId } = getState();
     if (selId === id) setState({ selId: ni });
@@ -181,6 +187,8 @@ export function savePM(id) {
     delete pt.isStation;
   }
   setState({ simResult: null });
+  // Ändrade koordinater kan styra en vägg via en visuell linje.
+  syncLinkedObstacles();
   closeModal();
   draw();
 }
@@ -189,11 +197,21 @@ export function delPt(id) {
   const { pts, meas } = getState();
   if (meas.filter(m => m.from === id || m.to === id).length && !confirm("Ta bort punkt och alla dess mätningar?")) return;
   saveUndo(`Ta bort punkt ${id}`);
-  const { selId } = getState();
+  const { selId, visualLines = [], obstacles = [], selObsId } = getState();
+  // Visuella linjer som hängde i punkten kan inte längre ritas – ta bort dem
+  // i stället för att lämna kvar oupplösliga referenser. Hinder som projicerade
+  // dem försvinner med linjerna; de tas bort här eftersom syncLinkedObstacles
+  // bara ser linjer som fortfarande finns.
+  const anchored = ep => ep?.ref === 'net' && ep.id === id;
+  const dropped  = visualLines.filter(l => anchored(l.from) || anchored(l.to));
+  const dropObs  = new Set(dropped.map(l => l.linkedObsId).filter(Boolean));
   setState({
     pts:  pts.filter(p => p.id !== id),
     meas: meas.filter(m => m.from !== id && m.to !== id),
-    selId: selId === id ? null : selId,
+    visualLines: visualLines.filter(l => !dropped.includes(l)),
+    obstacles: dropObs.size ? obstacles.filter(o => !dropObs.has(o.id)) : obstacles,
+    selId:    selId === id ? null : selId,
+    selObsId: dropObs.has(selObsId) ? null : selObsId,
     simResult: null,
   });
   closeModal();

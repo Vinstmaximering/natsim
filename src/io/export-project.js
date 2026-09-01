@@ -6,11 +6,13 @@
 // laddning – filer utan fältet ska ge samma resultat som före tillägget:
 //   maxSuggestDist (Etapp A): saknas → 500 m
 //   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
+//   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
 import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
+import { _sanitizeVisual, _nextCounter, syncLinkedObstacles } from '../state/visual.js';
 
 // ── Serialisera state till spara-objekt ──────────────────────────────────────
 // Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
@@ -21,6 +23,9 @@ export function _buildSnapshot() {
     pts:       JSON.parse(JSON.stringify(s.pts)),
     meas:      JSON.parse(JSON.stringify(s.meas)),
     obstacles: JSON.parse(JSON.stringify(s.obstacles || [])),
+    // Etapp D: visuellt lager, helt skilt från pts/meas.
+    visualPts:   JSON.parse(JSON.stringify(s.visualPts   || [])),
+    visualLines: JSON.parse(JSON.stringify(s.visualLines || [])),
     activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
     centerErr:      s.centerErr      ?? 1.0,
@@ -32,6 +37,8 @@ export function _buildSnapshot() {
     ellipsMode:     s.ellipsMode     || "1sig",
     au:             s.au             || "grad",
     nMid:           s.nMid           ?? 1,
+    nVid:           s.nVid           ?? 1,
+    nVlid:          s.nVlid          ?? 1,
     mapCenter: (() => {
       try {
         const m = document.getElementById("leaflet-map")?._leaflet_map;
@@ -73,6 +80,9 @@ export function _applySnapshot(s) {
   // Synka ID-räknare i obstacles.js för att undvika kollision vid nästa addObstacle
   _syncObstacleCounter(obstacles);
 
+  // Etapp D: fältet saknas i äldre filer → tomt visuellt lager.
+  const { visualPts, visualLines } = _sanitizeVisual(s.visualPts, s.visualLines);
+
   setState({
     pts,
     meas,
@@ -89,10 +99,21 @@ export function _applySnapshot(s) {
     ellipsMode:     s.ellipsMode     || "1sig",
     au:             s.au             || "grad",
     nMid:           s.nMid           ?? 1,
+    visualPts,
+    visualLines,
+    // Räknarna härleds ur innehållet i stället för att lita på filens värden –
+    // en handredigerad fil ska inte kunna ge id-kollisioner.
+    nVid:           Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
+    nVlid:          Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
+    selVisualId:    null,
     simResult:      null,
     selObsId:       null,
     blockedSuggestions: [],
   });
+
+  // Projicera kopplade visuella linjer på sina hinder direkt efter laddning,
+  // så att en fil med avvikande koordinater rättas i stället för att ritas fel.
+  syncLinkedObstacles();
 }
 
 // ── Generera standard-filnamn (utan .json) – exporteras för tester ──────────

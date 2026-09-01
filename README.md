@@ -78,6 +78,49 @@ som också används av kvalitetspanelens sikt-räknare och nätvalideringen — 
 kan därmed inte räkna olika. Mätningar vars punkter saknas hoppas över och
 rensas alltså inte bort som blockerade.
 
+## Visuellt lager
+
+Punkter och linjer som ritas för hand enbart för dokumentation — vägkanter,
+ritningskontur, planerade objekt. De ligger i egna state-fält (`visualPts`,
+`visualLines`) helt skilda från `pts` och `meas`, och simuleringen läser dem
+aldrig. De ritas med ihåliga cirklar och streckade linjer så att de inte
+förväxlas med nätpunkter och mätningar, och kan döljas med **Visuella objekt**
+i VISA-listan.
+
+### Rita
+
+Två knappar i verktygsfältet:
+
+- **○ Rita visuell punkt** — varje klick placerar en punkt.
+- **⤺ Rita visuell linje** — klick efter klick kedjar ihop linjesegment.
+
+Båda lägena står kvar tills du avslutar med **Escape** eller **högerklick**. I
+linjeläget bryter det första högerklicket kedjan, det andra lämnar läget.
+
+Ritningen snappar mot både befintliga visuella punkter och vanliga NätSim-punkter
+(grön ring). Snappar en ändpunkt mot en nätpunkt fästs linjen i den: flyttas
+nätpunkten följer linjen med. Dubbelklick på ett visuellt objekt öppnar
+redigeringsdialogen med färgval, och för punkter även E/N/H.
+
+### Kontextmeny och koppling till hinder
+
+Högerklick på ett visuellt objekt ger en meny med *Redigera* och *Ta bort*. För
+linjer tillkommer **Använd som vägg** och **Använd som blockeringslinje**, som
+skapar ett riktigt hinder i hinder-systemet — det blockerar alltså sikt i
+mätförslag och validering på samma sätt som en handritad vägg. De två skiljer
+sig bara i namn och färg; siktlinjeberäkningen behandlar dem lika.
+
+Hindret är en **projektion** av den visuella linjen, inte en kopia: dess
+koordinater räknas om ur linjen vid varje ändring via `syncLinkedObstacles()`.
+Ändrar du linjen följer väggen med. Tas linjen bort försvinner väggen med den,
+och raderas hindret separat nollställs linjens koppling. *Koppla loss från
+hindret* i menyn bryter bandet och lämnar hindret fristående.
+
+### Export
+
+PXY-export av visuella punkter är inte implementerad ännu — den väntar på en
+exempelfil från SBG Geo för att formatet ska bli rätt.
+
 ## Struktur
 
 Se `STRUCTURE.md` för modul-layout och designprinciper.
