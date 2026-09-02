@@ -27,8 +27,8 @@
 // via computeSimulation() – exakt samma kärna som den vanliga simuleringen,
 // ingen förenklad modell.
 // ─────────────────────────────────────────────────────────────────────────────
-import { computeSimulation } from './simulation.js';
-import { d2EN, isStationPoint } from './designmatrix.js';
+import { computeSimulation, stationIds } from './simulation.js';
+import { d2EN } from './designmatrix.js';
 import { hasLineOfSight } from './visibility.js';
 import { INSTRUMENTS } from './constants.js';
 import { criteriaForClass, metricsFromSim, checkCriteria } from './optimizer-criteria.js';
@@ -63,15 +63,28 @@ const byPair = (a, b) =>
   a.to   < b.to   ? -1 : a.to   > b.to   ? 1 : 0;
 
 /**
- * Poolen av möjliga NYA mätningar: från varje uppställningspunkt till varje
- * annan punkt, som inte redan är aktiv, ligger inom maxSuggestDist och har fri
- * sikt förbi hindren.
+ * Poolen av möjliga NYA mätningar: från varje uppställd punkt till varje annan
+ * punkt, som inte redan är aktiv, ligger inom maxSuggestDist och har fri sikt
+ * förbi hindren.
+ *
+ * UPPSTÄLLD PUNKT = punkt som förekommer som `from` i minst en riktnings-
+ * observation, dvs. exakt kärnans `stationIds(meas)`. Poolen använde tidigare
+ * punkttypen (`isStationPoint`: type "station", eller "known" med isStation),
+ * vilket gjorde optimeringen till en no-op på varje nät där uppställningarna är
+ * typade "known"/"new" – till exempel allt som importeras från Excel eller
+ * extern datakälla. Se F-1 i docs/troubleshooting/etapp_E_diagnos_20260902.md.
+ *
+ * Punkttypen säger inget om huruvida instrumentet faktiskt stått på punkten i
+ * fält; det gör däremot mätningarna. Definitionen sammanfaller nu med den som
+ * ekvationsuppställningen i core/simulation.js redan använder, så poolen och
+ * utjämningen kan inte längre ha olika uppfattning om vad en uppställning är.
  *
  * @returns {{candidates:Array, filteredByDistance:number, filteredByObstacle:number}}
  */
 export function generateCandidates({ pts = [], meas = [], obstacles = [], maxSuggestDist = null }) {
   const active = new Set(meas.map(m => `${m.from} ${m.to}`));
-  const stations = pts.filter(isStationPoint);
+  const occupied = new Set(stationIds(meas));
+  const stations = pts.filter(p => occupied.has(p.id));
   const candidates = [];
   let filteredByDistance = 0, filteredByObstacle = 0;
 

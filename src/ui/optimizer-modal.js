@@ -77,7 +77,7 @@ function _configHtml(state) {
 }
 
 function _runHtml() {
-  const n = getState().pts.length;
+  const n = getState().meas.length;
   return `
     <div class="opt-sec">2. KÖRNING</div>
     <button id="opt-run" ${_running ? 'disabled' : ''}
@@ -87,8 +87,8 @@ function _runHtml() {
       ${_running ? '⏳ Optimerar…' : '▶ Kör optimering'}
     </button>
     <div id="opt-progress" class="val-muted" style="font-size:11px;min-height:16px;margin-top:5px;
-         font-family:monospace;">${shouldUseWorker(getState().pts)
-           ? `Nätet har ${n} punkter – körs i bakgrundstråd.` : ''}</div>`;
+         font-family:monospace;">${shouldUseWorker(getState())
+           ? `Nätet har ${n} mätningar – körs i bakgrundstråd.` : ''}</div>`;
 }
 
 function _logHtml(log) {

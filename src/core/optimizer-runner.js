@@ -3,7 +3,7 @@
 // Två vägar, samma generator i botten (src/core/optimizer.js) så att resultatet
 // är identiskt oavsett väg:
 //
-//   • Web Worker – för stora nät, där en körning tar sekunder. Kräver att
+//   • Web Worker – för mätningstunga nät, där en körning tar sekunder. Kräver att
 //     miljön har Worker och att bundlern kan följa new URL(...)-mönstret
 //     (Vite gör det). Faller tillbaka på huvudtråden om något går fel.
 //   • Huvudtråden i tidsskivor – generatorn körs i block om ~25 ms med
@@ -12,16 +12,32 @@
 //     testmiljön (jsdom saknar Worker).
 import { optimizeNetworkSteps } from './optimizer.js';
 
-// Under denna nätstorlek går en körning på tiondelar av en sekund i webbläsaren
-// och en worker vore ren omkostnad. Gränsen följer kravet i Etapp E: nät under
-// 30 punkter ska kunna köras direkt i webbläsaren.
-export const WORKER_POINT_THRESHOLD = 30;
+// ── Worker-tröskel ───────────────────────────────────────────────────────────
+// Tröskeln går på ANTAL MÄTNINGAR, inte antal punkter. Kostnaden per iteration
+// är (antal kandidater) × en full utjämning, och en utjämning är O(n·u²) för
+// N = AᵀPA plus O(u³) för inversen. Både kandidatantalet och n växer med
+// mätningarna, så mätningsantalet – inte punktantalet – styr körtiden.
+//
+// Den tidigare gränsen (≥ 30 punkter) missade just de dyra fallen. Mätning i
+// bilaga B till docs/troubleshooting/etapp_E_diagnos_20260902.md:
+//
+//   8 punkter /  28 mätningar →  0,15 s   (kördes på huvudtråden – rimligt)
+//  16 punkter / 120 mätningar →  6,9 s    (kördes OCKSÅ på huvudtråden ⇒ fryst UI)
+//
+// Skalningen mellan de två mätpunkterna är brant (≈ 45× på 4,3× mätningar), så
+// gränsen ska ligga lågt. 50 mätningar motsvarar i den mätserien några hundra
+// millisekunder – under tröskeln där en användare uppfattar gränssnittet som
+// fruset – och lägger allt tyngre över på workern med god marginal.
+export const WORKER_MEAS_THRESHOLD = 50;
 
 // Tidsskiva innan huvudtrådskörningen lämnar tillbaka kontrollen.
 const SLICE_MS = 25;
 
-export function shouldUseWorker(pts = []) {
-  return typeof Worker !== 'undefined' && pts.length >= WORKER_POINT_THRESHOLD;
+/**
+ * @param {{meas?:Array}} input – optimeringens indata (eller state; bara meas läses)
+ */
+export function shouldUseWorker({ meas = [] } = {}) {
+  return typeof Worker !== 'undefined' && meas.length >= WORKER_MEAS_THRESHOLD;
 }
 
 const nextTick = () => new Promise(res => setTimeout(res, 0));
@@ -78,7 +94,7 @@ export function runOptimizationInWorker(input, onProgress) {
  * @param {boolean} [opts.useWorker]   – tvinga på/av worker (default: automatiskt)
  */
 export async function runOptimization(input, { onProgress, useWorker } = {}) {
-  const wantWorker = useWorker !== undefined ? useWorker : shouldUseWorker(input.pts);
+  const wantWorker = useWorker !== undefined ? useWorker : shouldUseWorker(input);
   if (wantWorker && typeof Worker !== 'undefined') {
     try {
       return await runOptimizationInWorker(input, onProgress);

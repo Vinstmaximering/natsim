@@ -12,13 +12,14 @@ import {
   criteriaForClass, metricsFromSim, checkCriteria, describeCriteria, R_MIN_DEFAULT,
 } from '../src/core/optimizer-criteria.js';
 import { R_OBS_GOLV, R_OBS_GOD } from '../src/core/constants.js';
-import { runOptimization, shouldUseWorker } from '../src/core/optimizer-runner.js';
+import { runOptimization, shouldUseWorker, WORKER_MEAS_THRESHOLD } from '../src/core/optimizer-runner.js';
 import { computeSimulation } from '../src/core/simulation.js';
 import { getState, setState } from '../src/state/store.js';
 import {
   createProposal, storeProposal, applyProposal, discardProposal, setNetView, comparisonRows,
 } from '../src/state/optimizer-proposal.js';
 import { renderOptimizeButton, renderProposalSection, renderTab } from '../src/ui/right-panel.js';
+import { isStationPoint } from '../src/core/designmatrix.js';
 import { _buildSnapshot, _applySnapshot, _normalizeOptimizerConfig } from '../src/io/export-project.js';
 import { openOptimizerDialog, closeOptimizerDialog, _getResult, _isOpen } from '../src/ui/optimizer-modal.js';
 import { validateNetwork } from '../src/ui/validation.js';
@@ -155,11 +156,31 @@ describe('checkCriteria', () => {
 // Kandidatpool och poängsättning
 // ═══════════════════════════════════════════════════════════════════════════
 describe('generateCandidates', () => {
-  it('utgår bara från uppställningspunkter och hoppar över befintliga mätningar', () => {
+  it('utgår bara från uppställda punkter och hoppar över befintliga mätningar', () => {
     const { candidates } = generateCandidates({ pts: PTS, meas: SPARSE });
     expect(candidates.every(c => ['S1', 'S2', 'S3'].includes(c.from))).toBe(true);
     expect(candidates.some(c => c.from === 'S1' && c.to === 'FP1')).toBe(false);
     expect(candidates.some(c => c.from === 'S1' && c.to === 'FP3')).toBe(true);
+  });
+
+  it('en punkt utan riktningsmätning från sig är inte uppställd', () => {
+    // Fix 1.1: uppställd = förekommer som from i en riktningsobservation
+    // (kärnans stationIds), inte punkttyp. S3 är typad station men mäter
+    // ingenting i detta nät och får därför inte vara ursprung för kandidater.
+    const utanS3 = SPARSE.filter(m => m.from !== 'S3');
+    const { candidates } = generateCandidates({ pts: PTS, meas: utanS3 });
+    expect(candidates.some(c => c.from === 'S3')).toBe(false);
+    expect(candidates.some(c => c.to === 'S3')).toBe(true);
+  });
+
+  it('en dist_only-mätning gör inte punkten uppställd', () => {
+    // stationIds räknar bara riktningsobservationer – en uppställning med
+    // enbart längdmätning får ingen orienteringsobekant i kärnan heller.
+    const bara = [{ id: 'D1', from: 'S1', to: 'FP1', ...INSTR, obsType: 'dist_only' },
+                  { id: 'H1', from: 'S2', to: 'FP2', ...INSTR }];
+    const { candidates } = generateCandidates({ pts: PTS, meas: bara });
+    expect(candidates.some(c => c.from === 'S1')).toBe(false);
+    expect(candidates.some(c => c.from === 'S2')).toBe(true);
   });
 
   it('räknar bort par över maxavståndet i stället för att föreslå dem', () => {
@@ -173,8 +194,8 @@ describe('generateCandidates', () => {
   it('utesluter siktlinjer som blockeras av hinder', () => {
     // Vägg tvärs över mellan S1 och FP4.
     const wall = [{ id: 'O1', type: 'line', points: [[-20, 130], [120, 130]] }];
-    const open = generateCandidates({ pts: PTS, meas: [] });
-    const blocked = generateCandidates({ pts: PTS, meas: [], obstacles: wall });
+    const open = generateCandidates({ pts: PTS, meas: SPARSE });
+    const blocked = generateCandidates({ pts: PTS, meas: SPARSE, obstacles: wall });
     expect(blocked.filteredByObstacle).toBeGreaterThan(0);
     expect(blocked.candidates.length).toBe(open.candidates.length - blocked.filteredByObstacle);
   });
@@ -183,6 +204,71 @@ describe('generateCandidates', () => {
     const a = generateCandidates({ pts: PTS, meas: SPARSE }).candidates;
     const b = generateCandidates({ pts: [...PTS].reverse(), meas: SPARSE }).candidates;
     expect(a.map(c => `${c.from}>${c.to}`)).toEqual(b.map(c => `${c.from}>${c.to}`));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fix 1.3 – nät utan station-typade punkter (F-13 i diagnosrapporten)
+//
+// Den vanliga sitsen vid import från Excel eller extern datakälla: punkterna
+// är bara `known` och `new`, uppställningarna framgår enbart av mätningarna.
+// Före Fix 1.1 gav sådana nät en tom kandidatpool och optimeringen blev en
+// no-op. Testerna nedan var det som saknades – de gamla testerna använde
+// uteslutande station-typade punkter och kodifierade därmed felantagandet.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('Fix 1.3 – importerat nät med enbart known/new-punkter', () => {
+  const IMPORT_PTS = [
+    { id: 'FP1', type: 'known', E: 0,   N: 0   },
+    { id: 'FP2', type: 'known', E: 200, N: 0   },
+    { id: 'FP3', type: 'known', E: 200, N: 200 },
+    { id: 'FP4', type: 'known', E: 0,   N: 200 },
+    { id: 'N1',  type: 'new',   E: 60,  N: 60  },
+    { id: 'N2',  type: 'new',   E: 140, N: 70  },
+    { id: 'N3',  type: 'new',   E: 100, N: 150 },
+  ];
+  // Uppställda: N1, N2, N3 (de förekommer som from). FP1–FP4 är enbart mål.
+  const IMPORT_MEAS = mkMeas([
+    ['N1', 'FP1'], ['N1', 'FP2'],
+    ['N2', 'FP2'], ['N2', 'FP3'],
+    ['N3', 'FP4'], ['N3', 'N1'],
+  ]);
+  const OCCUPIED = ['N1', 'N2', 'N3'];
+
+  it('ingen punkt skulle ha passerat det gamla punkttyps-predikatet', () => {
+    expect(IMPORT_PTS.some(isStationPoint)).toBe(false);
+  });
+
+  it('kandidatpoolen är ändå icke-tom', () => {
+    const { candidates } = generateCandidates({ pts: IMPORT_PTS, meas: IMPORT_MEAS, maxSuggestDist: 500 });
+    expect(candidates.length).toBeGreaterThan(0);
+  });
+
+  it('kandidaterna utgår bara från punkter som faktiskt är uppställda', () => {
+    const { candidates } = generateCandidates({ pts: IMPORT_PTS, meas: IMPORT_MEAS, maxSuggestDist: 500 });
+    expect(candidates.every(c => OCCUPIED.includes(c.from))).toBe(true);
+    // FP1–FP4 är aldrig from i nätet och får därför inte bli ursprung …
+    expect(candidates.some(c => c.from.startsWith('FP'))).toBe(false);
+    // … men de är fullt giltiga mål.
+    expect(candidates.some(c => c.to.startsWith('FP'))).toBe(true);
+  });
+
+  it('optimeringen arbetar i stället för att avbryta med tom pool', () => {
+    const res = optimizeNetwork({
+      pts: IMPORT_PTS, meas: IMPORT_MEAS, centerErr: 1.0,
+      matklass: 'G2', nextMeasId: 100, maxSuggestDist: 500,
+    });
+    expect(res.error?.message ?? '').not.toMatch(/inga fler möjliga mätningar/);
+    expect(res.log.some(e => e.action === 'add')).toBe(true);
+    expect(res.meas.length).toBeGreaterThan(IMPORT_MEAS.length);
+  });
+
+  it('resultatet uppfyller kriterierna', () => {
+    const res = optimizeNetwork({
+      pts: IMPORT_PTS, meas: IMPORT_MEAS, centerErr: 1.0,
+      matklass: 'G2', nextMeasId: 100, maxSuggestDist: 500,
+    });
+    expect(res.ok).toBe(true);
+    expect(checkCriteria(metricsOf(IMPORT_PTS, res.meas), criteriaForClass('G2')).ok).toBe(true);
   });
 });
 
@@ -443,11 +529,20 @@ describe('optimizer-runner', () => {
     expect(seen.some(p => p.kind === 'operation')).toBe(true);
   });
 
-  it('väljer worker först för stora nät, och bara om miljön har en', () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({ id: 'P' + i, type: 'new', E: i, N: i }));
+  it('väljer worker på antal MÄTNINGAR, inte antal punkter', () => {
+    // Fix 1.2: kostnaden styrs av mätningsantalet. Ett nät med många punkter
+    // men få mätningar är billigt; motsatsen är dyr (16 punkter/120 mätningar
+    // tog 6,9 s på huvudtråden enligt diagnosrapportens bilaga B).
     const hasWorker = typeof Worker !== 'undefined';
-    expect(shouldUseWorker(PTS)).toBe(false);
-    expect(shouldUseWorker(many)).toBe(hasWorker);
+    const meas = n => Array.from({ length: n }, (_, i) => ({ id: 'M' + i, from: 'A', to: 'B' }));
+    const mangaPunkter = Array.from({ length: 40 }, (_, i) => ({ id: 'P' + i, type: 'new', E: i, N: i }));
+
+    expect(WORKER_MEAS_THRESHOLD).toBe(50);
+    expect(shouldUseWorker({ pts: mangaPunkter, meas: meas(10) })).toBe(false);
+    expect(shouldUseWorker({ pts: PTS, meas: meas(WORKER_MEAS_THRESHOLD - 1) })).toBe(false);
+    expect(shouldUseWorker({ pts: PTS, meas: meas(WORKER_MEAS_THRESHOLD) })).toBe(hasWorker);
+    expect(shouldUseWorker({ pts: PTS, meas: meas(120) })).toBe(hasWorker);
+    expect(shouldUseWorker()).toBe(false);
   });
 });
 

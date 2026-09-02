@@ -135,9 +135,16 @@ gäller alltså MUF ≤ 3,96σ och YT ≤ 1,98σ automatiskt.
 ### Algoritmen
 
 **Fas 1 – additiv.** Håller kriterierna inte, byggs en pool av alla möjliga
-mätningar mellan befintliga punkter: från varje uppställningspunkt till varje
+mätningar mellan befintliga punkter: från varje **uppställd** punkt till varje
 annan punkt som inte redan mäts. Varje kandidat simuleras, och den som ger högst
 poäng läggs till permanent. Sedan räknas allt om. Taket är 50 tillägg.
+
+*Uppställd punkt* betyder här "förekommer som `from` i minst en riktnings-
+observation" – samma definition som utjämningskärnan använder när den delar ut
+orienteringsobekanta. Punkttypen (`known`, `new`, `station`) styr alltså inte
+vad optimeringen får föreslå: den säger inget om huruvida instrumentet stått på
+punkten i fält, medan mätningarna gör det. Nät som importerats från Excel eller
+extern datakälla har normalt inga `station`-typade punkter alls.
 
 **Fas 2 – subtraktiv.** När kriterierna håller prövas varje aktiv mätning genom
 att simulera att den tas bort. Mätningarna sorteras efter minst bidrag, och den
@@ -198,12 +205,15 @@ inte ett projekttillstånd.
 
 ### Prestanda
 
-Optimeringen räknar om Q_xx efter varje operation, vilket är O(u³) per
-inversion. Nät under 30 punkter körs direkt i webbläsaren (typiskt långt under
-en sekund). Från 30 punkter flyttas körningen till en Web Worker
+Optimeringen räknar om Q_xx efter varje operation: O(n·u²) för normalmatrisen
+plus O(u³) för inversen, gånger antalet kandidater. Körtiden styrs därför av
+**antalet mätningar**, inte antalet punkter — 8 punkter/28 mätningar tar 0,15 s
+medan 16 punkter/120 mätningar tar 6,9 s.
+
+Från **50 mätningar** flyttas körningen till en Web Worker
 (`src/core/optimizer.worker.js`) så att UI:t inte fryser; misslyckas workern
-körs samma generator på huvudtråden i tidsskivor. Progress visas i dialogen i
-båda fallen.
+körs samma generator på huvudtråden i tidsskivor. Mindre nät körs direkt i
+webbläsaren. Progress visas i dialogen i båda fallen.
 
 ## Visuellt lager
 
