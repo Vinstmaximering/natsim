@@ -132,6 +132,24 @@ export function scoreDelta(before, after, criteria, weights) {
 const fmtMm = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(2) : 'oändlig');
 const fmtR  = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : 'oändlig');
 
+/**
+ * Fix 2.3: raden som redovisar tvånivåkravet på r efter varje operation.
+ * Det mjuka kravet (r < 0,50, HMK Bilaga F.6) räknas och redovisas så att
+ * användaren kan motivera observationerna i planeringsrapporten; det hårda
+ * (r < 0,35, SIS-TS §6.2.2) bekräftas vara uppfyllt.
+ */
+export function formatRReport(e) {
+  if (e.belowSoft == null) return '';
+  const soft = Number(e.softLimit).toFixed(2), hard = Number(e.hardLimit).toFixed(2);
+  const mjuk = e.belowSoft === 0
+    ? `Inga observationer under r ${soft}.`
+    : `${e.belowSoft} observation${e.belowSoft === 1 ? '' : 'er'} under r ${soft} (rapporteras).`;
+  const hard_ = e.belowHard === 0
+    ? `Inget värde under det hårda kravet r ${hard}.`
+    : `⚠ ${e.belowHard} observation${e.belowHard === 1 ? '' : 'er'} UNDER det hårda kravet r ${hard}.`;
+  return ` ${mjuk} ${hard_}`;
+}
+
 /** Beslutsspårningens radtext. En källa för dialog, tester och rapport. */
 export function formatLogEntry(e) {
   const head = `Iteration ${e.iteration} (Fas ${e.phase}): `;
@@ -139,12 +157,13 @@ export function formatLogEntry(e) {
     const eff = `σ_pos-effekt ${fmtMm(e.sigmaEffectMm)} mm, r-tal-effekt ${fmtR(e.rEffect)}`;
     return head + `Lade till mätning ${e.from}→${e.to}. Störst förbättring av nätet: ${eff}. ` +
       (e.criteriaOk ? 'Alla acceptanskriterier hålls nu.'
-                    : `Kvarstår: ${e.violations.map(v => v.text).join('; ')}.`);
+                    : `Kvarstår: ${e.violations.map(v => v.text).join('; ')}.`) +
+      formatRReport(e);
   }
   if (e.action === 'remove') {
     const eff = `σ_pos-effekt ${fmtMm(e.sigmaEffectMm)} mm, r-tal-effekt ${fmtR(e.rEffect)}`;
     return head + `Tog bort mätning ${e.from}→${e.to}. Bidrog minst till nätet: ${eff}. ` +
-      'Alla kriterier hålls fortfarande.';
+      'Alla kriterier hålls fortfarande.' + formatRReport(e);
   }
   return head + e.note;
 }
@@ -165,7 +184,7 @@ function buildMeas(id, from, to, defaultInstr) {
 }
 
 function evaluate(pts, meas, centerErr, criteria) {
-  const metrics = metricsFromSim(computeSimulation({ pts, meas, centerErr }));
+  const metrics = metricsFromSim(computeSimulation({ pts, meas, centerErr }), criteria);
   return { metrics, check: checkCriteria(metrics, criteria) };
 }
 
@@ -215,7 +234,9 @@ export function* optimizeNetworkSteps(input) {
     maxAdditions = MAX_ADDITIONS, maxIterations = MAX_ITERATIONS,
   } = input;
 
-  const criteria = input.criteria || criteriaForClass(input.matklass);
+  // Fix 2.2: projektets egna σ_max (optimizerConfig.sigma_max_mm) överstyr
+  // klassens produktdefault. Utelämnat värde ⇒ klassens default.
+  const criteria = input.criteria || criteriaForClass(input.matklass, { sigmaMaxMm: input.sigmaMaxMm });
   const weights  = normalizeWeights(input.weights);
   const baseMeas = (input.meas || []).map(m => ({ ...m }));
 
@@ -323,6 +344,8 @@ export function* optimizeNetworkSteps(input) {
       criteriaOk: cur.check.ok,
       violations: cur.check.violations,
       metrics: cur.metrics,
+      belowSoft: cur.metrics.nBelowSoft, belowHard: cur.metrics.nBelowHard,
+      softLimit: criteria.rSoft, hardLimit: criteria.rMin,
     });
     yield { phase: 1, iteration, kind: 'operation', entry };
   }
@@ -383,6 +406,8 @@ export function* optimizeNetworkSteps(input) {
       score: victim.contribution,
       criteriaOk: true, violations: [],
       metrics: cur.metrics,
+      belowSoft: cur.metrics.nBelowSoft, belowHard: cur.metrics.nBelowHard,
+      softLimit: criteria.rSoft, hardLimit: criteria.rMin,
     });
     yield { phase: 2, iteration, kind: 'operation', entry };
   }

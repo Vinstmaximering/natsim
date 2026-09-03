@@ -153,9 +153,16 @@ export const K_NAT_GOLV = 0.50;
 //   r_i ≥ 0,50           Godkänd nivå, ingen anmärkning.
 //
 // Värdena låg tidigare hårdkodade i valideringen och i studio-vyernas
-// färgsättning. Etapp E flyttade hit dem: optimeringens acceptanskriterium
-// MÅSTE vara samma nivå som valideringen kallar godkänd, annars levererar
-// optimeringen med flit nät som produktens egen validering varnar för.
+// färgsättning. Etapp E flyttade hit dem så att optimeringen och valideringen
+// läser samma trösklar.
+//
+// Optimeringens krav ligger MELLAN de två (se core/optimizer-criteria.js):
+//   hårt krav  r ≥ 0,35  – blockerar leverans, SIS-TS §6.2.2
+//   mjukt krav r ≥ 0,50  – rapporteras, HMK Bilaga F.6 = R_OBS_GOD
+// Ordningen R_OBS_GOLV < 0,35 < R_OBS_GOD är avsiktlig och måste bevaras: den
+// garanterar att ett optimerat nät kan få VARNINGAR i valideringen men aldrig
+// FEL. Sänks det hårda kravet under R_OBS_GOLV levererar optimeringen nät som
+// produktens egen validering underkänner.
 // ─────────────────────────────────────────────────────────────────────────────
 export const R_OBS_GOLV = 0.30;   // under detta: fel
 export const R_OBS_GOD  = 0.50;   // vid/över detta: ingen anmärkning

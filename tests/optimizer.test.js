@@ -6,11 +6,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   optimizeNetwork, generateCandidates, normalizeWeights, scoreDelta,
-  formatLogEntry, MAX_ADDITIONS, MAX_ITERATIONS, DEFAULT_WEIGHTS,
+  formatLogEntry, formatRReport, MAX_ADDITIONS, MAX_ITERATIONS, DEFAULT_WEIGHTS,
 } from '../src/core/optimizer.js';
 import {
-  criteriaForClass, metricsFromSim, checkCriteria, describeCriteria, R_MIN_DEFAULT,
+  criteriaForClass, metricsFromSim, checkCriteria, describeCriteria,
+  R_MIN_HARD, R_MIN_SOFT, SIGMA_MAX_DEFAULT_MM,
 } from '../src/core/optimizer-criteria.js';
+import { SIS_TS_GENERAL_REQS } from '../src/data/sis-ts-classes.js';
 import { R_OBS_GOLV, R_OBS_GOD } from '../src/core/constants.js';
 import { runOptimization, shouldUseWorker, WORKER_MEAS_THRESHOLD } from '../src/core/optimizer-runner.js';
 import { computeSimulation } from '../src/core/simulation.js';
@@ -78,11 +80,30 @@ const BASE_STATE = {
 // Acceptanskriterier ur mätklassen
 // ═══════════════════════════════════════════════════════════════════════════
 describe('criteriaForClass', () => {
-  it('läser σ_max ur SIS-TS Tabell A.9 per klass', () => {
+  it('har ett σ_max-tak per klass som PRODUKTVAL, inte ur Tabell A.9', () => {
+    // Fix 2.2: σ_max avser σ_pos efter utjämning. Tabell A.9:s "spridning
+    // längd" är en annan storhet (spridning mellan dubbelmätta längder i fält)
+    // och får inte återinföras som källa.
     expect(criteriaForClass('G1').sigmaMaxMm).toBe(2);
     expect(criteriaForClass('G2').sigmaMaxMm).toBe(3);
     expect(criteriaForClass('G3').sigmaMaxMm).toBe(5);
     expect(criteriaForClass('G4').sigmaMaxMm).toBe(8);
+    expect(SIGMA_MAX_DEFAULT_MM.G2).toBe(3);
+    expect(criteriaForClass('G2').source).toContain('produktval');
+    expect(criteriaForClass('G2').source).not.toContain('A.9');
+  });
+
+  it('σ_max kan överstyras per projekt', () => {
+    const c = criteriaForClass('G2', { sigmaMaxMm: 1.5 });
+    expect(c.sigmaMaxMm).toBe(1.5);
+    expect(c.sigmaMaxDefaultMm).toBe(3);
+    expect(c.sigmaMaxIsCustom).toBe(true);
+    expect(describeCriteria(c).join(' ')).toContain('projektets eget värde');
+    // null/skräp/0 faller tillbaka på klassens default
+    [null, undefined, 0, -2, 'abc'].forEach(v => {
+      expect(criteriaForClass('G2', { sigmaMaxMm: v }).sigmaMaxMm).toBe(3);
+    });
+    expect(criteriaForClass('G2').sigmaMaxIsCustom).toBe(false);
   });
 
   it('ger G2:s krav som fallback när ingen klass är vald', () => {
@@ -92,22 +113,32 @@ describe('criteriaForClass', () => {
     expect(criteriaForClass('G3').assumedClass).toBe(false);
   });
 
-  it('har normens k-gräns och samma r-gräns som nätvalideringen', () => {
+  it('har tvånivåkravet på r: hårt 0,35 och mjukt 0,50', () => {
     const c = criteriaForClass('G2');
     expect(c.kMin).toBe(0.50);
-    expect(c.rMin).toBe(R_MIN_DEFAULT);
-    // Kravet MÅSTE vara valideringens godkända nivå. Ligger det på felgränsen
-    // R_OBS_GOLV levererar optimeringen nät som produkten själv varnar för.
-    expect(c.rMin).toBe(R_OBS_GOD);
-    expect(R_OBS_GOLV).toBeLessThan(R_OBS_GOD);
+    // Hårt krav = SIS-TS §6.2.2, hämtat ur den befintliga normtabellen.
+    expect(c.rMin).toBe(R_MIN_HARD);
+    expect(c.rMin).toBe(0.35);
+    expect(R_MIN_HARD).toBe(SIS_TS_GENERAL_REQS.k_individual_min);
+    // Mjukt krav = HMK Bilaga F.6, samma nivå som valideringen kallar godkänd.
+    expect(c.rSoft).toBe(R_MIN_SOFT);
+    expect(c.rSoft).toBe(R_OBS_GOD);
+    // Den avgörande ordningen: valideringens FELgräns ligger under det hårda
+    // kravet, så ett optimerat nät kan få varningar men aldrig fel.
+    expect(R_OBS_GOLV).toBeLessThan(c.rMin);
+    expect(c.rMin).toBeLessThan(c.rSoft);
   });
 
-  it('prövar MUF/YT, som följer av r-kravet', () => {
+  it('redovisar MUF/YT men låter dem inte spärra', () => {
+    // Skulle de spärra vore det hårda kravet i praktiken 0,497 i stället för
+    // 0,35 (MUF ≤ 4σ ⇔ r ≥ 0,490; YT ≤ 2σ ⇔ r ≥ 0,497) och tvånivåmodellen
+    // verkningslös.
     const c = criteriaForClass('G2');
-    expect(c.enforceMufYt).toBe(true);
+    expect(c.enforceMufYt).toBe(false);
     expect(c.mufFactorMax).toBe(4);
     expect(c.ytFactorMax).toBe(2);
     expect(describeCriteria(c).join(' ')).toContain('MUF');
+    expect(describeCriteria(c).join(' ')).toContain('spärrar ej');
   });
 });
 
@@ -124,7 +155,7 @@ describe('checkCriteria', () => {
     const m = { computable: true, minR: 0.1, maxSigPosMm: 9, kGlobal: 0.2,
                 maxMufFactor: 8, maxYtFactor: 7, nObs: 10, nMeas: 5 };
     const keys = checkCriteria(m, crit).violations.map(v => v.key);
-    expect(keys).toEqual(['rMin', 'sigmaMax', 'kMin', 'muf', 'yt']);
+    expect(keys).toEqual(['rMin', 'sigmaMax', 'kMin']);
   });
 
   it('behandlar ett oberäkningsbart nät som ett brott', () => {
@@ -135,20 +166,27 @@ describe('checkCriteria', () => {
     expect(res.violations[0].key).toBe('berakning');
   });
 
-  it('r ≥ 0,50 medför att MUF- och YT-kraven hålls automatiskt', () => {
-    // MUF/σ = κ/√r och YT/σ = (1−r)·κ/√r med κ = 2,80 (HMK F.16).
-    const kappa = 2.80;
-    [0.50, 0.60, 0.85, 1.0].forEach(r => {
-      const muf = kappa / Math.sqrt(r);
-      const m = { computable: true, minR: r, maxSigPosMm: 1, kGlobal: 0.6,
-                  maxMufFactor: muf, maxYtFactor: (1 - r) * muf, nObs: 20, nMeas: 10 };
-      expect(checkCriteria(m, crit).ok).toBe(true);
-    });
-    // Strax under gränsen binder MUF-kravet i stället.
-    const muf = kappa / Math.sqrt(0.48);
-    const svag = { computable: true, minR: 0.48, maxSigPosMm: 1, kGlobal: 0.6,
-                   maxMufFactor: muf, maxYtFactor: (1 - 0.48) * muf, nObs: 20, nMeas: 10 };
-    expect(checkCriteria(svag, crit).violations.map(v => v.key)).toEqual(['rMin', 'muf', 'yt']);
+  it('observationer mellan 0,35 och 0,50 godkänns men räknas', () => {
+    // Kärnan i Fix 2.1: det mjuka kravet blockerar inte.
+    const m = { computable: true, minR: 0.36, maxSigPosMm: 1, kGlobal: 0.6,
+                maxMufFactor: 4.67, maxYtFactor: 2.99,
+                nObs: 20, nMeas: 10, nBelowHard: 0, nBelowSoft: 7 };
+    expect(checkCriteria(m, crit).ok).toBe(true);
+    // …men under 0,35 blockerar det.
+    const under = { ...m, minR: 0.34, nBelowHard: 1 };
+    const res = checkCriteria(under, crit);
+    expect(res.ok).toBe(false);
+    expect(res.violations[0].key).toBe('rMin');
+    expect(res.violations[0].text).toContain('hårt krav');
+  });
+
+  it('metricsFromSim räknar observationer under båda trösklarna', () => {
+    const crit2 = criteriaForClass('G2');
+    const m = metricsOf(PTS, RICH);
+    const rs = computeSimulation({ pts: PTS, meas: RICH, centerErr: 1.0 }).redund.map(r => r.ri);
+    expect(m.nBelowHard).toBe(rs.filter(r => r < crit2.rMin).length);
+    expect(m.nBelowSoft).toBe(rs.filter(r => r < crit2.rSoft).length);
+    expect(m.nBelowHard).toBeLessThanOrEqual(m.nBelowSoft);
   });
 });
 
@@ -294,9 +332,9 @@ describe('scoreDelta', () => {
   });
 
   it('relativiserar mot kravnivån så att vikterna betyder samma sak', () => {
-    // 0,3 mm förbättring = 10 % av σ_max (3 mm); 0,05 i r = 10 % av r_min (0,50).
+    // 0,3 mm förbättring = 10 % av σ_max (3 mm); 0,035 i r = 10 % av r_min (0,35).
     const a = scoreDelta(M(0.5, 3.3), M(0.5, 3.0), crit, w);
-    const b = scoreDelta(M(0.50, 3), M(0.55, 3), crit, w);
+    const b = scoreDelta(M(0.500, 3), M(0.535, 3), crit, w);
     expect(a).toBeCloseTo(b, 12);
   });
 
@@ -510,6 +548,85 @@ describe('beslutsspårningslogg', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// Fix 2.3 – r-rapporteringen i beslutsspårningen
+// ═══════════════════════════════════════════════════════════════════════════
+describe('Fix 2.3 – tvånivåkravet redovisas per iteration', () => {
+  const res = run({ meas: RICH });
+
+  it('varje operation redovisar antalet under det mjuka kravet', () => {
+    const ops = res.log.filter(e => e.action === 'add' || e.action === 'remove');
+    expect(ops.length).toBeGreaterThan(0);
+    ops.forEach(e => {
+      expect(e.belowSoft).toBe(e.metrics.nBelowSoft);
+      expect(e.softLimit).toBe(0.50);
+      expect(e.text).toMatch(/observationer? under r 0.50|Inga observationer under r 0.50/);
+    });
+  });
+
+  it('varje operation bekräftar att inget värde ligger under det hårda kravet', () => {
+    res.log.filter(e => e.action === 'add' || e.action === 'remove').forEach(e => {
+      expect(e.belowHard).toBe(0);
+      expect(e.hardLimit).toBe(0.35);
+      expect(e.text).toContain('Inget värde under det hårda kravet r 0.35');
+    });
+  });
+
+  it('sista raden speglar slutnätets faktiska antal', () => {
+    const sista = res.log.filter(e => e.action === 'add' || e.action === 'remove').pop();
+    expect(sista.belowSoft).toBe(res.finalMetrics.nBelowSoft);
+    expect(sista.text).toContain(`${res.finalMetrics.nBelowSoft} observationer under r 0.50`);
+  });
+
+  it('formatRReport varnar när det hårda kravet är brutet', () => {
+    const txt = formatRReport({ belowSoft: 4, belowHard: 2, softLimit: 0.5, hardLimit: 0.35 });
+    expect(txt).toContain('4 observationer under r 0.50 (rapporteras).');
+    expect(txt).toContain('⚠ 2 observationer UNDER det hårda kravet r 0.35.');
+    // Singular/plural och nolläge
+    expect(formatRReport({ belowSoft: 1, belowHard: 0, softLimit: 0.5, hardLimit: 0.35 }))
+      .toContain('1 observation under r 0.50');
+    expect(formatRReport({ belowSoft: 0, belowHard: 0, softLimit: 0.5, hardLimit: 0.35 }))
+      .toContain('Inga observationer under r 0.50.');
+    // Saknade fält ⇒ ingen text alls (äldre poster, skip/stop-rader)
+    expect(formatRReport({})).toBe('');
+  });
+
+  it('jämförelsetabellen visar det mjuka kravet som egen rad', () => {
+    const rows = comparisonRows(res.baseMetrics, res.finalMetrics, res.criteria);
+    const rad = rows.find(r => r.label.startsWith('Obs. med r <'));
+    expect(rad).toBeDefined();
+    expect(rad.opt).toBe(res.finalMetrics.nBelowSoft);
+    expect(rad.krav).toBe('rapporteras');
+    expect(rad.ok).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fix 2.2 – σ_max styr optimeringen
+// ═══════════════════════════════════════════════════════════════════════════
+describe('Fix 2.2 – projektets σ_max styr resultatet', () => {
+  it('hårdare σ_max ger ett tätare nät', () => {
+    const default_ = run({ meas: RICH });
+    const hart     = run({ meas: RICH, sigmaMaxMm: 1.0 });
+    expect(default_.finalMetrics.maxSigPosMm).toBeGreaterThan(hart.finalMetrics.maxSigPosMm);
+    expect(hart.meas.length).toBeGreaterThan(default_.meas.length);
+    expect(hart.finalMetrics.maxSigPosMm).toBeLessThanOrEqual(1.0);
+  });
+
+  it('ett omöjligt σ_max avbryter i stället för att leverera', () => {
+    const res = run({ meas: RICH, sigmaMaxMm: 0.6 });
+    expect(res.ok).toBe(false);
+    expect(res.error.violations.some(v => v.key === 'sigmaMax')).toBe(true);
+    expect(res.meas).toEqual(RICH);
+  });
+
+  it('utelämnat värde ger mätklassens default', () => {
+    const utan = run({ meas: RICH });
+    const med  = run({ meas: RICH, sigmaMaxMm: SIGMA_MAX_DEFAULT_MM.G2 });
+    expect(med.meas.map(m => m.id)).toEqual(utan.meas.map(m => m.id));
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // Körning via runner (Web Worker saknas i jsdom → huvudtrådsvägen)
 // ═══════════════════════════════════════════════════════════════════════════
 describe('optimizer-runner', () => {
@@ -596,7 +713,7 @@ describe('optimeringsförslag som eget visningslager', () => {
     const rows = comparisonRows(res.baseMetrics, res.finalMetrics, res.criteria);
     const r = rows.find(x => x.label === 'Minsta r-tal');
     expect(rows.map(x => x.label)).toContain('Största σ_pos');
-    expect(r.krav).toBe('≥ 0.50');
+    expect(r.krav).toBe('≥ 0.35');
     expect(r.ok).toBe(true);
   });
 });
@@ -611,22 +728,33 @@ describe('optimeringsförslag som eget visningslager', () => {
 describe('nätvalidering efter optimering', () => {
   beforeEach(() => setState({ ...BASE_STATE, pts: PTS, meas: RICH, nMid: 100 }));
 
-  it('ett optimerat nät ger varken fel eller r-varningar', () => {
+  it('ett optimerat nät ger inga FEL i valideringen', () => {
+    // Kontraktet efter Fas 2: hårt krav 0,35 ligger över valideringens
+    // felgräns 0,30, så ett optimerat nät kan aldrig underkännas av
+    // validateNetwork() på r-talen.
     const res = run({ meas: RICH });
     setState({ meas: res.meas, simResult: null });
     runSimulation();
     const v = validateNetwork();
+    expect(v.issues.filter(i => i.includes('r_i'))).toEqual([]);
     expect(v.ok).toBe(true);
-    expect(v.warnings.filter(w => w.includes('r_i'))).toEqual([]);
+    expect(getState().simResult.redund.every(r => r.ri >= R_OBS_GOLV)).toBe(true);
   });
 
-  it('inga observationer hamnar i varningsbandet efter optimering', () => {
+  it('varningarna i bandet 0,35–0,50 är exakt de optimeringen rapporterar', () => {
+    // Observationer mellan hårt och mjukt krav levereras medvetet. Kopplingen
+    // som måste hålla: antalet valideringen varnar för är samma antal som
+    // beslutsspårningsloggen redovisar, så användaren kan motivera dem.
     const res = run({ meas: RICH });
     setState({ meas: res.meas, simResult: null });
     runSimulation();
     const band = getState().simResult.redund
       .filter(r => r.ri >= R_OBS_GOLV && r.ri < R_OBS_GOD);
-    expect(band).toEqual([]);
+    expect(band.length).toBe(res.finalMetrics.nBelowSoft);
+    expect(res.finalMetrics.nBelowHard).toBe(0);
+    if (band.length) {
+      expect(validateNetwork().warnings.some(w => w.includes('r_i'))).toBe(true);
+    }
   });
 
   it('valideringen prövar förslaget när förslagsvyn är aktiv', () => {
@@ -721,6 +849,30 @@ describe('optimeringsdialogen', () => {
     expect(document.querySelector('#opt-overlay').innerHTML).toContain('Ingen mätklass vald');
   });
 
+  it('σ_max-fältet skriver till optimizerConfig utan att röra vikterna', () => {
+    openOptimizerDialog();
+    const inp = document.getElementById('opt-sigmax');
+    expect(inp.value).toBe('');                       // tomt = klassens default
+    expect(inp.placeholder).toContain('3');
+    inp.value = '1.5';
+    inp.dispatchEvent(new window.Event('input'));
+    expect(getState().optimizerConfig.sigma_max_mm).toBe(1.5);
+    expect(getState().optimizerConfig.weightSigma).toBe(0.5);
+    expect(document.getElementById('opt-crit-list').innerHTML).toContain('1.5 mm');
+    // Tomt fält återställer till klassens default
+    inp.value = '';
+    inp.dispatchEvent(new window.Event('input'));
+    expect(getState().optimizerConfig.sigma_max_mm).toBeNull();
+  });
+
+  it('visar att σ_max är produktval och r-kravet tvånivåigt', () => {
+    openOptimizerDialog();
+    const html = document.querySelector('#opt-overlay .mo').innerHTML;
+    expect(html).toContain('hårt krav');
+    expect(html).toContain('rapporteras men blockerar inte');
+    expect(html).toContain('produktval');
+  });
+
   it('viktreglaget skriver till optimizerConfig', () => {
     openOptimizerDialog();
     const slider = document.getElementById('opt-weight');
@@ -793,30 +945,44 @@ describe('optimizerConfig i projektfilen', () => {
   beforeEach(() => setState({ ...BASE_STATE }));
 
   it('sparas i snapshotet', () => {
-    setState({ optimizerConfig: { weightSigma: 0.7, weightR: 0.3 } });
-    expect(_buildSnapshot().optimizerConfig).toEqual({ weightSigma: 0.7, weightR: 0.3 });
+    setState({ optimizerConfig: { weightSigma: 0.7, weightR: 0.3, sigma_max_mm: 2.5 } });
+    expect(_buildSnapshot().optimizerConfig)
+      .toEqual({ weightSigma: 0.7, weightR: 0.3, sigma_max_mm: 2.5 });
   });
 
-  it('äldre filer utan sektionen laddas med 50/50', () => {
+  it('äldre filer utan sektionen laddas med 50/50 och klassens σ_max', () => {
     _applySnapshot({ ver: 3, pts: [], meas: [] });
-    expect(getState().optimizerConfig).toEqual({ weightSigma: 0.5, weightR: 0.5 });
+    // sigma_max_mm = null betyder "följ mätklassens default", vilket för G2
+    // är 3 mm – kravet på bakåtkompatibilitet i Fix 2.2.
+    expect(getState().optimizerConfig).toEqual({ weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null });
+    expect(criteriaForClass('G2', { sigmaMaxMm: getState().optimizerConfig.sigma_max_mm })
+      .sigmaMaxMm).toBe(3);
   });
 
   it('normaliserar viktparet till summa 1 och sanerar skräp', () => {
     expect(_normalizeOptimizerConfig({ weightSigma: 70, weightR: 30 }))
-      .toEqual({ weightSigma: 0.7, weightR: 0.3 });
+      .toEqual({ weightSigma: 0.7, weightR: 0.3, sigma_max_mm: null });
     expect(_normalizeOptimizerConfig({ weightSigma: 0, weightR: 0 }))
-      .toEqual({ weightSigma: 0.5, weightR: 0.5 });
+      .toEqual({ weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null });
     expect(_normalizeOptimizerConfig({ weightSigma: 'abc', weightR: null }))
-      .toEqual({ weightSigma: 0.5, weightR: 0.5 });
+      .toEqual({ weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null });
+  });
+
+  it('sanerar sigma_max_mm', () => {
+    expect(_normalizeOptimizerConfig({ sigma_max_mm: 4.5 }).sigma_max_mm).toBe(4.5);
+    expect(_normalizeOptimizerConfig({ sigma_max_mm: '2,5' }).sigma_max_mm).toBe(2.5);
+    [0, -1, 'abc', null, undefined].forEach(v => {
+      expect(_normalizeOptimizerConfig({ sigma_max_mm: v }).sigma_max_mm).toBeNull();
+    });
   });
 
   it('går fram och tillbaka utan att ändra värdet', () => {
-    setState({ optimizerConfig: { weightSigma: 0.25, weightR: 0.75 } });
+    setState({ optimizerConfig: { weightSigma: 0.25, weightR: 0.75, sigma_max_mm: 1.8 } });
     const snap = _buildSnapshot();
-    setState({ optimizerConfig: { weightSigma: 0.5, weightR: 0.5 } });
+    setState({ optimizerConfig: { weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null } });
     _applySnapshot(snap);
-    expect(getState().optimizerConfig).toEqual({ weightSigma: 0.25, weightR: 0.75 });
+    expect(getState().optimizerConfig)
+      .toEqual({ weightSigma: 0.25, weightR: 0.75, sigma_max_mm: 1.8 });
   });
 
   it('ett laddat projekt börjar utan liggande förslag', () => {

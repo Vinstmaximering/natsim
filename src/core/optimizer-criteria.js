@@ -1,44 +1,60 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ACCEPTANSKRITERIER FÖR NÄTOPTIMERINGEN (Etapp E)
 //
-// Kriterierna läses ur projektets mätklass – användaren ställer inte in dem i
-// optimeringsdialogen, de FÖLJER av vald klass. Källor:
+// Kriterierna följer av projektets mätklass. Tre av dem är normstyrda, ett är
+// produktval – skillnaden är utskriven här eftersom den ska kunna granskas.
 //
-//   σ_max   SIS-TS 21143:2016 Tabell A.9, kolumnen "spridning längd":
-//           G1 2 mm · G2 3 mm · G3 5 mm · G4 8 mm. Tabellvärdet är klassens
-//           tillåtna spridning i plan och används här som tak för punkternas
-//           standardosäkerhet σ_pos (1σ) i simuleringen.
-//   k_min   SIS-TS 21143:2016 §6.2.2 – k > 0,5 för nätet. Samma värde som
-//           K_NAT_GOLV i core/constants.js; hämtas ur SIS_TS_GENERAL_REQS så
-//           att det bara står på ett ställe.
-//   r_min   Minsta redundanstal per observation = R_OBS_GOD (0,50), samma
-//           nivå som nätvalideringen kallar godkänd och som studio-vyerna
-//           färgar grönt. Kravet är MEDVETET satt vid den godkända nivån och
-//           inte vid felgränsen R_OBS_GOLV (0,30): Fas 2 bantar per
-//           konstruktion tills kriterierna precis håller, så ett krav på 0,30
-//           skulle leverera nät där större delen av observationerna hamnar i
-//           varningsbandet 0,30 ≤ r_i < 0,50 – produkten skulle alltså varna
-//           för sitt eget optimeringsresultat. Trösklarna bor i
-//           core/constants.js så att de två inte kan divergera igen.
-//           OBS: SIS-TS §6.2.2 anger k > 0,35 för ENSKILD mätning – det är k,
-//           inte r_i, och gränserna är därför inte utbytbara.
+// r_min (HÅRT KRAV, blockerar leverans)   r_i ≥ 0,35 per observation
+//   SIS-TS 21143:2016 §6.2.2. Under detta värde är observationen så
+//   okontrollerad att ett grovt fel inte kan detekteras med normal
+//   data-snooping – felet fortplantar sig i stället rakt in i koordinaterna.
+//   Värdet hämtas ur SIS_TS_GENERAL_REQS.k_individual_min så att det bara står
+//   på ett ställe i kodbasen.
+//
+// r_soft (MJUKT KRAV, rapporteras men blockerar inte)   r_i ≥ 0,50
+//   HMK-Stommätning 2024 Bilaga F.6. Observationer mellan 0,35 och 0,50
+//   levereras, men räknas och redovisas i beslutsspårningsloggen så att
+//   användaren kan motivera dem i planeringsrapporten. Samma nivå som
+//   nätvalideringen (R_OBS_GOD) och studio-vyerna kallar godkänd, vilket
+//   betyder att ett optimerat nät kan få VARNINGAR i "Validera nät" – men
+//   aldrig FEL, eftersom valideringens felgräns (R_OBS_GOLV = 0,30) ligger
+//   under det hårda kravet.
+//
+// σ_max (PRODUKTVAL, inte normcitat)   σ_pos ≤ 3 mm för G2
+//   Avser punktens standardosäkerhet σ_pos (1σ) EFTER UTJÄMNING, alltså
+//   resultatet av simuleringen. Detta är en annan storhet än SIS-TS Tabell
+//   A.9:s kolumn "spridning längd", som anger tillåten spridning mellan
+//   dubbelmätta längder i fält och som kriteriet tidigare felaktigt hämtades
+//   ur (se diagnosrapporten 2026-09-02). Värdena nedan är produktval grundade
+//   på svensk praxis för bruksnät i plan och kan överstyras per projekt via
+//   optimizerConfig.sigma_max_mm.
+//
+// k_min (NORMSTYRT)   k = f/n ≥ 0,50 för nätet
+//   SIS-TS 21143:2016 §6.2.2, samma värde som K_NAT_GOLV i core/constants.js.
 //
 // MUF och YT är i simuleringen rena funktioner av r_i:
-//     MUF_i = κ·σ_i/√r_i        ⇒  MUF_i/σ_i = κ/√r_i
-//     YT_i  = (1−r_i)·MUF_i     ⇒  YT_i/σ_i  = (1−r_i)·κ/√r_i
-// med κ = 2,80 (HMK F.16). Kraven MUF ≤ 4σ respektive YT ≤ 2σ (SIS-TS §6.2.2)
-// är därmed ekvivalenta med r_i ≥ (κ/4)² = 0,490 respektive r_i ≥ 0,497 (roten
-// till (1−r)κ/√r = 2) – båda alltså svagare än r_min = 0,50. Vid r_i ≥ 0,50
-// gäller MUF ≤ 3,96σ och
-// YT ≤ 1,98σ automatiskt, och gränserna kan därför prövas utan att någonsin
-// binda hårdare än r-kravet. Det var skälet till att de tidigare inte
-// spärrade: med r_min = 0,30 hade de gjort nästan alla nät ogiltiga.
+//     MUF_i/σ_i = κ/√r_i        YT_i/σ_i = (1−r_i)·κ/√r_i      (κ = 2,80, HMK F.16)
+// Kraven MUF ≤ 4σ och YT ≤ 2σ (SIS-TS §6.2.2) motsvarar därför r_i ≥ 0,490
+// respektive r_i ≥ 0,497. Båda ligger ÖVER det hårda r-kravet 0,35, så att
+// grinda på dem skulle i praktiken sätta det hårda kravet till 0,497 och göra
+// tvånivåmodellen ovan verkningslös. De beräknas och redovisas därför, men
+// spärrar inte (enforceMufYt = false).
 // ─────────────────────────────────────────────────────────────────────────────
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
 import { R_OBS_GOD } from './constants.js';
 
-// Minsta redundanstal per observation. Produktvärde, se blockkommentaren ovan.
-export const R_MIN_DEFAULT = R_OBS_GOD;
+// Hårt krav per observation – blockerar leverans. SIS-TS 21143:2016 §6.2.2.
+export const R_MIN_HARD = SIS_TS_GENERAL_REQS.k_individual_min;   // 0,35
+
+// Mjukt krav per observation – rapporteras, blockerar inte.
+// HMK-Stommätning 2024 Bilaga F.6.
+export const R_MIN_SOFT = R_OBS_GOD;                              // 0,50
+
+// σ_pos-tak per mätklass i mm. PRODUKTVAL, inte normcitat – se blockkommentaren.
+// G2 = 3 mm är fastställt värde för bruksnät i plan; övriga klasser följer
+// klassernas inbördes ambitionsnivå. Överstyrs per projekt med
+// optimizerConfig.sigma_max_mm.
+export const SIGMA_MAX_DEFAULT_MM = Object.freeze({ G1: 2, G2: 3, G3: 5, G4: 8 });
 
 // Mätklass som används när projektet saknar vald klass. Redovisas i dialogen
 // så att användaren ser att kravnivån är antagen och inte projektstyrd.
@@ -47,21 +63,34 @@ export const FALLBACK_KLASS = 'G2';
 /**
  * Acceptanskriterier för en mätklass ("G1".."G4"). Okänd/tom klass ger G2:s
  * krav, markerade med assumedClass:true.
+ *
+ * @param {string|null} klass
+ * @param {{sigmaMaxMm?:number|null}} [overrides] – projektets egna värden
+ *        (optimizerConfig.sigma_max_mm). null/utelämnat ⇒ klassens default.
  */
-export function criteriaForClass(klass) {
+export function criteriaForClass(klass, overrides = {}) {
   const key = SIS_TS_CLASSES[klass] ? klass : FALLBACK_KLASS;
-  const c = SIS_TS_CLASSES[key];
   const g = SIS_TS_GENERAL_REQS;
+  const sigmaDefault = SIGMA_MAX_DEFAULT_MM[key];
+  const sigmaOverride = Number(overrides.sigmaMaxMm);
+  const sigmaMaxMm = Number.isFinite(sigmaOverride) && sigmaOverride > 0
+    ? sigmaOverride : sigmaDefault;
   return {
     klass: key,
     assumedClass: key !== klass,
-    rMin: R_MIN_DEFAULT,
-    sigmaMaxMm: c.spridningLangd_mm,
+    rMin: R_MIN_HARD,
+    rSoft: R_MIN_SOFT,
+    sigmaMaxMm,
+    sigmaMaxDefaultMm: sigmaDefault,
+    sigmaMaxIsCustom: sigmaMaxMm !== sigmaDefault,
     kMin: g.k_global_min,
     mufFactorMax: g.muf_factor_max,
     ytFactorMax: g.yt_factor_max,
-    enforceMufYt: true,
-    source: `${c._source} + SIS-TS 21143:2016 §6.2.2`,
+    // Se blockkommentaren: MUF/YT motsvarar r ≥ 0,49 och skulle annars göra
+    // det hårda kravet 0,35 verkningslöst.
+    enforceMufYt: false,
+    source: 'SIS-TS 21143:2016 §6.2.2 + HMK-Stommätning 2024 Bilaga F.6; ' +
+            'σ_max är produktval',
   };
 }
 
@@ -71,16 +100,21 @@ export function criteriaForClass(klass) {
 const UNCOMPUTABLE = Object.freeze({
   computable: false, minR: 0, maxSigPosMm: Infinity, kGlobal: 0,
   maxMufFactor: Infinity, maxYtFactor: Infinity, nObs: 0, nMeas: 0,
+  nBelowHard: 0, nBelowSoft: 0,
 });
 
 /**
  * Plockar ut de storheter kriterierna prövas mot ur ett simResult.
  * Ett simResult med .error ger UNCOMPUTABLE.
  */
-export function metricsFromSim(simResult) {
+export function metricsFromSim(simResult, criteria = null) {
   if (!simResult || !simResult.ok) return { ...UNCOMPUTABLE, error: simResult?.error || 'Okänt beräkningsfel' };
   const rs = simResult.redund.map(r => r.ri);
   const minR = rs.length ? Math.min(...rs) : 0;
+  // Fix 2.3: antalet observationer under respektive tröskel redovisas i
+  // beslutsspårningsloggen – det mjuka kravet ska synas, inte bara minsta r.
+  const hard = criteria?.rMin  ?? R_MIN_HARD;
+  const soft = criteria?.rSoft ?? R_MIN_SOFT;
   const sig = (simResult.allPtResults || simResult.ptResults || []).map(p => p.sigPos * 1000);
   const kappa = simResult.kappa ?? 2.80;
   // MUF/YT-faktorerna är monotona i r_i – minsta r ger största faktor.
@@ -94,6 +128,8 @@ export function metricsFromSim(simResult) {
     maxMufFactor, maxYtFactor,
     nObs: simResult.meas_n,
     nMeas: simResult.measCount,
+    nBelowHard: rs.filter(r => r < hard).length,
+    nBelowSoft: rs.filter(r => r < soft).length,
   };
 }
 
@@ -110,8 +146,10 @@ export function checkCriteria(metrics, criteria) {
     v.push({ key: 'berakning', text: `Nätet kan inte beräknas: ${(metrics.error || '').split('\n')[0]}` });
     return { ok: false, violations: v };
   }
+  // HÅRT krav (SIS-TS §6.2.2). Det mjuka kravet r ≥ 0,50 (HMK Bilaga F.6)
+  // prövas medvetet INTE här – det rapporteras via metrics.nBelowSoft.
   if (metrics.minR < criteria.rMin)
-    v.push({ key: 'rMin', text: `Minsta r-tal ${f3(metrics.minR)} < krav ${f3(criteria.rMin)}` });
+    v.push({ key: 'rMin', text: `Minsta r-tal ${f3(metrics.minR)} < hårt krav ${f3(criteria.rMin)}` });
   if (metrics.maxSigPosMm > criteria.sigmaMaxMm)
     v.push({ key: 'sigmaMax', text: `Största σ_pos ${f2(metrics.maxSigPosMm)} mm > krav ${f2(criteria.sigmaMaxMm)} mm` });
   if (metrics.kGlobal < criteria.kMin)
@@ -128,8 +166,11 @@ export function checkCriteria(metrics, criteria) {
 /** Läsbar sammanfattning av kravnivån, för dialog och beslutslogg. */
 export function describeCriteria(criteria) {
   return [
-    `Minsta r-tal per observation: r ≥ ${criteria.rMin.toFixed(2)}`,
-    `Största punktosäkerhet: σ_pos ≤ ${criteria.sigmaMaxMm.toFixed(1)} mm (1σ)`,
+    `Minsta r-tal per observation: r ≥ ${criteria.rMin.toFixed(2)} (hårt krav, SIS-TS §6.2.2)`,
+    `Observationer med r < ${(criteria.rSoft ?? R_MIN_SOFT).toFixed(2)} rapporteras men blockerar inte ` +
+      '(HMK Bilaga F.6)',
+    `Största punktosäkerhet: σ_pos ≤ ${criteria.sigmaMaxMm.toFixed(1)} mm (1σ efter utjämning` +
+      (criteria.sigmaMaxIsCustom ? ', projektets eget värde)' : ', produktval)'),
     `Kontrollerbarhet: k ≥ ${criteria.kMin.toFixed(2)}`,
     `MUF ≤ ${criteria.mufFactorMax} × σ, YT ≤ ${criteria.ytFactorMax} × σ` +
       (criteria.enforceMufYt ? ' (följer av r-kravet)' : ' (redovisas, spärrar ej)'),

@@ -8,6 +8,8 @@
 //   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
 //   optimizerConfig (Etapp E): saknas → vikterna 50/50
+//   optimizerConfig.sigma_max_mm (Fas 2): saknas/null → mätklassens default
+//                                          (3 mm för G2)
 // KRITISKT: ändra inte fältnamnen i save-objektet utan att uppdatera applyState.
 import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
@@ -74,7 +76,16 @@ function _normalizeSuggestDist(v) {
 // så att projektfilen aldrig kan innehålla vikter som kärnan tolkar annorlunda.
 export function _normalizeOptimizerConfig(c) {
   const w = normalizeWeights({ sigma: c?.weightSigma, r: c?.weightR });
-  return { weightSigma: w.sigma, weightR: w.r };
+  // Fix 2.2: σ_max per projekt. null = följ mätklassens default (3 mm för G2),
+  // vilket också är vad äldre filer utan fältet laddas med. Endast positiva
+  // tal accepteras; skräp och 0 faller tillbaka på klassens default.
+  const sig = typeof c?.sigma_max_mm === 'number'
+    ? c.sigma_max_mm : parseFloat(String(c?.sigma_max_mm ?? '').replace(',', '.'));
+  return {
+    weightSigma: w.sigma,
+    weightR: w.r,
+    sigma_max_mm: Number.isFinite(sig) && sig > 0 ? sig : null,
+  };
 }
 
 // ── Applicera snapshot till state – ren funktion utan DOM/leaflet ─────────────

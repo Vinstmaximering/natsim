@@ -106,31 +106,46 @@ granskning enligt TDOK 2014:0571.
 
 ### Acceptanskriterier
 
-Kriterierna ställs inte in i dialogen – de FÖLJER av projektets mätklass och
-visas där som läsvärden:
+Kraven följer av projektets mätklass och visas i dialogen. Alla utom σ_max är
+läsvärden – σ_max är ett produktval och kan sättas per projekt:
 
-| Storhet | Krav | Källa |
-|---|---|---|
-| Minsta r-tal per observation | r ≥ 0,50 | `R_OBS_GOD` – samma nivå som nätvalideringen kallar godkänd |
-| Största punktosäkerhet σ_pos (1σ) | G1 2 mm · G2 3 mm · G3 5 mm · G4 8 mm | SIS-TS 21143:2016 Tabell A.9, spridning längd |
-| Kontrollerbarhet k = f/n | k ≥ 0,50 | SIS-TS 21143:2016 §6.2.2 |
-| MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | SIS-TS 21143:2016 §6.2.2 |
+| Storhet | Krav | Status | Källa |
+|---|---|---|---|
+| Minsta r-tal per observation | r ≥ **0,35** | **Hårt** – blockerar leverans | SIS-TS 21143:2016 §6.2.2 |
+| r-tal per observation | r ≥ 0,50 | **Mjukt** – räknas och rapporteras | HMK Stommätning 2024 Bilaga F.6 |
+| Största punktosäkerhet σ_pos (1σ efter utjämning) | G1 2 · G2 **3 mm** · G3 5 · G4 8 | Hårt | **Produktval**, konfigurerbart |
+| Kontrollerbarhet k = f/n | k ≥ 0,50 | Hårt | SIS-TS 21143:2016 §6.2.2 |
+| MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | Redovisas, spärrar ej | SIS-TS 21143:2016 §6.2.2 |
 
 Saknar projektet mätklass används G2:s krav, och dialogen säger att kravnivån
 är antagen.
 
-**r-kravet ligger på 0,50, inte på felgränsen 0,30.** Fas 2 bantar per
-konstruktion tills kriterierna precis håller. Med kravet på 0,30 hamnade därför
-huvuddelen av observationerna i valideringens varningsband 0,30 ≤ r_i < 0,50 –
-produkten varnade alltså för sitt eget optimeringsresultat. Trösklarna
-`R_OBS_GOLV` (0,30, felgräns) och `R_OBS_GOD` (0,50, godkänd nivå) bor i
-`src/core/constants.js` och används av både optimeringen och
-`validateNetwork()`, så de kan inte divergera igen.
+**r-kravet har två nivåer.** Det hårda kravet, r ≥ 0,35, är gränsen under
+vilken en observation är så okontrollerad att ett grovt fel inte kan upptäckas
+med normal data-snooping – felet går i stället rakt in i koordinaterna. Nät som
+bryter mot det levereras inte. Det mjuka kravet, r ≥ 0,50, blockerar inte:
+observationer däremellan tas med, men **räknas och redovisas efter varje
+iteration i beslutsspårningen** så att de kan motiveras i planeringsrapporten.
 
-MUF och YT prövas också, men de kan aldrig binda hårdare än r-kravet: i
+Följden är att "Validera nät" kan ge **varningar** på ett optimerat nät
+(varningsbandet är 0,30 ≤ r_i < 0,50) men aldrig **fel**: valideringens felgräns
+`R_OBS_GOLV` = 0,30 ligger under det hårda kravet 0,35. Antalet valideringen
+varnar för är exakt det antal optimeringen redan har redovisat.
+
+**σ_max är ett produktval, inte ett normcitat.** Det avser punktens
+standardosäkerhet σ_pos (1σ) *efter utjämning* – en annan storhet än SIS-TS
+Tabell A.9:s kolumn "spridning längd", som anger tillåten spridning mellan
+dubbelmätta längder i fält och som kriteriet tidigare felaktigt hämtades ur.
+Default för G2 är 3 mm, grundat på svensk praxis för bruksnät i plan. Värdet
+kan sättas per projekt i optimeringsdialogen och sparas som
+`optimizerConfig.sigma_max_mm`; tomt fält betyder mätklassens default.
+Projektfiler utan fältet laddas med klassens default (3 mm för G2).
+
+MUF och YT beräknas och redovisas men spärrar inte. Skälet är matematiskt: i
 simuleringen är MUF_i = κ·σ_i/√r_i och YT_i = (1−r_i)·MUF_i med κ = 2,80, så
-MUF ≤ 4σ svarar mot r_i ≥ 0,490 och YT ≤ 2σ mot r_i ≥ 0,497. Vid r_i ≥ 0,50
-gäller alltså MUF ≤ 3,96σ och YT ≤ 1,98σ automatiskt.
+MUF ≤ 4σ svarar mot r_i ≥ 0,490 och YT ≤ 2σ mot r_i ≥ 0,497. Båda ligger över
+det hårda kravet 0,35 – att grinda på dem skulle sätta det hårda kravet till
+0,497 i praktiken och göra tvånivåmodellen verkningslös.
 
 ### Algoritmen
 
@@ -163,8 +178,8 @@ r-tal blir jämförbara – annars skulle 50/50 betyda olika saker i ett
 millimeternät och ett centimeternät. I Fas 2 kastas argumenten om, så att
 poängen blir mätningens *bidrag*: hur mycket sämre nätet blir utan den.
 Vikterna ställs med reglaget i dialogen (default 50/50) och sparas i
-projektfilen som `optimizerConfig`. Projektfiler utan sektionen laddas med
-50/50.
+projektfilen som `optimizerConfig` tillsammans med `sigma_max_mm`.
+Projektfiler utan sektionen laddas med 50/50 och mätklassens σ_max.
 
 Varje beräkning går genom `computeSimulation()` – exakt samma kärna som den
 vanliga simuleringen, ingen förenklad modell.

@@ -23,9 +23,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(
 // ── Delrenderare ─────────────────────────────────────────────────────────────
 
 function _configHtml(state) {
-  const criteria = criteriaForClass(state.activeMatklass);
+  const cfg  = state.optimizerConfig || { weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null };
+  const criteria = criteriaForClass(state.activeMatklass, { sigmaMaxMm: cfg.sigma_max_mm });
   const maxD = normalizeMaxSuggestDist(state.maxSuggestDist);
-  const cfg  = state.optimizerConfig || { weightSigma: 0.5, weightR: 0.5 };
   const pct  = Math.round(cfg.weightSigma * 100);
 
   return `
@@ -41,9 +41,22 @@ function _configHtml(state) {
              Välj klass under fliken NÄT för att styra kraven.</div>`
         : ''}
       <div style="margin-top:6px;font-size:11px;" class="val-secondary">Acceptanskriterier</div>
-      <ul style="margin:3px 0 0 16px;padding:0;font-size:11px;line-height:1.7;" class="val-value">
+      <ul id="opt-crit-list" style="margin:3px 0 0 16px;padding:0;font-size:11px;line-height:1.7;" class="val-value">
         ${describeCriteria(criteria).map(t => `<li>${esc(t)}</li>`).join('')}
       </ul>
+      <div style="display:flex;align-items:center;gap:6px;margin-top:7px;">
+        <span class="val-secondary" style="font-size:11px;white-space:nowrap;">Största σ_pos</span>
+        <input id="opt-sigmax" type="number" min="0.1" step="0.1" inputmode="decimal"
+               value="${cfg.sigma_max_mm != null ? cfg.sigma_max_mm : ''}"
+               placeholder="${criteria.sigmaMaxDefaultMm} (klassens default)"
+               title="Punktstandardosäkerhet σ_pos (1σ) efter utjämning. Tomt fält = klassens default."
+               style="flex:1;min-width:0;padding:4px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
+        <span class="val-muted" style="font-size:12px;">mm</span>
+      </div>
+      <div class="val-muted" style="font-size:10px;margin-top:2px;">
+        Produktval, inte normcitat: σ_pos efter utjämning är en annan storhet än
+        Tabell A.9:s spridning mellan dubbelmätta längder. Sparas i projektfilen.
+      </div>
       <div class="val-muted" style="font-size:10px;margin-top:4px;">Ref: ${esc(criteria.source)}</div>
     </div>
 
@@ -191,7 +204,25 @@ function _wire() {
       const pct = Number(slider.value);
       const lbl = mo.querySelector('#opt-w-lbl');
       if (lbl) lbl.textContent = `σ_pos ${pct} / r-tal ${100 - pct}`;
-      setState({ optimizerConfig: { weightSigma: pct / 100, weightR: (100 - pct) / 100 } });
+      const cur = getState().optimizerConfig || {};
+      setState({ optimizerConfig: { ...cur, weightSigma: pct / 100, weightR: (100 - pct) / 100 } });
+    };
+  }
+
+  const sig = mo.querySelector('#opt-sigmax');
+  if (sig) {
+    sig.oninput = () => {
+      const v = parseFloat(String(sig.value).replace(',', '.'));
+      const val = Number.isFinite(v) && v > 0 ? v : null;
+      const cur = getState().optimizerConfig || {};
+      setState({ optimizerConfig: { ...cur, sigma_max_mm: val } });
+      // Uppdatera bara kravlistan – att rendera om hela dialogen skulle ta
+      // fokus ur fältet mitt i inskrivningen (samma skäl som maxavståndet).
+      const list = mo.querySelector('#opt-crit-list');
+      if (list) {
+        const c = criteriaForClass(getState().activeMatklass, { sigmaMaxMm: val });
+        list.innerHTML = describeCriteria(c).map(t => `<li>${esc(t)}</li>`).join('');
+      }
     };
   }
 
@@ -224,6 +255,7 @@ async function _run() {
       obstacles: state.obstacles || [],
       maxSuggestDist: normalizeMaxSuggestDist(state.maxSuggestDist),
       matklass: state.activeMatklass,
+      sigmaMaxMm: cfg.sigma_max_mm,
       weights: { sigma: cfg.weightSigma, r: cfg.weightR },
       defaultInstr: state.defaultInstr,
       nextMeasId: state.nMid ?? 1,

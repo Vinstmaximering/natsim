@@ -26,7 +26,8 @@ let _state = {
   // ── Nätoptimering (Etapp E) ──
   // Vikterna styr optimeringens avvägning mellan sänkt punktosäkerhet och
   // höjda redundanstal. Sparas i projektfilen; äldre filer laddas med 50/50.
-  optimizerConfig: { weightSigma: 0.5, weightR: 0.5 },
+  // sigma_max_mm = projektets σ_pos-tak; null ⇒ mätklassens default (Fas 2).
+  optimizerConfig: { weightSigma: 0.5, weightR: 0.5, sigma_max_mm: null },
   // Sparat förslag från "Behåll som förslag": { meas, simResult, log, ... }.
   // Lever bara i sessionen – ett förslag är inte ett projekttillstånd.
   optimizerProposal: null,

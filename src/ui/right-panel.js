@@ -17,6 +17,24 @@ import { comparisonRows, setNetView, applyProposal, discardProposal } from '../s
 
 // isStationPoint bor i kärnan sedan Etapp E – re-exporteras här eftersom
 // paneler och tester importerar den härifrån.
+//
+// MEDVETEN SKILLNAD MOT OPTIMERAREN – HARMONISERA INTE.
+// suggestMeasurements() nedan använder isStationPoint (punktens TYP), medan
+// optimizer.generateCandidates() använder kärnans stationIds (punkter som
+// faktiskt är from i en riktningsmätning). Det är två olika verktyg med två
+// olika roller:
+//
+//   suggestMeasurements  = PLANERINGSverktyg. Utgår från användarens uttalade
+//                          uppställningsavsikt, dvs. vilka punkter som markerats
+//                          som uppställning. Ett nyplacerat nät utan en enda
+//                          mätning ska kunna få förslag – därför typattributet.
+//   generateCandidates   = FÖRBÄTTRINGSverktyg. Utgår från den faktiska
+//                          mätuppsättningen och får bara föreslå mätningar från
+//                          punkter där instrumentet bevisligen stått.
+//
+// Att göra dem lika bryter den ena semantiken: typbaserat i optimeraren gör den
+// till en no-op på importerade nät (F-1 i diagnosrapporten), och mätbaserat i
+// suggestMeasurements tystar förslagen för ett tomt nät.
 export { isStationPoint } from '../core/designmatrix.js';
 
 // ── Maxavstånd för mätförslag ─────────────────────────────────────────────
