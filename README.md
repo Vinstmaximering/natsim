@@ -151,7 +151,8 @@ det hårda kravet 0,35 – att grinda på dem skulle sätta det hårda kravet ti
 
 **Fas 1 – additiv.** Håller kriterierna inte, byggs en pool av alla möjliga
 mätningar mellan befintliga punkter: från varje **uppställd** punkt till varje
-annan punkt som inte redan mäts. Varje kandidat simuleras, och den som ger högst
+annan punkt – både sträckor som aldrig mätts och ommätningar av befintliga
+(se *Dubbelmätning* nedan). Varje kandidat simuleras, och den som ger högst
 poäng läggs till permanent. Sedan räknas allt om. Taket är 50 tillägg.
 
 *Uppställd punkt* betyder här "förekommer som `from` i minst en riktnings-
@@ -183,6 +184,53 @@ Projektfiler utan sektionen laddas med 50/50 och mätklassens σ_max.
 
 Varje beräkning går genom `computeSimulation()` – exakt samma kärna som den
 vanliga simuleringen, ingen förenklad modell.
+
+### Dubbelmätning
+
+Ett nät där alla möjliga sträckor redan är mätta hade tidigare ingen väg framåt:
+poolen uteslöt varje par som redan hade en mätning, så optimeringen avbröt med
+"inga fler möjliga mätningar" även när kraven inte var uppfyllda. Att mäta om en
+sträcka från oberoende uppställning är den enda åtgärd som höjer redundansen i
+ett mättat nät, och den finns nu i poolen.
+
+Reglerna:
+
+- **Aldrig mätt sträcka** – kandidat så snart `from` är uppställd. Målet behöver
+  inte vara uppställbart; en bakåtsikt mot en fixpunkt kräver inte att man
+  ställer upp på fixpunkten.
+- **Redan mätt sträcka** – kandidat bara om **båda** ändarna är uppställda. En
+  verklig ommätning innebär att instrumentet flyttas till andra änden, och en
+  bergdubb utan uppställningsmärke kan inte bära den.
+- **Motriktad före upprepad** – finns sträckan bara som A→B föreslås B→A. Det är
+  den fysikaliska innebörden av dubbelmätning i svenskt fältarbete. Finns båda
+  riktningarna redan är en tredje observation den enda kvarvarande vägen och
+  tillåts då.
+
+Beslutsspårningen märker ut vad som föreslås och vad det gör med sträckan:
+
+```
+Iteration 1 (Fas 1): Lade till dubbelmätning A→N1 (ytterligare mätning av
+sträckan A–N1). Störst förbättring av nätet: σ_pos-effekt +0.09 mm,
+r-tal-effekt +0.021. Höjer r-tal för sträckan A–N1 från 0.43 till 0.63. …
+```
+
+**Vad som faktiskt händer med r-talen** är värt att känna till, eftersom de två
+formerna av dubbelmätning inte är utbytbara. Mätt på facitnätet i testfall F20
+(A och B kända, N1 ny):
+
+| Åtgärd | r(A→B) | r(B→A) |
+|---|---|---|
+| Utgångsläge | 0,2237 | 0,2237 |
+| En andra mätning **A→B** | **0,5630** | 0,2241 |
+| En andra mätning **B→A** | 0,2241 | **0,5630** |
+
+Två *identiska* observationer kontrollerar varandra fullt ut, så hela effekten
+hamnar i den riktning som mäts om. Motriktningen rör sig knappt: den hänger på
+den andra uppställningens orienteringsobekant, som den själv måste hjälpa till
+att bestämma. Det betyder att den motriktade mätningen – den som Fix 3.3 låter
+optimeringen välja först – ger *mindre* r-effekt än en upprepning, men motsvarar
+en verklig oberoende uppställning i fält. Underlaget finns i
+`docs/troubleshooting/dubbelmatning_arkitektur_20260902.md`.
 
 ### Maxavstånd och hinder
 

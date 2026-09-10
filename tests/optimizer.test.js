@@ -6,7 +6,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   optimizeNetwork, generateCandidates, normalizeWeights, scoreDelta,
-  formatLogEntry, formatRReport, MAX_ADDITIONS, MAX_ITERATIONS, DEFAULT_WEIGHTS,
+  formatLogEntry, formatRReport, lineMinHzR, dirMinHzR,
+  MAX_ADDITIONS, MAX_ITERATIONS, DEFAULT_WEIGHTS,
 } from '../src/core/optimizer.js';
 import {
   criteriaForClass, metricsFromSim, checkCriteria, describeCriteria,
@@ -485,8 +486,23 @@ describe('Test 4 – maxavståndet är en hård gräns', () => {
   });
 
   it('en för snäv gräns stoppar optimeringen där en generös lyckas', () => {
-    expect(run({ meas: SPARSE, maxSuggestDist: 150 }).ok).toBe(false);
+    // 60 m lämnar inga kandidater alls; utan gräns går det.
+    expect(run({ meas: SPARSE, maxSuggestDist: 60 }).ok).toBe(false);
     expect(run({ meas: SPARSE, maxSuggestDist: null }).ok).toBe(true);
+  });
+
+  it('gränsen styr vilka sikter som får användas', () => {
+    // Sedan Fas 3 klarar optimeringen 150 m genom dubbelmätning av korta
+    // sikter – men aldrig genom att bryta gränsen.
+    const d = (a, b) => Math.hypot(a.E - b.E, a.N - b.N);
+    const at = id => PTS.find(p => p.id === id);
+    const langst = res => Math.max(0, ...res.meas.filter(m => res.addedIds.includes(m.id))
+      .map(m => d(at(m.from), at(m.to))));
+    const begransad = run({ meas: SPARSE, maxSuggestDist: 150 });
+    const fri       = run({ meas: SPARSE, maxSuggestDist: null });
+    expect(begransad.ok).toBe(true);
+    expect(langst(begransad)).toBeLessThanOrEqual(150);
+    expect(langst(fri)).toBeGreaterThan(150);
   });
 });
 
@@ -544,6 +560,114 @@ describe('beslutsspårningslogg', () => {
       expect([1, 2]).toContain(e.phase);
       expect(typeof e.iteration).toBe('number');
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Fas 3 – dubbelmätning i kandidatpoolen (F-3 i diagnosrapporten)
+//
+// test1_baseline enligt facittest F20: A och B kända, N1 ny, alla sex ordnade
+// par mätta. Före Fas 3 gav nätet en tom kandidatpool – varje par var redan
+// mätt – och optimeringen avbröt utan att kunna göra något alls.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('Fas 3 – dubbelmätning', () => {
+  const BL_PTS = [
+    { id: 'A',  type: 'known', N: 7000000.0, E: 100000.0, centerErr: 1.0 },
+    { id: 'B',  type: 'known', N: 7000000.0, E: 100200.0, centerErr: 1.0 },
+    { id: 'N1', type: 'new',   N: 7000100.0, E: 100100.0, centerErr: 1.0 },
+  ];
+  const BL_I = { obsType: 'both', sigHz_mgon: 0.135, numSatser: 3,
+                 sigDist_mm: 1.0, sigDist_ppm: 1.0, instrPreset: 'ts16_1' };
+  const BL_MEAS = [['A','B'],['A','N1'],['B','A'],['B','N1'],['N1','A'],['N1','B']]
+    .map(([from, to], i) => ({ id: 'm' + i, from, to, ...BL_I }));
+  const blSim = meas => computeSimulation({ pts: BL_PTS, meas, centerErr: 1.0 });
+  const dup = (from, to) => ({ id: 'dup', from, to, ...BL_I });
+  const optBaseline = () => optimizeNetwork({
+    pts: BL_PTS, meas: BL_MEAS, centerErr: 1.0,
+    matklass: 'G2', nextMeasId: 7, maxSuggestDist: 500,
+  });
+
+  // ── Fix 3.1 + 3.2: vilka par som får dubbelmätas ──
+  it('ett redan mätt par är numera kandidat', () => {
+    const { candidates } = generateCandidates({ pts: BL_PTS, meas: BL_MEAS, maxSuggestDist: 500 });
+    expect(candidates.length).toBe(6);
+    expect(candidates.every(c => c.kind === 'duplicate')).toBe(true);
+  });
+
+  it('ommätning kräver att BÅDA ändarna är uppställda', () => {
+    // FP1 är aldrig from i SPARSE ⇒ sikten S1→FP1 kan inte mätas om, eftersom
+    // en verklig ommätning kräver uppställning i andra änden.
+    const { candidates } = generateCandidates({ pts: PTS, meas: SPARSE });
+    expect(candidates.some(c => c.from === 'S1' && c.to === 'FP1')).toBe(false);
+    // …men en sträcka som ALDRIG mätts får föreslås mot samma fixpunkt.
+    expect(candidates.some(c => c.from === 'S2' && c.to === 'FP1' && c.kind === 'new')).toBe(true);
+  });
+
+  it('motriktad ommätning föredras framför upprepning i samma riktning', () => {
+    // Bara A→B finns i denna uppsättning; båda ändarna är uppställda.
+    const enkelriktat = BL_MEAS.filter(m => !(m.from === 'B' && m.to === 'A'));
+    const { candidates } = generateCandidates({ pts: BL_PTS, meas: enkelriktat, maxSuggestDist: 500 });
+    const ab = candidates.find(c => c.from === 'A' && c.to === 'B');
+    const ba = candidates.find(c => c.from === 'B' && c.to === 'A');
+    expect(ab).toBeUndefined();                 // upprepning i samma riktning utesluts
+    expect(ba).toBeDefined();
+    expect(ba.kind).toBe('reverse');
+  });
+
+  it('finns båda riktningarna redan tillåts en tredje observation', () => {
+    const { candidates } = generateCandidates({ pts: BL_PTS, meas: BL_MEAS, maxSuggestDist: 500 });
+    expect(candidates.find(c => c.from === 'A' && c.to === 'B').kind).toBe('duplicate');
+    expect(candidates.find(c => c.from === 'B' && c.to === 'A').kind).toBe('duplicate');
+  });
+
+  // ── Fix 3.5: de verifierade r-talen ur diagnosrapporten ──
+  it('en ytterligare A→B höjer r för A→B-riktningen 0,2237 → 0,5630', () => {
+    expect(dirMinHzR(blSim(BL_MEAS), 'A', 'B')).toBeCloseTo(0.2237, 4);
+    const efter = blSim([...BL_MEAS, dup('A', 'B')]);
+    expect(dirMinHzR(efter, 'A', 'B')).toBeCloseTo(0.5630, 4);
+    expect(efter.meas_n).toBe(14);
+    expect(efter.redundancy).toBe(9);
+  });
+
+  it('effekten hamnar i den riktning som mäts om, inte i motriktningen', () => {
+    // Viktig geodetisk nyans: två IDENTISKA observationer kontrollerar
+    // varandra. Motriktningen hänger på en annan orienteringsobekant och rör
+    // sig knappt (0,2237 → 0,2241).
+    const efter = blSim([...BL_MEAS, dup('B', 'A')]);
+    expect(dirMinHzR(efter, 'B', 'A')).toBeCloseTo(0.5630, 4);
+    expect(dirMinHzR(efter, 'A', 'B')).toBeCloseTo(0.2241, 4);
+    expect(lineMinHzR(efter, 'A', 'B')).toBeCloseTo(0.2241, 4);
+  });
+
+  it('optimeringen löser test1_baseline i stället för att avbryta', () => {
+    const res = optBaseline();
+    expect(res.ok).toBe(true);
+    expect(res.addedIds.length).toBeGreaterThan(0);
+    expect(res.finalMetrics.minR).toBeGreaterThanOrEqual(criteriaForClass('G2').rMin);
+    // Alla tillägg är dubbelmätningar – nätet har inga omätta par kvar.
+    const tillagg = res.log.filter(e => e.action === 'add');
+    expect(tillagg.every(e => e.kind === 'duplicate' || e.kind === 'reverse')).toBe(true);
+  });
+
+  // ── Fix 3.4: motiveringen i loggen ──
+  it('loggen märker ut dubbelmätning och visar sträckans r-tal', () => {
+    const res = optBaseline();
+    const rad = res.log.find(e => e.action === 'add');
+    expect(rad.text).toContain('dubbelmätning');
+    expect(rad.text).toContain('sträckan');
+    expect(rad.text).toMatch(/Höjer r-tal för sträckan .+ från \d\.\d\d till \d\.\d\d\./);
+    expect(rad.lineRAfter).toBeGreaterThan(rad.lineRBefore);
+  });
+
+  it('formatLogEntry skiljer ny sträcka, motriktad och upprepad', () => {
+    const bas = { iteration: 1, phase: 1, action: 'add', from: 'B', to: 'A', line: 'A–B',
+                  sigmaEffectMm: 0.1, rEffect: 0.34, criteriaOk: true, violations: [] };
+    expect(formatLogEntry({ ...bas, kind: 'new' })).toContain('Lade till mätning B→A');
+    const rev = formatLogEntry({ ...bas, kind: 'reverse', lineRBefore: 0.22, lineRAfter: 0.56 });
+    expect(rev).toContain('Lade till dubbelmätning B→A (motriktad ommätning av sträckan A–B)');
+    expect(rev).toContain('Höjer r-tal för sträckan A–B från 0.22 till 0.56.');
+    expect(formatLogEntry({ ...bas, kind: 'duplicate', lineRBefore: 0.22, lineRAfter: 0.56 }))
+      .toContain('(ytterligare mätning av sträckan A–B)');
   });
 });
 
@@ -612,9 +736,19 @@ describe('Fix 2.2 – projektets σ_max styr resultatet', () => {
     expect(hart.finalMetrics.maxSigPosMm).toBeLessThanOrEqual(1.0);
   });
 
-  it('ett omöjligt σ_max avbryter i stället för att leverera', () => {
+  it('ett hårdare σ_max nås numera genom dubbelmätning', () => {
+    // Före Fas 3 avbröts 0,6 mm med tom pool. Nu kan optimeringen mäta om
+    // befintliga sträckor och når kravet – till priset av många mätningar.
     const res = run({ meas: RICH, sigmaMaxMm: 0.6 });
+    expect(res.ok).toBe(true);
+    expect(res.finalMetrics.maxSigPosMm).toBeLessThanOrEqual(0.6);
+    expect(res.addedIds.length).toBeGreaterThan(RICH.length);
+  });
+
+  it('ett orimligt σ_max slår i säkerhetsgränsen och lämnar nätet orört', () => {
+    const res = run({ meas: RICH, sigmaMaxMm: 0.3 });
     expect(res.ok).toBe(false);
+    expect(res.error.message).toContain(`säkerhetsgränsen ${MAX_ADDITIONS}`);
     expect(res.error.violations.some(v => v.key === 'sigmaMax')).toBe(true);
     expect(res.meas).toEqual(RICH);
   });

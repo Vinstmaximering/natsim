@@ -63,9 +63,30 @@ const byPair = (a, b) =>
   a.to   < b.to   ? -1 : a.to   > b.to   ? 1 : 0;
 
 /**
- * Poolen av möjliga NYA mätningar: från varje uppställd punkt till varje annan
- * punkt, som inte redan är aktiv, ligger inom maxSuggestDist och har fri sikt
- * förbi hindren.
+ * Poolen av möjliga mätningar: från varje uppställd punkt till varje annan
+ * punkt inom maxSuggestDist med fri sikt förbi hindren – både sträckor som
+ * aldrig mätts och ommätningar av befintliga (dubbelmätning).
+ *
+ * DUBBELMÄTNING (Fas 3). Poolen uteslöt tidigare varje par som redan mättes,
+ * vilket gjorde dubbelmätning omöjlig att föreslå och lämnade ett mättat nät
+ * utan väg framåt (F-3 i diagnosrapporten). Nu gäller:
+ *
+ *   • Aldrig mätt sträcka   – kandidat så snart `from` är uppställd. Målet
+ *     behöver inte vara uppställbart; en bakåtsikt mot en fixpunkt kräver inte
+ *     att man ställer upp på fixpunkten.
+ *   • Redan mätt sträcka    – kandidat bara om BÅDA ändarna är uppställda. En
+ *     verklig ommätning innebär att instrumentet flyttas till andra änden, och
+ *     en punkt utan uppställningsmärke (bergdubb) kan inte bära den. En
+ *     upprepning från samma uppställning vore dessutom fel modell: kärnans
+ *     viktmatris är diagonal och skulle räkna den som helt oberoende, inklusive
+ *     centrering, och därmed överskatta kontrollen. Se
+ *     docs/troubleshooting/dubbelmatning_arkitektur_20260902.md.
+ *   • Motriktad före upprepad – finns sträckan bara i riktningen s→t föreslås
+ *     t→s i stället. Längdraden blir identisk oavsett riktning, men
+ *     riktningsraden hänger på den andra uppställningens orienteringsobekant,
+ *     vilket är den fysikaliska innebörden av dubbelmätning i svenskt
+ *     fältarbete. Finns båda riktningarna redan är en tredje observation i
+ *     någon riktning den enda kvarvarande vägen och tillåts då.
  *
  * UPPSTÄLLD PUNKT = punkt som förekommer som `from` i minst en riktnings-
  * observation, dvs. exakt kärnans `stationIds(meas)`. Poolen använde tidigare
@@ -91,14 +112,24 @@ export function generateCandidates({ pts = [], meas = [], obstacles = [], maxSug
   stations.forEach(s => {
     pts.forEach(t => {
       if (t.id === s.id) return;
-      if (active.has(`${s.id} ${t.id}`)) return;
+      const hasFwd = active.has(`${s.id} ${t.id}`);
+      const hasRev = active.has(`${t.id} ${s.id}`);
+      const redanMatt = hasFwd || hasRev;
+      // Fix 3.2: ommätning kräver uppställningsbar motstående ände.
+      if (redanMatt && !occupied.has(t.id)) return;
+      // Fix 3.3: motriktad ommätning föredras framför upprepning i samma
+      // riktning. t→s ligger i poolen som eget ordnat par.
+      if (hasFwd && !hasRev) return;
       const dist = d2EN(s, t);
       // Etapp A: maxavståndet är en fysikalisk gräns (sikt genom tunnelvägg
       // etc.) och får ALDRIG överskridas, oavsett hur mycket nätet skulle
       // förbättras av mätningen.
       if (maxSuggestDist != null && dist > maxSuggestDist) { filteredByDistance++; return; }
       if (obstacles.length && !hasLineOfSight(s, t, obstacles).visible) { filteredByObstacle++; return; }
-      candidates.push({ from: s.id, to: t.id, dist });
+      candidates.push({
+        from: s.id, to: t.id, dist,
+        kind: hasFwd ? 'duplicate' : hasRev ? 'reverse' : 'new',
+      });
     });
   });
 
@@ -155,7 +186,17 @@ export function formatLogEntry(e) {
   const head = `Iteration ${e.iteration} (Fas ${e.phase}): `;
   if (e.action === 'add') {
     const eff = `σ_pos-effekt ${fmtMm(e.sigmaEffectMm)} mm, r-tal-effekt ${fmtR(e.rEffect)}`;
-    return head + `Lade till mätning ${e.from}→${e.to}. Störst förbättring av nätet: ${eff}. ` +
+    // Fix 3.4: en dubbelmätning är ingen ny sträcka utan en oberoende
+    // ommätning – det måste framgå, annars läser användaren förslaget fel.
+    const vad = e.kind === 'reverse'
+      ? `dubbelmätning ${e.from}→${e.to} (motriktad ommätning av sträckan ${e.line})`
+      : e.kind === 'duplicate'
+        ? `dubbelmätning ${e.from}→${e.to} (ytterligare mätning av sträckan ${e.line})`
+        : `mätning ${e.from}→${e.to}`;
+    const strackan = e.lineRBefore != null && e.lineRAfter != null
+      ? ` Höjer r-tal för sträckan ${e.line} från ${e.lineRBefore.toFixed(2)} till ${e.lineRAfter.toFixed(2)}.`
+      : '';
+    return head + `Lade till ${vad}. Störst förbättring av nätet: ${eff}.${strackan} ` +
       (e.criteriaOk ? 'Alla acceptanskriterier hålls nu.'
                     : `Kvarstår: ${e.violations.map(v => v.text).join('; ')}.`) +
       formatRReport(e);
@@ -184,9 +225,49 @@ function buildMeas(id, from, to, defaultInstr) {
 }
 
 function evaluate(pts, meas, centerErr, criteria) {
-  const metrics = metricsFromSim(computeSimulation({ pts, meas, centerErr }), criteria);
-  return { metrics, check: checkCriteria(metrics, criteria) };
+  const sim = computeSimulation({ pts, meas, centerErr });
+  const metrics = metricsFromSim(sim, criteria);
+  return { metrics, check: checkCriteria(metrics, criteria), sim };
 }
+
+/**
+ * Minsta riktnings-r för en STRÄCKA (oordnat par), oavsett mätriktning.
+ * Fix 3.4 redovisar sträckans kontrollerbarhet före och efter en
+ * dubbelmätning – inte nätets minsta r-tal, som kan sitta någon annanstans.
+ */
+export function lineMinHzR(sim, a, b) {
+  if (!sim?.ok) return null;
+  const rs = sim.redund.filter(r => r.type === 'hz' &&
+    ((r.fromId === a && r.toId === b) || (r.fromId === b && r.toId === a))).map(r => r.ri);
+  return rs.length ? Math.min(...rs) : null;
+}
+
+/** Minsta riktnings-r för en enskild RIKTNING (ordnat par). */
+export function dirMinHzR(sim, from, to) {
+  if (!sim?.ok) return null;
+  const rs = sim.redund.filter(r => r.type === 'hz' && r.fromId === from && r.toId === to)
+                       .map(r => r.ri);
+  return rs.length ? Math.min(...rs) : null;
+}
+
+/**
+ * r-talet som Fix 3.4 rapporterar för en dubbelmätning, mätt på det som
+ * faktiskt förändras:
+ *
+ *   • UPPREKAD riktning – riktningens EGET r-tal. Två identiska observationer
+ *     kontrollerar varandra, så det är där hela effekten hamnar (0,22 → 0,56 i
+ *     test1_baseline). Motriktningen rör sig knappt.
+ *   • MOTRIKTAD ommätning – sträckans lägsta r-tal. Den nya riktningen har
+ *     inget r före, och den hänger på den andra uppställningens
+ *     orienteringsobekant, så effekten fördelas över sträckan i stället för att
+ *     samlas i en riktning.
+ */
+function reportR(sim, from, to, kind) {
+  return kind === 'duplicate' ? dirMinHzR(sim, from, to) : lineMinHzR(sim, from, to);
+}
+
+// Sträckans namn, alltid i samma ordning oavsett mätriktning.
+const lineLabel = (a, b) => (a < b ? `${a}–${b}` : `${b}–${a}`);
 
 // Åtgärdsförslag när Fas 1 kör slut på kandidater eller slår i taket.
 function buildSuggestions(violations, ctx) {
@@ -335,9 +416,14 @@ export function* optimizeNetworkSteps(input) {
     const prev = cur;
     cur = best.ev;
     const bothComputable = prev.metrics.computable && cur.metrics.computable;
+    const kind = best.cand.kind || 'new';
+    const line = lineLabel(best.cand.from, best.cand.to);
     const entry = push({
       iteration, phase: 1, action: 'add', measId: id,
       from: best.cand.from, to: best.cand.to, dist: best.cand.dist,
+      kind, line,
+      lineRBefore: kind === 'new' ? null : reportR(prev.sim, best.cand.from, best.cand.to, kind),
+      lineRAfter:  kind === 'new' ? null : reportR(cur.sim,  best.cand.from, best.cand.to, kind),
       sigmaEffectMm: bothComputable ? prev.metrics.maxSigPosMm - cur.metrics.maxSigPosMm : null,
       rEffect:       bothComputable ? cur.metrics.minR - prev.metrics.minR : null,
       score: best.score,
