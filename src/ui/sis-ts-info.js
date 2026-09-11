@@ -10,10 +10,11 @@
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
 // Omgång 2: all sifferformatering går genom core/format.js.
 import { nf, komma } from '../core/format.js';
+import { TIPS, tipAttr } from './tooltip.js';
 
-function row(label, value) {
+function row(label, value, tip) {
   return `<div style="display:flex;justify-content:space-between;padding:2px 0;">
-    <span style="color:var(--text-muted);font-size:11px;">${label}</span>
+    <span style="color:var(--text-muted);font-size:11px;"${tip ? ' ' + tipAttr(tip) : ''}>${label}</span>
     <span style="color:var(--text-value);font-family:monospace;font-size:11px;">${value}</span>
   </div>`;
 }
@@ -34,14 +35,14 @@ export function renderClassInfo(klass) {
       ${row('Spridning längd', '≤ ' + c.spridningLangd_mm + ' mm')}
       ${row('Antal helsatser', '≥ ' + c.antalHelsatser)}
       ${row('Dubbelmätta längder', komma(c.dubbelmattaLangder))}
-      ${row('Centrering', komma(c.centreringMedelfel_mm) + ' mm')}
+      ${row('Centrering', komma(c.centreringMedelfel_mm) + ' mm', TIPS.E_C)}
     </div>
     <div style="padding:6px 8px;border-bottom:1px solid var(--border-default);">
       <div style="font-size:10px;font-weight:bold;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:4px;">GENERELLA KRAV (ALLA KLASSER)</div>
-      ${row('k-tal nätet', '≥ ' + nf(g.k_global_min, 2))}
-      ${row('r-tal per obs.', '≥ ' + nf(g.k_individual_min, 2))}
-      ${row('MUF', '≤ ' + g.muf_factor_max + ' × σ_mät')}
-      ${row('YT', '≤ ' + g.yt_factor_max + ' × σ_mät')}
+      ${row('k-tal nätet', '≥ ' + nf(g.k_global_min, 2), TIPS.K_TAL)}
+      ${row('r-tal per obs.', '≥ ' + nf(g.k_individual_min, 2), TIPS.R_TAL)}
+      ${row('MUF', '≤ ' + g.muf_factor_max + ' × σ_mät', TIPS.MUF)}
+      ${row('YT', '≤ ' + g.yt_factor_max + ' × σ_mät', TIPS.YT)}
     </div>
     <div style="padding:4px 8px;">
       <span style="font-size:10px;color:var(--text-muted);">Ref: ${c._source} + HMK 2024</span>

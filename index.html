@@ -7,7 +7,9 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <title>NätSim Beta 2 – Stomnätssimulator</title>
+  <!-- Titeln sätts av main.js ur package.json (core/version.js). Texten här
+       är bara en fallback innan modulen laddat. Omgång 3. -->
+  <title>NätSim – Stomnätssimulator</title>
 </head>
 <body>
 <div id="app">
@@ -15,8 +17,10 @@
 <!-- LEFT PANEL -->
 <div id="lp" style="position:relative;">
   <div class="ph" style="position:relative;">
-    <div style="font-size:13px;font-weight:bold;color:#e8f4fd;letter-spacing:0.5px;">NätSim</div>
-    <div style="font-size:11px;color:#6a90b0;margin-top:3px;">Skandimech Industries – Planering &amp; Nätanalys v4.0</div>
+    <div style="font-size:13px;font-weight:bold;color:#e8f4fd;letter-spacing:0.5px;" id="app-name">NätSim</div>
+    <!-- Versionen skrivs av main.js ur package.json. Stod tidigare hårdkodad
+         som "v4.0", vilket motsade både fönstertiteln och package.json. -->
+    <div style="font-size:11px;color:#6a90b0;margin-top:3px;">Skandimech Industries – Planering &amp; Nätanalys <span id="app-version"></span></div>
     <button class="panel-close" onclick="window.togglePanel('lp')" aria-label="Stäng vänsterpanel">×</button>
   </div>
   <div class="sec">
@@ -128,7 +132,7 @@
 
   <!-- D4: Onboarding-overlay -->
   <div id="onboarding" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(13,21,32,0.95);border:1px solid #1e3050;border-radius:8px;padding:20px 26px;font-size:13px;color:#d0e4f8;font-family:'Segoe UI',sans-serif;z-index:550;max-width:380px;box-shadow:0 4px 16px rgba(0,0,0,0.5);display:none;">
-    <div style="font-size:15px;color:#00c87a;font-weight:700;margin-bottom:10px">📐 Välkommen till NätSim Beta 2</div>
+    <div style="font-size:15px;color:#00c87a;font-weight:700;margin-bottom:10px">📐 Välkommen till NätSim</div>
     <div style="font-size:12px;color:#8aaccc;line-height:1.6">
       Snabbstart:
       <ol style="margin:8px 0 8px 18px;padding:0">

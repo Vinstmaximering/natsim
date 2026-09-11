@@ -4,6 +4,7 @@
 import { getState } from '../state/store.js';
 import { CRS_DEFS, INSTRUMENTS, MATKLASSER } from '../core/constants.js';
 import { nf } from '../core/format.js';
+import { klassificeraRtal } from '../core/constants.js';
 
 export async function exportSimPDF() {
   const { simResult, activeCRS, defaultInstr, activeMatklass } = getState();
@@ -35,7 +36,11 @@ export async function exportSimPDF() {
 
   const rdRows = sr.redund.map(r => {
     const muf = r.mdb.val === Infinity ? "∞" : r.type === "dist" ? nf(r.mdb.val*1000, 1)+" mm" : nf(r.mdb.val, 3)+" mgon";
-    const col = r.ri >= 0.5 ? "#006600" : r.ri >= 0.3 ? "#7a5800" : "#990000";
+    // Omgång 3: samma bandindelning som skärmen, men mörkare toner för
+    // utskrift på vitt papper.
+    const UTSKRIFT = { "God marginal":"#006600", "Uppfyller norm":"#7a5800",
+                       "Under norm":"#9a4b00", "Otillräckligt":"#990000" };
+    const col = UTSKRIFT[klassificeraRtal(r.ri).klass] || "#990000";
     return `<tr>
       <td>${r.fromId}→${r.toId}</td>
       <td>${r.type === "dist" ? "Avstånd" : "Riktning"}</td>

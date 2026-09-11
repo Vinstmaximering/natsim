@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR } from '../src/core/constants.js';
+import { klassificeraKtal, K_NAT_GOLV, K_GOD_MARGINAL, K_BAND } from '../src/core/constants.js';
+import { bandForklaring } from '../src/ui/right-panel.js';
 import { renderClassInfo } from '../src/ui/sis-ts-info.js';
 import { buildReport } from '../src/pm/report-generator.js';
 import { IMAGE_PRESETS } from '../src/pm/image-presets.js';
@@ -65,20 +66,21 @@ describe('Fix 1 – kvalitetspanelens k-tooltip beskriver den klassificering som
 });
 
 describe('Fix 1 (följd) – bandförklaringen speglar klassificeraKtal()', () => {
-  const src = read('src/ui/right-panel.js');
-  const legend = src.split('\n').find(l => l.includes('Otillräckligt') && l.includes('Svagt'));
+  // Omgång 3: förklaringen är inte längre en handskriven sträng utan genereras
+  // ur K_BAND av bandForklaring(). Testet granskar därför utdata, inte källkod –
+  // och låser därmed samma sak fast utan att kunna missa en framtida omskrivning.
+  const legend = bandForklaring(K_BAND);
 
-  it('listar alla fem klasser som klassificeraren kan returnera', () => {
+  it('listar alla klasser som klassificeraren kan returnera', () => {
     const klasser = [0.9, 0.6, 0.4, 0.2, 0.05].map(k => klassificeraKtal(k).klass);
-    expect(new Set(klasser).size).toBe(5);
+    expect(new Set(klasser).size).toBe(K_BAND.length);
     for (const klass of klasser) {
       expect(legend, `bandförklaringen saknar "${klass}"`).toContain(klass);
     }
   });
 
-  it('anger Överbestämt-gränsen som klassificeraren använder', () => {
-    expect(K_OVERBESTAMD_PRELIMINAR).toBe(0.7);
-    // Omgång 2: decimalkomma i UI-text.
+  it('anger den översta bandgränsen som klassificeraren använder', () => {
+    expect(K_GOD_MARGINAL).toBe(0.7);
     expect(legend).toMatch(/0,70/);
   });
 });

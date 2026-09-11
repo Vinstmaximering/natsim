@@ -23,7 +23,8 @@
 // Den interna variabeln kstd nedan behåller sitt namn; den är inte synlig.
 
 import { nf, komma } from '../core/format.js';
-import { ptLabel } from '../core/constants.js';
+import { ptLabel, klassificeraKtal } from '../core/constants.js';
+import { rLabel } from '../core/redundancy.js';
 
 export function buildReport(data) {
   const { vals = {}, sr, redund = [], ptRes = [], allPts = [], knownPts = [],
@@ -71,15 +72,25 @@ export function buildReport(data) {
     const km = ris.reduce((a,b)=>a+b,0)/ris.length;
     kstd = Math.sqrt(ris.reduce((a,b)=>a+(b-km)*(b-km),0)/ris.length);
   }
-  const kOmdome  = sr.K_global>=0.5 && (ris.length?Math.min(...ris):0)>=0.3 ? "Starkt kontrollerbart"
-                 : sr.K_global>=0.3 ? "Acceptabelt kontrollerbart" : "Otillräcklig kontrollerbarhet";
-  const homOmdome = kstd<0.08 ? "Homogent" : kstd<0.15 ? "Acceptabelt homogent" : "Inhomogent";
-  const stabCls   = sr.K_global>=0.5&&kstd<0.08 ? "bok" : sr.K_global<0.3 ? "berr" : "bwrn";
-  const stabTxt   = sr.K_global>=0.5&&kstd<0.08
-    ? "Nätet bedöms som stabilt. Kontrollerbarheten är god och nätet är homogent utformat."
-    : sr.K_global<0.3
-    ? "Nätet bedöms som instabilt. Kontrollerbarheten är otillräcklig – fler mätningar krävs."
-    : "Nätet har viss kontrollerbarhet men homogeniteten bör förbättras.";
+  // Omgång 3: k-raden bär k-talets egen klass. Omdömet vägde tidigare in
+  // minsta r-tal i samma etikett, alltså två storheter i ett ord, och kunde
+  // kalla ett nät under normgolvet "Acceptabelt kontrollerbart". Minsta
+  // r-tal redovisas på egna rader strax under.
+  const kKlass   = klassificeraKtal(sr.K_global);
+  const kOmdome  = kKlass.klass;
+  // Homogenitet är spridningen i r-talen. Ingen norm anger någon gräns, så
+  // detta är ett rent produktvärde – därför andra ord än normskalorna.
+  const homOmdome = kstd<0.08 ? "Homogent" : kstd<0.15 ? "Jämnt fördelat" : "Inhomogent";
+  // Omgång 3: bedömningen utgår från uppfyllerNorm. Tidigare kunde ett nät
+  // med k mellan 0,30 och 0,50 – alltså under SIS-TS §6.2.2:s golv – få
+  // omdömet "viss kontrollerbarhet" i stället för underkänt.
+  const homOk     = kstd < 0.08;
+  const stabCls   = !kKlass.uppfyllerNorm ? "berr" : homOk ? "bok" : "bwrn";
+  const stabTxt   = !kKlass.uppfyllerNorm
+    ? `Nätet uppfyller inte SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50). Kontrollerbarheten är otillräcklig – fler mätningar krävs.`
+    : homOk
+    ? "Nätet uppfyller normens krav på kontrollerbarhet och r-talen är jämnt fördelade."
+    : "Nätet uppfyller normens krav på kontrollerbarhet, men r-talen är ojämnt fördelade – homogeniteten bör förbättras.";
 
   const mufD = redund.filter(r=>r.type==="dist"&&r.mdb).map(r=>r.mdb.val*1000);
   const mufH = redund.filter(r=>r.type==="hz"&&r.mdb).map(r=>r.mdb.val);
@@ -149,8 +160,12 @@ export function buildReport(data) {
   h += `<div><strong>Uppdragstyp:</strong> ${esc(nats)}</div>`;
   if (mkKey) h += `<div><strong>Mätklass:</strong> ${esc(mkKey)} (SIS-TS 21143:2016 Tab. A.9)</div>`;
   h += `<div><strong>Datum:</strong> ${esc(rapdat)}</div>`;
-  const netStab = sr.K_global>=0.5&&kstd<0.08?"rok":sr.K_global<0.3?"rerr":"rwrn";
-  const netTxt  = sr.K_global>=0.5&&kstd<0.08?"✓ STABILT OCH KONTROLLERBART":sr.K_global<0.3?"✗ EJ GODKÄNT":"⚠ ACCEPTABELT";
+  // Omgång 3: samma normgräns som överallt annars. "⚠ ACCEPTABELT" kunde
+  // tidigare stå på ett nät som normen underkänner.
+  const netStab = !kKlass.uppfyllerNorm ? "rerr" : homOk ? "rok" : "rwrn";
+  const netTxt  = !kKlass.uppfyllerNorm ? "✗ UPPFYLLER INTE NORMEN"
+                : homOk                 ? "✓ UPPFYLLER NORMEN"
+                :                         "⚠ UPPFYLLER NORMEN – OJÄMN REDUNDANS";
   h += `<div><strong>Nätbedömning:</strong> <span class="${netStab}">${netTxt} (k=${nf(sr.K_global, 3)})</span></div>`;
   h += `</div>`;
   h += `<div class="rstd">SIS-TS 21143:2016 · HMK Stommätning 2024 · TDOK 2014:0571 | ${esc(sek)}</div>`;
@@ -289,7 +304,7 @@ export function buildReport(data) {
           <tr><th>Från → Till</th><th>Typ</th><th>r-tal</th><th>MUF</th><th>YT</th></tr>
           ${rdTab}
         </table>
-        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50 (HMK Bilaga F.6), röd = under gräns.</p>`;
+        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50 (HMK Bilaga F.6, ingen anmärkning) · gul = 0,35–0,50 (uppfyller SIS-TS §6.2.2) · orange = 0,30–0,35 (under norm) · röd = under 0,30.</p>`;
   h += `<h2 class="r">7.3 Tillförlitlighet och homogenitet</h2>
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är

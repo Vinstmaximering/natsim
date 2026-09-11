@@ -1,3 +1,5 @@
+import { APP_NAME, APP_VERSION_LABEL } from '../core/version.js';
+
 // D4: Onboarding-overlay – visas vid första besök (inga punkter)
 // Fas D: touch- och phone-anpassad text genereras dynamiskt vid init.
 
@@ -48,7 +50,7 @@ function _buildContent() {
   const fontSize = phone ? '13px' : '12px';
 
   return `
-    <div style="font-size:${phone ? '15px' : '15px'};color:#00c87a;font-weight:700;margin-bottom:10px">📐 Välkommen till NätSim Beta 2</div>
+    <div style="font-size:${phone ? '15px' : '15px'};color:#00c87a;font-weight:700;margin-bottom:10px">📐 Välkommen till ${APP_NAME} <span style="font-weight:400;opacity:.7">${APP_VERSION_LABEL}</span></div>
     <div style="font-size:${fontSize};color:#8aaccc;line-height:1.6">
       Snabbstart:
       <ol style="margin:8px 0 8px 18px;padding:0">

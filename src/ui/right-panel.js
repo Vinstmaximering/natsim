@@ -2,10 +2,12 @@
 // rad 1679–2215 (renderTab) + rad 1116–1151 (suggestMeasurements) + rad 3332–3352 (instrument)
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
-import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal, ptLabel, ptLabelShort } from '../core/constants.js';
+import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal, klassificeraRtal,
+         sigPosKlass, ptLabel, ptLabelShort, K_BAND } from '../core/constants.js';
 import { nf, gon, komma } from '../core/format.js';
+import { TIPS, tipAttr } from './tooltip.js';
 import { calcM, d2EN, brgEN, isStationPoint } from '../core/designmatrix.js';
-import { rColor, rLabel } from '../core/redundancy.js';
+import { rColor, rLabel, rClass } from '../core/redundancy.js';
 import { runSimulation } from '../core/simulation.js';
 import { saveUndo } from '../state/undo.js';
 import { draw } from '../map/leaflet-setup.js';
@@ -259,6 +261,19 @@ export function suggestMeasurements() {
   setState({ suggestedMeas: suggested, blockedSuggestions: blocked });
 }
 
+// Bygger bandförklaringen under k-talet ur bandtabellen i core/constants.js,
+// så att text och klassificerare inte kan divergera. Omgång 1 rättade en
+// förklaring som saknade ett helt band; Omgång 3 tar bort möjligheten.
+export function bandForklaring(band) {
+  return band.map((b, i) => {
+    const ovre = i === 0 ? null : band[i - 1].min;
+    const intervall = ovre == null ? `≥${nf(b.min, 2)}`
+      : b.min === 0 ? `&lt;${nf(ovre, 2)}`
+      : `${nf(b.min, 2)}–${nf(ovre, 2)}`;
+    return `${intervall} ${b.klass}`;
+  }).join(' &nbsp;|&nbsp; ');
+}
+
 const TABS = [
   { k:"net",    l:"NÄT" },
   { k:"meas",   l:"MÄTNINGAR" },
@@ -405,13 +420,16 @@ export function renderTab() {
     const crsName  = CRS_DEFS[activeCRS]?.name || activeCRS;
 
     // ── Klasser för statusfärger (tema-anpassade via tokens.css) ──────────────
-    const rClass    = r  => r  >= 0.5 ? "val-good" : r  >= 0.3 ? "val-caution" : r  >= 0.1 ? "val-warn" : "val-danger";
-    const sigClass  = mm => mm <  5   ? "val-good" : mm <  20  ? "val-caution" : "val-danger";
+    // Omgång 3: skalorna kommer ur core/constants.js. Här låg lokala trappor
+    // med egna trösklar – se KVALITETSSKALOR i constants.js.
+    const sigClass  = sigPosKlass;
     const precClass = (mm, req) => mm < req * 0.5 ? "val-good" : mm <= req ? "val-caution" : "val-danger";
     const kCls      = kv => klassificeraKtal(kv).cssKlass;
+    // Punktens medel-r-tal klassas med SAMMA skala som enskilda r-tal.
+    // Tidigare hade den egna trösklar (0,15 / 0,35) utan normförankring.
     const relClass  = (nObs, hasRed, rMean) => {
       if (!nObs || !hasRed) return "val-danger";
-      return rMean < 0.15 ? "val-warn" : rMean < 0.35 ? "val-caution" : "val-good";
+      return klassificeraRtal(rMean).cssKlass;
     };
 
     // TR: tabellrad med semantisk klass på värde-cellen i stället för inline color.
@@ -437,18 +455,18 @@ export function renderTab() {
       ${TR("Fria punkter", sr.freeCount, "val-info")}
       ${TR("Uppställningar (orienteringar)", sr.nOrientUnkn ?? "–", "val-warn")}
       ${TR("Mätningar (linjer)", sr.measCount)}
-      ${TR("Observationer (riktningar+längder)", sr.meas_n)}
+      ${TR(`<span ${tipAttr(TIPS.OBS_N)}>Observationer (riktningar+längder)</span>`, sr.meas_n)}
       <tr><td colspan="2" class="sim-tbl-sep"></td></tr>
       ${TR("Koordinatobekanta", sr.nCoordUnkn ?? sr.unkn_n, "val-info")}
       ${TR("Orienteringskonstanter", sr.nOrientUnkn ?? 0, "val-warn")}
-      ${TR("Totalt obekanta", sr.unkn_n)}
+      ${TR(`<span ${tipAttr(TIPS.OBEKANTA_U)}>Totalt obekanta</span>`, sr.unkn_n)}
       <tr><td colspan="2" class="sim-tbl-sep"></td></tr>
-      ${TR("Frihetsgrader f", sr.redundancy, sr.redundancy > 0 ? "val-good" : "val-danger")}
+      ${TR(`<span ${tipAttr(TIPS.FRIHETSGRADER)}>Frihetsgrader f</span>`, sr.redundancy, sr.redundancy > 0 ? "val-good" : "val-danger")}
       ${TR("Σ redundansbidrag", sr.redundTotal)}
-      ${TR("κ (MUF-faktor)", sr.kappa != null ? nf(sr.kappa, 2) : "2,80")}
+      ${TR(`<span ${tipAttr(TIPS.KAPPA)}>κ (MUF-faktor)</span>`, sr.kappa != null ? nf(sr.kappa, 2) : "2,80")}
     </table>
 
-    ${SEC("2. KONTROLLERBARHETSTAL  k = f/n")}
+    ${SEC(`2. <span ${tipAttr(TIPS.K_TAL)}>KONTROLLERBARHETSTAL  k = f/n</span>`)}
     <div class="sim-k-box" style="border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
         <span class="${kCls(sr.K_global)}" style="font-size:16px;font-weight:bold;font-family:monospace;">k = ${nf(sr.K_global, 3)}</span>
@@ -458,9 +476,9 @@ export function renderTab() {
            "Överbestämt" (≥0,70) saknades här, så förklaringen motsade badgen
            bredvid för k ≥ 0,70. Rättat i UI-städning Omgång 1 (2026-09-11);
            se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2. -->
-      <div class="val-muted" style="font-size:10px;line-height:1.7;">≥0,70 Överbestämt &nbsp;|&nbsp; 0,50–0,70 Starkt &nbsp;|&nbsp; 0,30–0,50 Acceptabelt &nbsp;|&nbsp; 0,10–0,30 Svagt &nbsp;|&nbsp; &lt;0,10 Otillräckligt</div>
+      <div class="val-muted" style="font-size:10px;line-height:1.7;">${bandForklaring(K_BAND)}</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">
-        ${TR("Medel r-tal",            nf(sr.rMean, 3),    rClass(sr.rMean))}
+        ${TR(`<span ${tipAttr(TIPS.R_TAL)}>Medel r-tal</span>`, nf(sr.rMean, 3), rClass(sr.rMean))}
         ${sr.rMinDist != null ? TR("Minsta r-tal (avstånd)",  nf(sr.rMinDist, 3), rClass(sr.rMinDist)) : ""}
         ${sr.rMinHz   != null ? TR("Minsta r-tal (riktning)", nf(sr.rMinHz, 3),   rClass(sr.rMinHz))   : ""}
       </table>
@@ -478,10 +496,10 @@ export function renderTab() {
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 4px 4px 0;">Punkt</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σN mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σE mm</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σpos mm</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.SIG_POS)}>σpos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">a mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">b mm</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 0;" title="Felellipsens riktningsvinkel, gon">θ gon</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 0;" ${tipAttr(TIPS.THETA)}>θ gon</th>
       </tr>
       ${sr.ptResults.map(pr => {
         const sm   = pr.sigPos * 1000 * k;
@@ -542,10 +560,10 @@ export function renderTab() {
       <tr style="border-bottom:1px solid var(--border-strong);">
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 4px 4px 0;">Sträcka</th>
         <th class="val-muted" style="text-align:left;font-weight:normal;">Typ</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">r-tal</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" title="Minsta Urskiljbara Fel – minsta systematiskt fel som ger statistisk signifikans vid givet κ">MUF</th>
-        <th class="val-info"  style="text-align:right;font-weight:normal;padding:2px 3px;" title="Yttre tillförlitlighet: MUF × (1 − r-tal), påverkan i observationsdomänen">YT</th>
-        <th class="val-warn"  style="text-align:right;font-weight:normal;padding:2px 3px;">KP mm</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.R_TAL)}>r-tal</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.MUF)}>MUF</th>
+        <th class="val-info"  style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.YT)}>YT</th>
+        <th class="val-warn"  style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.KP)}>KP mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;">Klass</th>
       </tr>
       ${sr.redund.map(rd => {
@@ -585,10 +603,10 @@ export function renderTab() {
     <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:340px;">
       <tr style="border-bottom:1px solid var(--border-strong);">
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 4px 4px 0;">Punkt</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σ_pos mm</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.SIG_POS)}>σ_pos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">Precision</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">Obs</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" title="Medelvärde av punktens r-tal">Medel r-tal</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" ${tipAttr(TIPS.R_TAL)}>Medel r-tal</th>
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 3px;">Reliabilitet</th>
       </tr>
       ${sr.ptResults.map(pr => {
@@ -601,12 +619,14 @@ export function renderTab() {
         const maxR     = nObs > 0 ? Math.max(...myR.map(r => r.ri)) : 0;
         const hasRedundans = maxR > 0.05;
         const nObsMeas = Math.round(nObs / 2);
+        // Omgång 3: etiketterna kommer ur r-talsskalan i stället för tre
+        // egna ord (Svag/Acceptabel/God) med egna trösklar.
+        const REL_IKON = { "God marginal":"✓", "Uppfyller norm":"◇",
+                           "Under norm":"△", "Otillräckligt":"✕" };
         let relText, relIcon;
         if (nObs === 0)          { relText="Ingen mätning";    relIcon="⛔"; }
         else if (!hasRedundans)  { relText="Ej kontrollerbar"; relIcon="⚠"; }
-        else if (rMeanPt < 0.15) { relText="Svag";             relIcon="△"; }
-        else if (rMeanPt < 0.35) { relText="Acceptabel";       relIcon="◇"; }
-        else                     { relText="God";               relIcon="✓"; }
+        else { relText = klassificeraRtal(rMeanPt).klass; relIcon = REL_IKON[relText] ?? "◇"; }
         const rcls  = relClass(nObs, hasRedundans, rMeanPt);
         const ptType = pts.find(p => p.id === pr.id)?.type || "";
         const rowBorder = !hasRedundans && nObs > 0
@@ -662,7 +682,7 @@ export function renderTab() {
     tc.innerHTML = `<div class="sl">A PRIORI OSÄKERHET</div>
       <div class="val-muted" style="font-size:12px;line-height:1.7;">Ange kraven för nätnoggrannheten (SIS-TS 21143:2016).</div>
       <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-        <span class="val-secondary" style="font-size:12px;">Krav σ_pos ≤</span>
+        <span class="val-secondary" style="font-size:12px;" ${tipAttr(TIPS.SIG_POS)}>Krav σ_pos ≤</span>
         <input id="sig-req" type="number" step="0.5" min="0.5" value="${getState().sigReq||3}" style="width:70px;padding:5px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
         <span class="val-secondary" style="font-size:12px;">mm</span>
       </div>`;
@@ -745,7 +765,7 @@ export function updateGlobalInstrInfo() {
   if (!info || !pr) return;
   // Fix 2 (Omgång 2): "σ vinkel" → "σ riktning". Observationen är en riktning
   // mätt från en uppställd station, inte en vinkel mellan två siktmål.
-  info.innerHTML = `σ riktning: <span style="color:#4fc3f7">${komma(pr.sigHz)} mgon</span> &nbsp; σ avstånd: <span style="color:#4fc3f7">${komma(pr.sigDmm)} mm + ${komma(pr.sigDppm)} ppm</span>`;
+  info.innerHTML = `<span ${tipAttr(TIPS.SIGMA_HZ)}>σ riktning:</span> <span style="color:#4fc3f7">${komma(pr.sigHz)} mgon</span> &nbsp; <span ${tipAttr(TIPS.SIGMA_D)}>σ avstånd:</span> <span style="color:#4fc3f7">${komma(pr.sigDmm)} mm + ${komma(pr.sigDppm)} ppm</span>`;
 }
 
 export function applyMatklass(key) {

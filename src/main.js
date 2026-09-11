@@ -11,6 +11,7 @@ window.closeStudio  = closeStudio;
 
 import { getState, setState, setAutoSimHandler, subscribe } from './state/store.js';
 import { nf } from './core/format.js';
+import { APP_NAME, APP_VERSION_LABEL } from './core/version.js';
 import { ptLabel, ptLabelShort, PT } from './core/constants.js';
 // openPM definieras nedan (refererar till getState och map-imports)
 import { autoSim, undo, setUndoCallbacks, saveUndo } from './state/undo.js';
@@ -20,6 +21,8 @@ import { setInteractionCallbacks }              from './map/interactions.js';
 import { showToast }                            from './ui/toast.js';
 import { initOnboarding, hideOnboarding }       from './ui/onboarding.js';
 import { initQualityPanel, updateQualityPanel } from './ui/quality-panel.js';
+import { initTooltips }                      from './ui/tooltip.js';
+import { initMapLegend }                     from './ui/map-legend.js';
 import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer } from './ui/toolbar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
@@ -91,6 +94,21 @@ subscribe(() => {
 initToolbar();
 initLeftPanel();
 initQualityPanel();
+// Tryck-och-håll-tooltips för pekskärm. Desktop använder title-attributet.
+initTooltips();
+// Teckenförklaring för kartans linjestilar, färger och punktsymboler.
+initMapLegend();
+// Versionsangivelsen kommer ur package.json via core/version.js, så att
+// panelhuvud, fönstertitel och onboarding aldrig kan säga olika saker.
+// Omgång 3; se docs/troubleshooting/ui_inventering_20260910.md.
+document.title = `${APP_NAME} ${APP_VERSION_LABEL} – Stomnätssimulator`;
+{
+  const vEl = document.getElementById('app-version');
+  if (vEl) vEl.textContent = APP_VERSION_LABEL;
+  const nEl = document.getElementById('app-name');
+  if (nEl) nEl.textContent = APP_NAME;
+}
+
 initOnboarding();
 
 // ── 6b. Mobil-initialisering: paneler dolda som default på phone ───────────

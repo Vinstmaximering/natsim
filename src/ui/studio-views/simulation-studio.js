@@ -2,16 +2,18 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng }        from '../../map/leaflet-setup.js';
 import { calcM }                  from '../../core/designmatrix.js';
-import { klassificeraKtal, PT, ptLabelShort } from '../../core/constants.js';
+import { klassificeraKtal, sigPosKlass, PT, ptLabelShort } from '../../core/constants.js';
+import { rClass }                from '../../core/redundancy.js';
 import { nf }                    from '../../core/format.js';
+import { TIPS, tipAttr }         from '../tooltip.js';
 import { sortByColumn, filterByText, exportToCSV } from '../table-utils.js';
 
 // Omgång 2: se kommentaren i net-studio.js – PT är enda källan för etiketter.
 const TYPE_COLOR = Object.fromEntries(Object.keys(PT).map(k => [k, PT[k].c]));
 const TYPE_LABEL = Object.fromEntries(Object.keys(PT).map(k => [k, ptLabelShort(k)]));
 
-const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
-const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
+// Omgång 3: båda skalorna kommer ur core/. Här låg lokala kopior.
+const sigClass = sigPosKlass;
 const kClass   = kv => klassificeraKtal(kv).cssKlass;
 
 let _subTab     = 'pts';
@@ -99,19 +101,19 @@ function _sidebar(el, state) {
     <div class="studio-stat-grid" style="margin-bottom:12px">
       <div class="studio-stat-card">
         <div class="sc-val ${kClass(sr.K_global)}">${nf(sr.K_global, 3)}</div>
-        <div class="sc-lbl">k-tal</div>
+        <div class="sc-lbl" ${tipAttr(TIPS.K_TAL)}>k-tal</div>
       </div>
       <div class="studio-stat-card">
         <div class="sc-val ${ytCls}">${isFinite(maxYT) ? nf(maxYT, 1) : '∞'}</div>
-        <div class="sc-lbl">Max YT mm</div>
+        <div class="sc-lbl" ${tipAttr(TIPS.YT)}>Max YT mm</div>
       </div>
       <div class="studio-stat-card">
         <div class="sc-val ${rClass(isFinite(minR) ? minR : 1)}">${isFinite(minR) ? nf(minR, 3) : '–'}</div>
-        <div class="sc-lbl">Minsta r-tal</div>
+        <div class="sc-lbl" ${tipAttr(TIPS.R_TAL)}>Minsta r-tal</div>
       </div>
       <div class="studio-stat-card">
         <div class="sc-val ${sigClass(maxSig)}">${nf(maxSig, 1)}</div>
-        <div class="sc-lbl">Max σ_pos mm</div>
+        <div class="sc-lbl" ${tipAttr(TIPS.SIG_POS)}>Max σ_pos mm</div>
       </div>
     </div>
 
@@ -262,6 +264,12 @@ const MEAS_COLS = [
   { key:'kpStr',  label:'KP mm',     align:'right' },
 ];
 
+// Tooltips per kolumnnyckel – samma texter som högerpanelen använder.
+const COL_TIPS = {
+  ri: TIPS.R_TAL, mufStr: TIPS.MUF, ytStr: TIPS.YT, kpStr: TIPS.KP,
+  sigHz: TIPS.SIGMA_HZ, sigDm: TIPS.SIGMA_D,
+};
+
 function _renderMeas(el, state) {
   let rows = _measRows(state);
   if (_filterMeas.types.length < 2) rows = rows.filter(r => _filterMeas.types.includes(r.type));
@@ -270,7 +278,8 @@ function _renderMeas(el, state) {
 
   const ths = MEAS_COLS.map(c => {
     const sc = _sortMeas.key === c.key ? (_sortMeas.dir==='asc'?'sort-asc':'sort-desc') : '';
-    return `<th class="val-muted ${sc}" data-sort="${c.key}"
+    const tip = COL_TIPS[c.key] ? ' ' + tipAttr(COL_TIPS[c.key]) : '';
+    return `<th class="val-muted ${sc}" data-sort="${c.key}"${tip}
       style="padding:8px 12px;text-align:${c.align};font-weight:normal;white-space:nowrap;cursor:pointer">${c.label}</th>`;
   }).join('');
 

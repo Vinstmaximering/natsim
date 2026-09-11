@@ -16,7 +16,7 @@ import { nf } from '../src/core/format.js'
 import { runSimulation } from '../src/core/simulation.js'
 import { runSimStations } from '../src/core/stations.js'
 import { exportCalcReport } from '../src/reports/sim-report.js'
-import { klassificeraKtal, K_NAT_GOLV } from '../src/core/constants.js'
+import { klassificeraKtal, K_BAND, K_NAT_GOLV } from '../src/core/constants.js'
 import { setState, getState } from '../src/state/store.js'
 import { reference } from './ref.mjs'
 import { referenceAngle } from './ref-angle.mjs'
@@ -773,7 +773,10 @@ describe('F7 – klassificering av k-talet', () => {
   })
 
   it('klassificeringen är monoton – bättre k ger aldrig sämre klass', () => {
-    const rang = ['Otillräckligt', 'Svagt', 'Acceptabelt', 'Starkt', 'Överbestämt']
+    // Omgång 3: rangordningen härleds ur K_BAND i stället för en handskriven
+    // lista. Testet låser monotonin, inte de enskilda orden – en framtida
+    // omdöpning ska inte kunna göra testet grönt av fel skäl.
+    const rang = [...K_BAND].reverse().map(b => b.klass)
     let forra = -1
     for (let k = 0; k <= 1.0000001; k += 0.005) {
       const i = rang.indexOf(klassificeraKtal(k).klass)

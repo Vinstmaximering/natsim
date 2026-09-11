@@ -58,3 +58,22 @@
            border-bottom:1px solid var(--border-default);padding-bottom:3px; }
 .opt-box { background:var(--bg-card);border:1px solid var(--border-default);border-radius:3px;
            padding:6px 8px;margin-bottom:6px; }
+
+/* Tooltip-bubbla för pekskärm (UI-städning Omgång 3).
+   Desktop använder title-attributet; den här bubblan visas vid tryck-och-håll.
+   Se src/ui/tooltip.js. */
+.tip-bubbla {
+  display: none;
+  position: fixed;
+  z-index: 3000;
+  max-width: min(280px, 80vw);
+  padding: 8px 11px;
+  border-radius: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--bg-panel, #0d1b2e);
+  border: 1px solid var(--border-strong, #1e3850);
+  color: var(--text-value, #e8f4fd);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}

@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 
 import { nf, gon, gonU, komma, gonToDeg, degToGonInput, DEG_PER_GON, DASH } from '../src/core/format.js';
 import { PT, ptLabel, ptLabelShort } from '../src/core/constants.js';
+import { TIPS } from '../src/ui/tooltip.js';
 import * as designmatrix from '../src/core/designmatrix.js';
 import { buildReport } from '../src/pm/report-generator.js';
 
@@ -163,7 +164,9 @@ describe('Fix 2 – observationstypen heter riktning', () => {
 
   it('ordet vinkel är kvar där det matematiskt ÄR en vinkel', () => {
     // θ är felellipsens rotationsvinkel – en riktig vinkel, ska inte döpas om.
-    expect(read('src/ui/right-panel.js')).toMatch(/Felellipsens riktningsvinkel/);
+    // Omgång 3 flyttade förklaringen från ett title-attribut till TIPS.THETA
+    // i ui/tooltip.js, där alla tooltiptexter numera bor.
+    expect(TIPS.THETA).toMatch(/rotationsvinkel/);
   });
 
   it('inget UI kallar riktningsobservationen för vinkel', () => {

@@ -3,6 +3,7 @@
 // och säkerställer att migrationen inte ändrar matematiken.
 
 import { describe, it, expect, beforeEach } from 'vitest'
+import { K_BAND } from '../src/core/constants.js'
 import { runSimulation } from '../src/core/simulation.js'
 import { setState, getState } from '../src/state/store.js'
 
@@ -155,7 +156,7 @@ describe('Datumdefekt-detektering', () => {
 })
 
 describe('k-tal klassificering', () => {
-  it('k > 1.14 ger "Överbestämt"', () => {
+  it('K_class är alltid en av bandtabellens klasser', () => {
     // Test-nät med många redundanta mätningar
     setState({
       pts: [
@@ -175,10 +176,10 @@ describe('k-tal klassificering', () => {
     })
     runSimulation()
     const sr = getState().simResult
-    // 6 obs, 3 obekanta = k = 3/6 = 0.5 – knappt över Stark, men UTANFÖR "Överbestämt"
-    // För riktigt k > 1.14 krävs mer än dubbla mätningar; detta test verifierar
-    // bara att klassificeringen finns. Justera värden vid behov.
-    expect(['Otillräckligt','Svagt','Acceptabelt','Starkt','Överbestämt']).toContain(sr.K_class)
+    // 6 obs, 3 obekanta ⇒ k = 3/6 = 0,50, alltså precis på normgolvet.
+    // Testet verifierar att kärnans K_class hämtas ur bandtabellen och inte
+    // ur någon lokal kopia. Omgång 3: listan härleds ur K_BAND.
+    expect(K_BAND.map(b => b.klass)).toContain(sr.K_class)
   })
 })
 

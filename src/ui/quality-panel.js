@@ -4,7 +4,8 @@ import { getState } from '../state/store.js';
 import { viewNet } from '../state/optimizer-proposal.js';
 import { setAutoSim } from '../state/undo.js';
 import { findBlockedMeasurements } from '../core/visibility.js';
-import { klassificeraKtal } from '../core/constants.js';
+import { klassificeraKtal, sigPosKlass } from '../core/constants.js';
+import { rClass } from '../core/redundancy.js';
 import { nf } from '../core/format.js';
 
 export { setAutoSim };
@@ -12,20 +13,10 @@ export { setAutoSim };
 // Returnerar CSS-klass baserat på K-tal-nivå – delad klassificering.
 const kClass = k => klassificeraKtal(k).cssKlass;
 
-// Returnerar CSS-klass baserat på redundanstal (r_i).
-function rClass(r) {
-  return r >= 0.5 ? 'val-good'
-       : r >= 0.3 ? 'val-caution'
-       : r >= 0.1 ? 'val-warn'
-       :             'val-danger';
-}
-
-// Returnerar CSS-klass baserat på σ_pos (mm).
-function sClass(mm) {
-  return mm < 5  ? 'val-good'
-       : mm < 10 ? 'val-caution'
-       :            'val-danger';
-}
+// Omgång 3: rClass och sClass låg som lokala trappor här. sClass använde
+// dessutom 10 mm som röd gräns medan de tre tabellerna använde 20 – samma
+// punkt kunde vara gul i en vy och röd i en annan. Båda kommer nu ur core/.
+const sClass = sigPosKlass;
 
 export function updateQualityPanel() {
   const panel = document.getElementById("qPanel");
@@ -71,19 +62,8 @@ export function initQualityPanel() {
   const el = document.getElementById("autoSimToggle");
   if (el) el.addEventListener("change", e => setAutoSim(e.target.checked));
 
-  // Touch: tryck på etikett → visa data-tip i #qTip-div (ersätter title-hover)
-  if (('ontouchstart' in window) || navigator.maxTouchPoints > 0) {
-    const tip = document.getElementById("qTip");
-    if (!tip) return;
-    let _hideTimer = null;
-    document.querySelectorAll(".qpl[data-tip]").forEach(label => {
-      label.addEventListener("touchstart", e => {
-        e.stopPropagation();
-        clearTimeout(_hideTimer);
-        tip.textContent = label.dataset.tip;
-        tip.style.display = "block";
-        _hideTimer = setTimeout(() => { tip.style.display = "none"; }, 2800);
-      }, { passive: true });
-    });
-  }
+  // Touch-hanteringen låg tidigare här och fungerade BARA i den här panelen,
+  // eftersom den skrev till en fast div (#qTip). Omgång 3 flyttade den till
+  // ui/tooltip.js, som täcker hela dokumentet – samma förkortning förklaras
+  // nu likadant var den än visas. Se docs/troubleshooting/ui_inventering_20260910.md.
 }

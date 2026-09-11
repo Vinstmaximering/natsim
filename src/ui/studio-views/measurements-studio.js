@@ -2,6 +2,7 @@
 import { getState, setState }    from '../../state/store.js';
 import { calcM }                 from '../../core/designmatrix.js';
 import { nf }                    from '../../core/format.js';
+import { TIPS, tipAttr }         from '../tooltip.js';
 import { sortByColumn, filterByText, filterByType, exportToCSV } from '../table-utils.js';
 
 // Omgång 2: Hz står för horisontalRIKTNING, inte vinkel. Se Fix 2 i
@@ -154,9 +155,11 @@ const COLS = [
 ];
 
 function _main(el, rows, state) {
+  const COL_TIPS = { ri: TIPS.R_TAL, sigHz: TIPS.SIGMA_HZ, sigDm: TIPS.SIGMA_D };
   const ths = COLS.map(({ key, label }) => {
     const cls = _sort.key === key ? (_sort.dir === 'asc' ? 'sort-asc' : 'sort-desc') : '';
-    return `<th class="${cls}" data-sort="${key}">${label}</th>`;
+    const tip = COL_TIPS[key] ? ' ' + tipAttr(COL_TIPS[key]) : '';
+    return `<th class="${cls}" data-sort="${key}"${tip}>${label}</th>`;
   }).join('');
 
   const tbody = rows.map(r => {

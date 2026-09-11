@@ -3,6 +3,7 @@
 import { getState } from '../state/store.js';
 import { CRS_DEFS, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { nf, gon, komma } from '../core/format.js';
+import { rLabel } from '../core/redundancy.js';
 import { stationIds } from '../core/simulation.js';
 
 const D = r => r * 180 / Math.PI;
@@ -54,7 +55,8 @@ export function exportSimReport() {
   r += `MUF = κ×σ/√r,  YT = MUF×(1-r) i observationsdomänen\nr = r-talet (redundansbidraget) för observationen
 KP = Koordinatpåverkan i mm\nEnheter: mm för längder, mgon för riktningar (HMK F.4.1)\n\n`;
   r += `${pad("Sträcka",14)} ${pad("Typ",9)} ${rpad("r-tal",6)} ${rpad("MUF",10)} ${rpad("YT",10)} ${rpad("KP mm",8)} Klass\n`;
-  const rLabel = r_ => r_ >= 0.5 ? "Starkt" : r_ >= 0.3 ? "Acceptabelt" : r_ >= 0.1 ? "Svagt" : "Otillräckligt";
+  // Omgång 3: rLabel importeras ur core/redundancy.js. Här låg en ordagrann
+  // kopia med egna trösklar.
   sr.redund.forEach(rd => {
     const mufS = rd.mdb.val === Infinity ? "∞" : rd.type==="dist" ? nf(rd.mdb.val*1000, 1)+"mm" : nf(rd.mdb.val, 2)+"mgon";
     const yt   = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1-rd.ri);

@@ -1,11 +1,12 @@
 // RAPPORT studio-vy – simuleringsdata i läsbart fullskärmsformat med sektionsnavigering.
 import { getState, setState } from '../../state/store.js';
-import { CRS_DEFS, klassificeraKtal, PT } from '../../core/constants.js';
-import { rLabel }            from '../../core/redundancy.js';
+import { CRS_DEFS, klassificeraKtal, sigPosKlass, PT } from '../../core/constants.js';
+import { rLabel, rClass }   from '../../core/redundancy.js';
 import { nf, gon }           from '../../core/format.js';
+import { TIPS, tipAttr }     from '../tooltip.js';
 
-const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
-const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
+// Omgång 3: skalorna kommer ur core/. Här låg lokala kopior.
+const sigClass = sigPosKlass;
 const kClass   = kv => klassificeraKtal(kv).cssKlass;
 // Omgång 1 noterade att detta var en lokal kopia av core/redundancy.js rLabel.
 // Importeras nu därifrån så att de två inte kan divergera.
@@ -99,7 +100,9 @@ function _buildReportHTML(state) {
     </table>`;
 
   // ── SEK 3: Punktosäkerheter ──
-  const ptCols = '<th>Punkt</th><th>σN mm</th><th>σE mm</th><th>σ_pos mm</th><th>a mm</th><th>b mm</th><th>θ gon</th>';
+  const ptCols = `<th>Punkt</th><th>σN mm</th><th>σE mm</th>`
+    + `<th ${tipAttr(TIPS.SIG_POS)}>σ_pos mm</th><th>a mm</th><th>b mm</th>`
+    + `<th ${tipAttr(TIPS.THETA)}>θ gon</th>`;
   const ptRows = sr.ptResults.map(pr => {
     const sm = pr.sigPos * 1000 * k;
     const { pts } = state;
@@ -122,7 +125,9 @@ function _buildReportHTML(state) {
   <div class="val-muted rs-note">Felellipsskala: ${ellipsMode==='95'?'95 % (k=2,45)':'1σ (Geo)'}</div>`;
 
   // ── SEK 4: Reliabilitet ──
-  const relCols = '<th>Sträcka</th><th>Typ</th><th>r-tal</th><th>MUF</th><th class="val-info">YT</th><th class="val-warn">KP mm</th><th>Klass</th>';
+  const relCols = `<th>Sträcka</th><th>Typ</th><th ${tipAttr(TIPS.R_TAL)}>r-tal</th>`
+    + `<th ${tipAttr(TIPS.MUF)}>MUF</th><th class="val-info" ${tipAttr(TIPS.YT)}>YT</th>`
+    + `<th class="val-warn" ${tipAttr(TIPS.KP)}>KP mm</th><th>Klass</th>`;
   const relRows = sr.redund.map(rd => {
     const mufStr = rd.mdb.val===Infinity?'∞':rd.type==='dist'?nf(rd.mdb.val*1000, 1)+' mm':nf(rd.mdb.val, 2)+' mgon';
     const yt     = rd.mdb.val===Infinity?Infinity:rd.mdb.val*(1-rd.ri);
@@ -145,7 +150,8 @@ function _buildReportHTML(state) {
   </table></div>`;
 
   // ── SEK 5: Punktkvalitet ──
-  const qCols = '<th>Punkt</th><th>σ_pos mm</th><th>Precision</th><th>Obs</th><th>Medel r-tal</th><th>Reliabilitet</th>';
+  const qCols = `<th>Punkt</th><th ${tipAttr(TIPS.SIG_POS)}>σ_pos mm</th><th>Precision</th>`
+    + `<th ${tipAttr(TIPS.OBS_N)}>Obs</th><th ${tipAttr(TIPS.R_TAL)}>Medel r-tal</th><th>Reliabilitet</th>`;
   const qRows = sr.ptResults.map(pr => {
     const sm      = pr.sigPos * 1000;
     const precOK  = sm <= sigReq;
@@ -155,12 +161,13 @@ function _buildReportHTML(state) {
     const rMean   = nObs>0 ? myR.reduce((a,b)=>a+b.ri,0)/nObs : null;
     const maxR    = nObs>0 ? Math.max(...myR.map(r=>r.ri)) : 0;
     const hasRed  = maxR > 0.05;
+    // Omgång 3: samma r-talsskala som högerpanelen och kartan.
+    const REL_IKON = { 'God marginal':'✓', 'Uppfyller norm':'◇',
+                       'Under norm':'△', 'Otillräckligt':'✕' };
     let relText, relIcon, rcls;
-    if (!nObs)          { rcls='val-danger'; relText='Ingen mätning';    relIcon='⛔'; }
-    else if (!hasRed)   { rcls='val-danger'; relText='Ej kontrollerbar'; relIcon='⚠'; }
-    else if (rMean<0.15){ rcls='val-warn';   relText='Svag';             relIcon='△'; }
-    else if (rMean<0.35){ rcls='val-caution';relText='Acceptabel';       relIcon='◇'; }
-    else                { rcls='val-good';   relText='God';               relIcon='✓'; }
+    if (!nObs)        { rcls='val-danger'; relText='Ingen mätning';    relIcon='⛔'; }
+    else if (!hasRed) { rcls='val-danger'; relText='Ej kontrollerbar'; relIcon='⚠'; }
+    else { relText = rLabel(rMean); rcls = rClass(rMean); relIcon = REL_IKON[relText] ?? '◇'; }
     const { pts } = state;
     const pt = (pts||[]).find(p=>p.id===pr.id);
     const c  = PT[pt?.type]?.c || 'var(--text-primary)';

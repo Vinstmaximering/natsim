@@ -27,3 +27,37 @@ canvas { display: block; touch-action: none; }
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
 .mtbb.act { border-color:var(--c,var(--accent));background:color-mix(in srgb,var(--c,var(--accent)) 20%,transparent);color:var(--c,var(--accent)); }
+
+/* ── Teckenförklaring (UI-städning Omgång 3) ──────────────────────────────
+   Nedre vänstra hörnet, ovanför canvas-skalstången. Se src/ui/map-legend.js
+   för motivering av placering och innehåll. */
+.map-legend { position:absolute;bottom:46px;left:8px;z-index:10;max-width:min(260px,46vw); }
+.ml-knapp {
+  display:flex;align-items:center;gap:5px;padding:5px 9px;font-size:11px;font-family:inherit;
+  background:color-mix(in srgb,var(--bg-panel) 88%,transparent);
+  border:1px solid var(--border-default);color:var(--text-secondary);
+  border-radius:4px;cursor:pointer;white-space:nowrap;
+}
+.ml-knapp:hover { background:color-mix(in srgb,var(--bg-selected) 80%,transparent);color:var(--accent); }
+.map-legend.ml-open .ml-knapp { border-color:var(--accent);color:var(--accent);border-bottom-left-radius:0;border-bottom-right-radius:0; }
+.ml-ikon { font-size:12px;line-height:1; }
+.ml-panel {
+  margin-top:-1px;padding:7px 9px 8px;
+  background:color-mix(in srgb,var(--bg-panel) 94%,transparent);
+  border:1px solid var(--accent);border-radius:0 4px 4px 4px;
+  max-height:min(50vh,340px);overflow-y:auto;
+}
+.ml-rubrik {
+  font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--text-muted);margin:6px 0 3px;
+}
+.ml-rubrik:first-child { margin-top:0; }
+.ml-rad { display:flex;align-items:center;gap:7px;padding:1.5px 0; }
+.ml-sym { flex:none;width:34px;display:flex;align-items:center;justify-content:center;line-height:0; }
+.ml-txt { font-size:11px;color:var(--text-secondary);line-height:1.35; }
+
+/* På telefon tar kartan hela bredden – håll förklaringen smal och låg. */
+@media (max-width:480px) {
+  .map-legend { max-width:64vw; }
+  .ml-panel   { max-height:44vh; }
+}
