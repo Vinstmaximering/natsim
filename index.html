@@ -24,7 +24,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;" id="tg"></div>
     <button class="tb" id="btn-pan"        onclick="window.setTool('pan')"        style="margin-top:3px;">🖐 Panorera / Flytta</button>
     <button class="tb" id="btn-meas"       onclick="window.setTool('measure')"    style="--c:#ff9900;margin-top:2px;">📏 Lägg till mätning</button>
-    <button class="tb" id="btn-simstation" onclick="window.setTool('simstation')" style="--c:#ff6090;margin-top:2px;">🔴 Simulerad uppställning</button>
+    <button class="tb" id="btn-simstation" onclick="window.setTool('simstation')" style="--c:#ff6090;margin-top:2px;">🔴 Simulerad station</button>
     <button class="tb" id="btn-obs-polygon" onclick="window._setTool('obstacle-polygon')" style="--c:#ff9900;margin-top:2px;">🏢 Rita byggnad</button>
     <button class="tb" id="btn-obs-line"    onclick="window._setTool('obstacle-line')"    style="--c:#8aa8c0;margin-top:2px;">━ Rita vägg</button>
     <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Rita visuell punkt</button>
@@ -55,7 +55,7 @@
     <div class="sl">VISA</div>
     <label class="tg"><input type="checkbox" id="tgg" checked> Rutnät</label>
     <label class="tg"><input type="checkbox" id="tgc" checked> Mätningar</label>
-    <label class="tg"><input type="checkbox" id="tga" checked> Vinklar</label>
+    <label class="tg"><input type="checkbox" id="tga" checked> Riktningar (gon)</label>
     <label class="tg"><input type="checkbox" id="tgd" checked> Avstånd</label>
     <label class="tg"><input type="checkbox" id="tgl" checked> Etiketter</label>
     <label class="tg"><input type="checkbox" id="tge" checked> Felellipser</label>
@@ -65,11 +65,15 @@
     <div class="dv" style="margin:4px 0;"></div>
     <div class="sl" style="margin-top:2px;">PUNKTTYPER</div>
     <label class="tg"><input type="checkbox" id="tv_known"     checked> <span style="color:#00ff88;">▲</span> Kända punkter</label>
-    <label class="tg"><input type="checkbox" id="tv_station"   checked> <span style="color:#4fc3f7;">●</span> Uppställningar</label>
-    <label class="tg"><input type="checkbox" id="tv_new"       checked> <span style="color:#ce93d8;">■</span> Nya punkter</label>
+    <label class="tg"><input type="checkbox" id="tv_station"   checked> <span style="color:#4fc3f7;">●</span> Stationer</label>
+    <label class="tg"><input type="checkbox" id="tv_new"       checked> <span style="color:#ce93d8;">■</span> Nypunkter</label>
     <label class="tg"><input type="checkbox" id="tv_detail"    checked> <span style="color:#ffb74d;">✕</span> Detaljpunkter</label>
-    <label class="tg"><input type="checkbox" id="tv_simstation" checked> <span style="color:#ff6090;">●</span> Sim. uppst.</label>
-    <button class="tb" id="btn-au" style="margin-top:2px;color:#4fc3f7;" onclick="window.toggleAU()">Vinkel: Gon (grad)</button>
+    <label class="tg"><input type="checkbox" id="tv_simstation" checked> <span style="color:#ff6090;">●</span> Simulerade stationer</label>
+    <!-- Knappen #btn-au ("Vinkel: Gon (grad)" / "Vinkel: DMS") låg här. Borttagen
+         i UI-städning Omgång 2 (2026-09-11): alla vinklar visas nu i gon med fyra
+         decimaler, så växlaren hade inget att växla mellan. Den nådde dessutom
+         bara fyra av de åtta ytor som visade vinklar. Se core/format.js och
+         docs/troubleshooting/ui_inventering_20260910.md avsnitt A. -->
   </div>
   <div class="ptl" id="ptl">
     <div style="padding:6px 10px 3px;font-size:11px;color:#4fc3f7;letter-spacing:2px;" id="pth">PUNKTER (0)</div>
@@ -129,7 +133,7 @@
       Snabbstart:
       <ol style="margin:8px 0 8px 18px;padding:0">
         <li><b>Klicka på kartan</b> för att lägga första punkten – välj <i>"Känd punkt"</i>.</li>
-        <li>Lägg till fler kända punkter och minst en <b>uppställning</b>.</li>
+        <li>Lägg till fler kända punkter och minst en <b>station</b>.</li>
         <li>Klicka <b>📏 Lägg till mätning</b> och dra linjer mellan punkter.</li>
         <li>Aktivera <b>mätklass G1–G4</b> i högerpanelen om SIS-TS-krav ska gälla.</li>
         <li>Tryck <b>🔍 Validera nät</b> och sedan <b>📐 Generera PM</b>.</li>
@@ -164,7 +168,7 @@
       <span class="qpl val-muted" title="Global kontrollerbarhet k = f/n. Normgolv ≥ 0,50 enligt SIS-TS 21143:2016 §6.2.2 – gäller alla mätklasser. Högre värde = bättre redundans i nätet." data-tip="k: global kontrollerbarhet f/n. Normgolv ≥0,50 (SIS-TS §6.2.2, alla mätklasser). Högre = bättre redundans.">k</span><span id="qK">–</span>
       <span class="qpl val-muted" title="Antal observationer (n) / antal obekanta (u). En mätning ger 1–2 observationer beroende på observationstyp." data-tip="n/u: antal observationer / antal obekanta">n/u</span><span id="qNu">–</span>
       <span class="qpl val-muted" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
-      <span class="qpl val-muted" title="Minsta enskilda redundanstal r_i. Under 0,30 underkänner valideringen observationen; 0,50 är nivån för ingen anmärkning (HMK Bilaga F.6)." data-tip="min r_i: minsta redundanstal. <0,30 underkänt, ≥0,50 ingen anmärkning">min r_i</span><span id="qRmin">–</span>
+      <span class="qpl val-muted" title="Minsta enskilda r-tal (redundanstal) i nätet. Under 0,30 underkänner valideringen observationen; 0,50 är nivån för ingen anmärkning (HMK Bilaga F.6)." data-tip="minsta r-tal: &lt;0,30 underkänt, ≥0,50 ingen anmärkning">min r-tal</span><span id="qRmin">–</span>
       <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland fria punkter. Kända punkter är fixerade och räknas inte." data-tip="max σ_pos: störst positionsosäkerhet bland fria punkter">max σ_pos</span><span id="qSmax">–</span>
       <span class="qpl val-muted" title="Antal befintliga mätningar vars siktlinje blockeras av ett hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
     </div>
@@ -245,7 +249,7 @@
         <td style="padding:4px 6px;"><input id="cv-new-id" placeholder="Punkt-ID" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;"></td>
         <td style="padding:4px 6px;">
           <select id="cv-new-type" style="width:100%;padding:4px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;">
-            <option value="known">Känd punkt</option><option value="station" selected>Uppställning</option><option value="new">Ny punkt</option><option value="detail">Detalj</option>
+            <option value="known">Känd punkt</option><option value="station" selected>Station</option><option value="new">Nypunkt</option><option value="detail">Detaljpunkt</option>
           </select>
         </td>
         <td style="padding:4px 6px;"><input id="cv-new-N" type="number" placeholder="N-koordinat" style="width:100%;padding:4px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--color-cancel-border);color:var(--text-value);border-radius:3px;text-align:right;"></td>

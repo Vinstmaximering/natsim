@@ -10,6 +10,7 @@
 
 import proj4 from 'proj4';
 import { getState } from '../state/store.js';
+import { nf } from '../core/format.js';
 import { PT, CRS_DEFS } from '../core/constants.js';
 import { rColor } from '../core/redundancy.js';
 import { hexToRgba } from '../state/obstacles.js';
@@ -342,7 +343,7 @@ export function generateNetImage(options = {}) {
         const s = sc(pr.N, pr.E);
         let aPx = pr.aSemi * effectiveEllScale * scale * k;
         if (aPx < 8) aPx = 8;
-        const lbl = `a/b ${(pr.aSemi * 1000).toFixed(1)}/${(pr.bSemi * 1000).toFixed(1)} mm`;
+        const lbl = `a/b ${nf(pr.aSemi * 1000, 1)}/${nf(pr.bSemi * 1000, 1)} mm`;
         ctx.font = '9px Arial';
         const tw = ctx.measureText(lbl).width;
         ctx.fillStyle = 'rgba(255,255,255,.85)';
@@ -526,11 +527,11 @@ function drawGrid(ctx, W, H, cx, cy, midN, midE, scale) {
   for (let e = Math.floor((midE - hw) / gi) * gi; e <= midE + hw + gi; e += gi) {
     const t = toXY(midN + hh, e), b = toXY(midN - hh, e);
     ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-    ctx.textAlign = 'center'; ctx.fillText(`E ${e.toFixed(0)}`, t.x, 14);
+    ctx.textAlign = 'center'; ctx.fillText(`E ${nf(e, 0)}`, t.x, 14);
   }
   for (let n = Math.floor((midN - hh) / gi) * gi; n <= midN + hh + gi; n += gi) {
     const l = toXY(n, midE - hw);
     ctx.beginPath(); ctx.moveTo(0, l.y); ctx.lineTo(W, l.y); ctx.stroke();
-    ctx.textAlign = 'right'; ctx.fillText(`N ${n.toFixed(0)}`, W - 4, l.y - 3);
+    ctx.textAlign = 'right'; ctx.fillText(`N ${nf(n, 0)}`, W - 4, l.y - 3);
   }
 }

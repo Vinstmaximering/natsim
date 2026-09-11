@@ -1,8 +1,8 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 2425–2500 (exportSimReport)
 // och rad 2680–2931 (exportCalcReport).
 import { getState } from '../state/store.js';
-import { CRS_DEFS, INSTRUMENTS, PT } from '../core/constants.js';
-import { fG } from '../core/designmatrix.js';
+import { CRS_DEFS, INSTRUMENTS, ptLabel } from '../core/constants.js';
+import { nf, gon, komma } from '../core/format.js';
 import { stationIds } from '../core/simulation.js';
 
 const D = r => r * 180 / Math.PI;
@@ -10,7 +10,7 @@ const D = r => r * 180 / Math.PI;
 // ── Textbaserad simuleringsrapport – rad 2425–2500 exakt ─────────────────────
 export function exportSimReport() {
   const { simResult, activeCRS, sigReq = 3 } = getState();
-  if (!simResult || !simResult.ok) { alert("Kör simuleringen först."); return; }
+  if (!simResult || !simResult.ok) { alert("Beräkna simuleringen först."); return; }
   const sr = simResult;
   const now     = new Date().toLocaleDateString("sv-SE");
   const crsName = CRS_DEFS[activeCRS]?.name || activeCRS;
@@ -19,7 +19,7 @@ export function exportSimReport() {
   const pad  = (s, n) => String(s).padEnd(n);
   const rpad = (s, n) => String(s).padStart(n);
 
-  let r = `${SEP}\nNÄTSIMULERING\n${SEP}\nDatum:          ${now}\nKoordinatsystem: ${crsName}\nMetod:          Absolut anslutning (MK-utjämning)\n\n`;
+  let r = `${SEP}\nNÄTSIMULERING\n${SEP}\nDatum:          ${now}\nKoordinatsystem: ${crsName}\nMetod:          Absolut anslutning (minsta kvadratutjämning)\n\n`;
 
   r += `1. NÄTÖVERSIKT\n${sep}\n`;
   r += `Kända punkter:        ${rpad(sr.knownCount, 6)}\n`;
@@ -31,10 +31,10 @@ export function exportSimReport() {
   r += `Σ redundansbidrag:    ${rpad(sr.redundTotal, 6)}\n\n`;
 
   r += `2. KONTROLLERBARHETSTAL  k = f/n\n${sep}\n`;
-  r += `k = ${sr.K_global.toFixed(3)}   ${sr.K_class}\n`;
-  r += `Medel r_i:   ${sr.rMean.toFixed(3)}\n`;
-  if (sr.rMinDist != null) r += `Min r_i (avst): ${sr.rMinDist.toFixed(3)}\n`;
-  if (sr.rMinHz   != null) r += `Min r_i (vink): ${sr.rMinHz.toFixed(3)}\n`;
+  r += `k = ${nf(sr.K_global, 3)}   ${sr.K_class}\n`;
+  r += `Medel r-tal:             ${nf(sr.rMean, 3)}\n`;
+  if (sr.rMinDist != null) r += `Minsta r-tal (avstånd):  ${nf(sr.rMinDist, 3)}\n`;
+  if (sr.rMinHz   != null) r += `Minsta r-tal (riktning): ${nf(sr.rMinHz, 3)}\n`;
   r += "\n";
 
   // Värdena är standardosäkerheter (1σ) – simulation.js sätter k_ell = 1.0.
@@ -43,34 +43,35 @@ export function exportSimReport() {
   // värdena skalades, vilket underskattade dem med faktor 2,45 mot sin egen
   // rubrik.
   r += `3. PUNKTOSÄKERHETER – standardosäkerhet 1σ (k=1)\n${sep}\n`;
-  r += `${pad("Punkt",7)} ${rpad("σN mm",7)} ${rpad("σE mm",7)} ${rpad("σpos mm",8)} ${rpad("a mm",7)} ${rpad("b mm",7)} θ\n`;
+  r += `${pad("Punkt",7)} ${rpad("σN mm",7)} ${rpad("σE mm",7)} ${rpad("σpos mm",8)} ${rpad("a mm",7)} ${rpad("b mm",7)} θ gon\n`;
   sr.ptResults.forEach(pr => {
-    const sm = (pr.sigPos*1000).toFixed(2);
-    r += `${pad(pr.id,7)} ${rpad((pr.sigN*1000).toFixed(2),7)} ${rpad((pr.sigE*1000).toFixed(2),7)} ${rpad(sm,8)} ${rpad((pr.aSemi*1000).toFixed(2),7)} ${rpad((pr.bSemi*1000).toFixed(2),7)} ${fG(D(pr.theta))}\n`;
+    const sm = nf(pr.sigPos*1000, 2);
+    r += `${pad(pr.id,7)} ${rpad(nf(pr.sigN*1000, 2),7)} ${rpad(nf(pr.sigE*1000, 2),7)} ${rpad(sm,8)} ${rpad(nf(pr.aSemi*1000, 2),7)} ${rpad(nf(pr.bSemi*1000, 2),7)} ${gon(D(pr.theta))}\n`;
   });
   r += "\n";
 
   r += `4. RELIABILITET PER MÄTNING – standardosäkerhet 1σ (k=1)\n${sep}\n`;
-  r += `MUF = κ×σ/√r,  YT = MUF×(1-r) i observationsdomänen\nKP = Koordinatpåverkan i mm\nEnheter: mm för längder, mgon för riktningar (HMK F.4.1)\n\n`;
-  r += `${pad("Sträcka",14)} ${pad("Typ",9)} ${rpad("r",6)} ${rpad("MUF",10)} ${rpad("YT",10)} ${rpad("KP mm",8)} Klass\n`;
+  r += `MUF = κ×σ/√r,  YT = MUF×(1-r) i observationsdomänen\nr = r-talet (redundansbidraget) för observationen
+KP = Koordinatpåverkan i mm\nEnheter: mm för längder, mgon för riktningar (HMK F.4.1)\n\n`;
+  r += `${pad("Sträcka",14)} ${pad("Typ",9)} ${rpad("r-tal",6)} ${rpad("MUF",10)} ${rpad("YT",10)} ${rpad("KP mm",8)} Klass\n`;
   const rLabel = r_ => r_ >= 0.5 ? "Starkt" : r_ >= 0.3 ? "Acceptabelt" : r_ >= 0.1 ? "Svagt" : "Otillräckligt";
   sr.redund.forEach(rd => {
-    const mufS = rd.mdb.val === Infinity ? "∞" : rd.type==="dist" ? (rd.mdb.val*1000).toFixed(1)+"mm" : rd.mdb.val.toFixed(2)+"mgon";
+    const mufS = rd.mdb.val === Infinity ? "∞" : rd.type==="dist" ? nf(rd.mdb.val*1000, 1)+"mm" : nf(rd.mdb.val, 2)+"mgon";
     const yt   = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1-rd.ri);
     // YT ärver MUF:s enhet: mm för längder, mgon för riktningar (HMK F.4.1 –
     // tillförlitlighetsmåtten ges i samma enhet som mätningarna).
-    const ytS  = yt === Infinity ? "∞" : rd.type==="dist" ? (yt*1000).toFixed(2)+"mm" : yt.toFixed(4)+"mgon";
-    const kpS  = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : (rd.yt_m*1000).toFixed(2);
-    r += `${pad((rd.fromId||"?")+"→"+(rd.toId||"?"),14)} ${pad(rd.type==="dist"?"Avst":"Riktning",9)} ${rpad(rd.ri.toFixed(3),6)} ${rpad(mufS,10)} ${rpad(ytS,10)} ${rpad(kpS,8)} ${rLabel(rd.ri)}\n`;
+    const ytS  = yt === Infinity ? "∞" : rd.type==="dist" ? nf(yt*1000, 2)+"mm" : nf(yt, 4)+"mgon";
+    const kpS  = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : nf(rd.yt_m*1000, 2);
+    r += `${pad((rd.fromId||"?")+"→"+(rd.toId||"?"),14)} ${pad(rd.type==="dist"?"Avstånd":"Riktning",9)} ${rpad(nf(rd.ri, 3),6)} ${rpad(mufS,10)} ${rpad(ytS,10)} ${rpad(kpS,8)} ${rLabel(rd.ri)}\n`;
   });
   r += "\n";
 
   r += `5. PUNKTKVALITET – PRECISION OCH RELIABILITET\n${sep}\n`;
-  r += `Krav precision: σ_pos ≤ ${sigReq} mm\n\n`;
-  r += `${pad("Punkt",14)} ${rpad("σpos mm",8)} ${rpad("Prec",8)} ${rpad("Obs",4)} ${rpad("r̄",7)} Reliabilitet\n`;
+  r += `Krav precision: σ_pos ≤ ${nf(sigReq, 1)} mm\n\n`;
+  r += `${pad("Punkt",14)} ${rpad("σpos mm",8)} ${rpad("Prec",10)} ${rpad("Obs",4)} ${rpad("Medel r-tal",11)} Reliabilitet\n`;
   sr.ptResults.forEach(pr => {
-    const sm     = (pr.sigPos*1000).toFixed(2);
-    const precOK = pr.sigPos*1000 <= sigReq ? "OK   " : "Ej krav";
+    const sm     = nf(pr.sigPos*1000, 2);
+    const precOK = pr.sigPos*1000 <= sigReq ? "OK" : "Uppfyller ej";
     const myR    = sr.redund.filter(rd => rd.fromId===pr.id||rd.toId===pr.id);
     const nObs   = Math.round(myR.length/2);
     const maxR   = myR.length>0 ? Math.max(...myR.map(x=>x.ri)) : 0;
@@ -81,7 +82,7 @@ export function exportSimReport() {
     else if (rMean_<0.15) rel = "Svag";
     else if (rMean_<0.35) rel = "Acceptabel";
     else rel = "God";
-    r += `${pad(pr.id,14)} ${rpad(sm,8)} ${rpad(precOK,8)} ${rpad(nObs,4)} ${rpad(rMean_!=null?rMean_.toFixed(3):"–",7)} ${rel}\n`;
+    r += `${pad(pr.id,14)} ${rpad(sm,8)} ${rpad(precOK,10)} ${rpad(nObs,4)} ${rpad(nf(rMean_, 3),11)} ${rel}\n`;
   });
   r += `\n${SEP}\n`;
 
@@ -94,7 +95,7 @@ export function exportSimReport() {
 // ── Detaljerad beräkningsrapport – rad 2680–2931 exakt ───────────────────────
 export function exportCalcReport() {
   const { simResult, pts, meas, centerErr, activeCRS } = getState();
-  if (!simResult || !simResult.ok) { alert("Kör simuleringen först."); return; }
+  if (!simResult || !simResult.ok) { alert("Beräkna simuleringen först."); return; }
   const sr      = simResult;
   const crsName = CRS_DEFS[activeCRS]?.name || activeCRS;
   const now     = new Date().toLocaleString("sv-SE");
@@ -102,20 +103,21 @@ export function exportCalcReport() {
   const SEP = "═".repeat(W), sep = "─".repeat(W);
   const pad  = (s, n) => String(s).padEnd(n);
   const rp   = (s, n) => String(s).padStart(n);
-  const f6 = v => v.toFixed(6), f4 = v => v.toFixed(4), f3 = v => v.toFixed(3);
+  // Omgång 2: svensk decimalkomma i hela rapporten. Se core/format.js.
+  const f6 = v => nf(v, 6), f4 = v => nf(v, 4), f3 = v => nf(v, 3);
   let r = "";
 
   r += `${SEP}\nDETALJERAD BERÄKNINGSRAPPORT – NÄTSIMULERING\n${SEP}\n`;
   r += `Datum/tid:       ${now}\n`;
   r += `Koordinatsystem: ${crsName}\n`;
   r += `Metod:           Minsta-kvadrat-utjämning, riktningsmodell med orienteringskonstanter\n`;
-  r += `κ (MUF-faktor):  ${sr.kappa} (α=0.05, β=0.80, Baarda)\n\n`;
+  r += `κ (MUF-faktor):  ${komma(sr.kappa)} (α=0,05, β=0,80, Baarda)\n\n`;
 
   r += `${SEP}\n1. PUNKTDATA\n${sep}\n`;
   r += `${pad("ID",14)} ${pad("Typ",18)} ${rp("E (m)",14)} ${rp("N (m)",14)} ${rp("e_c (mm)",8)}\n${sep}\n`;
   pts.forEach(p => {
     const ec = p.centerErr != null ? p.centerErr : centerErr;
-    r += `${pad(p.id,14)} ${pad(PT[p.type]?.l||p.type,18)} ${rp(f3(p.E),14)} ${rp(f3(p.N),14)} ${rp(ec.toFixed(1),8)}\n`;
+    r += `${pad(p.id,14)} ${pad(ptLabel(p.type),18)} ${rp(f3(p.E),14)} ${rp(f3(p.N),14)} ${rp(nf(ec, 1),8)}\n`;
   });
   r += "\n";
 
@@ -168,9 +170,9 @@ export function exportCalcReport() {
     const alpha_deg=(Math.atan2(dE,dN)*180/Math.PI+360)%360;
 
     r += `${sep}\nMätning ${m.id}: ${m.from} → ${m.to}  [${obsType}]\n`;
-    r += `  Geometri: dE=${f3(dE)} m  dN=${f3(dN)} m  d=${f6(dist_m)} m  α=${f6(alpha_deg)}°\n`;
+    r += `  Geometri: dE=${f3(dE)} m  dN=${f3(dN)} m  d=${f6(dist_m)} m  α=${gon(alpha_deg, 6)} gon\n`;
     r += `    ex=${f6(ex)}  ey=${f6(ey)}\n`;
-    r += `  Centreringsfel: e_from=${(e_from*1000).toFixed(2)} mm  e_to=${(e_to*1000).toFixed(2)} mm  e_c=√((e²+e²)/2)=${(e_c*1000).toFixed(3)} mm\n`;
+    r += `  Centreringsfel: e_from=${nf(e_from*1000, 2)} mm  e_to=${nf(e_to*1000, 2)} mm  e_c=√((e²+e²)/2)=${nf(e_c*1000, 3)} mm\n`;
     if (addDist) {
       r += `  Avstånd: σ_D=${f4(sigD*1000)} mm  P_D=${f6(1/(sigD*sigD))}\n`;
       const elems=[];
@@ -212,24 +214,24 @@ export function exportCalcReport() {
       const mean=(Qee+Qnn)/2, disc=Math.sqrt(((Qee-Qnn)/2)**2+Qen*Qen);
       r += `${p.id}:\n  Qee=${f6(Qee)}  Qnn=${f6(Qnn)}  Qen=${f6(Qen)}\n`;
       r += `  σ_N=${f4(Math.sqrt(Math.max(0,Qnn))*1000)} mm  σ_E=${f4(Math.sqrt(Math.max(0,Qee))*1000)} mm\n`;
-      r += `  a=${f4(Math.sqrt(mean+disc)*1000)} mm  b=${f4(Math.sqrt(Math.max(0,mean-disc))*1000)} mm  θ=${f4(Math.atan2(2*Qen,Qee-Qnn)*0.5*180/Math.PI)}°\n\n`;
+      r += `  a=${f4(Math.sqrt(mean+disc)*1000)} mm  b=${f4(Math.sqrt(Math.max(0,mean-disc))*1000)} mm  θ=${gon(Math.atan2(2*Qen,Qee-Qnn)*0.5*180/Math.PI, 4)} gon\n\n`;
     });
   }
 
-  r += `${SEP}\n5. REDUNDANSBIDRAG  r_i = 1 − H_ii\n${sep}\n`;
-  r += `Kontrollsumma: Σr_i = ${sr.redund.reduce((a,b)=>a+b.ri,0).toFixed(6)}  (ska = ${sr.redundancy})\n\n`;
-  r += `${pad("Obs",5)} ${pad("Sträcka",14)} ${pad("Typ",9)} ${rp("r_i",8)} ${rp("MUF",12)} ${rp("KP mm",7)}\n${sep}\n`;
+  r += `${SEP}\n5. REDUNDANSBIDRAG  r-tal = 1 − H_ii\n${sep}\n`;
+  r += `Kontrollsumma: Σr-tal = ${nf(sr.redund.reduce((a,b)=>a+b.ri,0), 6)}  (ska = ${sr.redundancy})\n\n`;
+  r += `${pad("Obs",5)} ${pad("Sträcka",14)} ${pad("Typ",9)} ${rp("r-tal",8)} ${rp("MUF",12)} ${rp("KP mm",7)}\n${sep}\n`;
   sr.redund.forEach((rd,i) => {
-    const mufS=rd.mdb.val===Infinity?"∞":rd.type==="dist"?(rd.mdb.val*1000).toFixed(3)+"mm":rd.mdb.val.toFixed(4)+"mgon";
-    const kpS=rd.yt_m===undefined||rd.yt_m===Infinity?"∞":(rd.yt_m*1000).toFixed(3);
-    r += `${rp(i,5)} ${pad((rd.fromId||"?")+"→"+(rd.toId||"?"),14)} ${pad(rd.type==="dist"?"Avst":"Riktning",9)} ${rp(rd.ri.toFixed(6),8)} ${rp(mufS,12)} ${rp(kpS,7)}\n`;
+    const mufS=rd.mdb.val===Infinity?"∞":rd.type==="dist"?nf(rd.mdb.val*1000, 3)+"mm":nf(rd.mdb.val, 4)+"mgon";
+    const kpS=rd.yt_m===undefined||rd.yt_m===Infinity?"∞":nf(rd.yt_m*1000, 3);
+    r += `${rp(i,5)} ${pad((rd.fromId||"?")+"→"+(rd.toId||"?"),14)} ${pad(rd.type==="dist"?"Avstånd":"Riktning",9)} ${rp(nf(rd.ri, 6),8)} ${rp(mufS,12)} ${rp(kpS,7)}\n`;
   });
   r += "\n";
 
   r += `${SEP}\nFORMELFÖRTECKNING\n${sep}\n`;
   r += `Designmatris avstånd:   ∂D/∂E_i=-ex, ∂D/∂N_i=-ey, ∂D/∂E_j=+ex, ∂D/∂N_j=+ey\n`;
   r += `Designmatris riktning:  ∂r/∂E_i=+ey, ∂r/∂N_i=-ex, ∂r/∂E_j=-ey, ∂r/∂N_j=+ex, ∂r/∂z_k=-d\n`;
-  r += `σ_D  = √((σ_Dmm + d×ppm)² + e_c²)   HMK Bilaga C.1.2 – A och B·L adderas linjärt\nMUF  = κ × σ / √r_i,   κ=${sr.kappa} (α=0.05, β=0.80, HMK Formel F.16)\nYT   = MUF × (1-r_i)\n\n`;
+  r += `σ_D  = √((σ_Dmm + d×ppm)² + e_c²)   HMK Bilaga C.1.2 – A och B·L adderas linjärt\nMUF  = κ × σ / √r,   κ=${komma(sr.kappa)} (α=0,05, β=0,80, HMK Formel F.16)\nYT   = MUF × (1-r)\n\n`;
   r += `REFERENSER\n${sep}\n[1] HMK – Stommätning, Appendix F, Lantmäteriet 2021.\n[2] SIS-TS 21143:2016 – Geodesi: Stomnät.\n[3] Baarda 1968, Pope 1976, Mikhail & Gracie 1981.\n${SEP}\n`;
 
   const a2 = document.createElement("a");

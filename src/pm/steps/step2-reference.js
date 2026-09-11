@@ -1,5 +1,7 @@
 // Steg 2 – Referenssystem och utgångspunkter
 // 13 SWEREF-zoner i dropdown per krav.
+import { nf } from '../../core/format.js';
+
 export function render(D, container, vals) {
   const sweref = [
     ["SWEREF 99 TM","SWEREF 99 TM"], ["SWEREF 99 12 00","SWEREF 99 12 00"],
@@ -12,9 +14,9 @@ export function render(D, container, vals) {
   ];
   const kpRows = D.knownPts.map(p =>
     `<tr><td style="font-weight:700">${p.id}</td>
-     <td style="text-align:right;font-family:monospace">${p.N.toFixed(3)}</td>
-     <td style="text-align:right;font-family:monospace">${p.E.toFixed(3)}</td>
-     <td style="text-align:right;font-family:monospace">${p.H ? p.H.toFixed(3) : "–"}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.N, 3)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.E, 3)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.H, 3)}</td>
      <td>${p.markering || "–"}</td></tr>`
   ).join("");
 
@@ -42,10 +44,10 @@ export function render(D, container, vals) {
           <table style="width:100%;border-collapse:collapse;font-size:11px">
             <tr style="color:#4fc3f7">
               <th style="padding:2px 5px;text-align:left">Punkt</th>
-              <th style="padding:2px 5px;text-align:right">N</th>
-              <th style="padding:2px 5px;text-align:right">E</th>
-              <th style="padding:2px 5px;text-align:right">H</th>
-              <th style="padding:2px 5px;text-align:left">Mark.</th>
+              <th style="padding:2px 5px;text-align:right">N (m)</th>
+              <th style="padding:2px 5px;text-align:right">E (m)</th>
+              <th style="padding:2px 5px;text-align:right">H (m)</th>
+              <th style="padding:2px 5px;text-align:left">Markering</th>
             </tr>
             ${kpRows}
           </table>

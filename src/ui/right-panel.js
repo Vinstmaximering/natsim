@@ -2,8 +2,9 @@
 // rad 1679–2215 (renderTab) + rad 1116–1151 (suggestMeasurements) + rad 3332–3352 (instrument)
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
-import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal } from '../core/constants.js';
-import { calcM, fG, fD, d2EN, brgEN, isStationPoint } from '../core/designmatrix.js';
+import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal, ptLabel, ptLabelShort } from '../core/constants.js';
+import { nf, gon, komma } from '../core/format.js';
+import { calcM, d2EN, brgEN, isStationPoint } from '../core/designmatrix.js';
 import { rColor, rLabel } from '../core/redundancy.js';
 import { runSimulation } from '../core/simulation.js';
 import { saveUndo } from '../state/undo.js';
@@ -294,7 +295,9 @@ export function renderTab() {
   const tc = document.getElementById("tc");
   if (!tc) return;
   const { atab, pts, meas, simResult, centerErr, defaultInstr } = getState();
-  const fmt = d => getState().au === "grad" ? fG(d) : fD(d);
+  // Alla vinklar i gon med fyra decimaler (Omgång 2). Argumentet är grader –
+  // kärnan räknar oförändrat i grader, konverteringen sker vid visningen.
+  const fmt = d => gon(d);
 
   // ── NÄT ──
   if (atab === "net") {
@@ -303,12 +306,14 @@ export function renderTab() {
       ${(() => {
         const knownAll   = pts.filter(p=>p.type==="known");
         const knownCombo = knownAll.filter(p=>p.isStation).length;
-        const knownSub   = knownCombo > 0 ? `<div style="font-size:10px;color:#4a7090;margin-top:1px;">varav ${knownCombo} + uppst.</div>` : '';
+        const knownSub   = knownCombo > 0 ? `<div style="font-size:10px;color:#4a7090;margin-top:1px;">varav ${knownCombo} även uppställning</div>` : '';
         return [
-          ["Kända",   knownAll.length, "#00ff88", knownSub],
-          ["Uppst.",  pts.filter(p=>p.type==="station").length,"#4fc3f7",""],
-          ["Detalj",  pts.filter(p=>p.type==="detail").length, "#ffb74d",""],
-          ["Nya",     pts.filter(p=>p.type==="new").length,    "#ce93d8",""],
+          // Etiketterna kommer ur PT (core/constants.js) sedan Omgång 2 –
+          // korten hade tidigare en egen uppsättning ("Kända/Uppst./Nya").
+          [ptLabelShort("known"),   knownAll.length, PT.known.c, knownSub],
+          [ptLabelShort("station"), pts.filter(p=>p.type==="station").length, PT.station.c, ""],
+          [ptLabelShort("detail"),  pts.filter(p=>p.type==="detail").length,  PT.detail.c,  ""],
+          [ptLabelShort("new"),     pts.filter(p=>p.type==="new").length,     PT.new.c,     ""],
           ["Mätningar",meas.length,"#ff9900",""],
           ["Inmatade",meas.filter(m=>m.measDist!=null||m.measHz!=null).length,"#ff9900",""],
         ].map(([l,n,c,sub]) => `<div style="background:#091424;border-radius:3px;padding:6px 8px;border:1px solid ${c}28;"><div style="font-size:20px;font-weight:bold;color:${c}">${n}</div><div style="font-size:11px;color:#7090a8">${l}${sub}</div></div>`).join("");
@@ -347,7 +352,9 @@ export function renderTab() {
       const isSel = m.id === selMId;
       const rd = simResult?.ok ? simResult.redund.find(r => r.measId === m.id && r.type === "dist") : null;
       const rh = simResult?.ok ? simResult.redund.find(r => r.measId === m.id && r.type === "hz")   : null;
-      const riStr = rd ? `r_d=${rd.ri.toFixed(3)}` : rh ? `r_h=${rh.ri.toFixed(3)}` : "";
+      // Omgång 2: r_d/r_h var den sista indexnotationen i UI:t. Nu "r-tal",
+      // samma ord som PM-rapporten och optimeringen använder.
+      const riStr = rd ? `r-tal ${nf(rd.ri, 3)}` : rh ? `r-tal ${nf(rh.ri, 3)}` : "";
       const riCol = rd ? rColor(rd.ri) : rh ? rColor(rh.ri) : "#7090a8";
       return `<div class="lc" style="${isSel?"border-color:#ff9900;":""}cursor:pointer;" onclick="window._selectMeas('${m.id}')">
         <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
@@ -357,7 +364,7 @@ export function renderTab() {
             <button onclick="event.stopPropagation();window._delM('${m.id}')" style="padding:2px 5px;font-size:11px;background:transparent;border:1px solid #3a1010;color:#ff5050;border-radius:2px;cursor:pointer;">✕</button>
           </div>
         </div>
-        <div style="color:#8aa8c0;">Avst: <span style="color:${m.measDist!=null?"#ff9900":"#e8f4fd"}">${md.dist.toFixed(4)} m</span> &nbsp; Riktn: ${fmt(md.hz)}${riStr?` &nbsp;<span style="color:${riCol}">${riStr}</span>`:""}</div>
+        <div style="color:#8aa8c0;">Avstånd: <span style="color:${m.measDist!=null?"#ff9900":"#e8f4fd"}">${nf(md.dist, 4)} m</span> &nbsp; Riktning: ${fmt(md.hz)} gon${riStr?` &nbsp;<span style="color:${riCol}">${riStr}</span>`:""}</div>
       </div>`;
     }).join("")}`;
     return;
@@ -380,7 +387,7 @@ export function renderTab() {
     </div>`;
 
     if (!simResult) {
-      tc.innerHTML += `<div style="color:#7090a8;font-size:12px;text-align:center;padding:12px;border:1px dashed #1a2d48;border-radius:3px;">Tryck ▶ Beräkna för att starta simuleringen.</div>`;
+      tc.innerHTML += `<div style="color:#7090a8;font-size:12px;text-align:center;padding:12px;border:1px dashed #1a2d48;border-radius:3px;">Tryck ▶ Beräkna simulering för att starta.</div>`;
       return;
     }
     if (simResult.error) {
@@ -438,24 +445,24 @@ export function renderTab() {
       <tr><td colspan="2" class="sim-tbl-sep"></td></tr>
       ${TR("Frihetsgrader f", sr.redundancy, sr.redundancy > 0 ? "val-good" : "val-danger")}
       ${TR("Σ redundansbidrag", sr.redundTotal)}
-      ${TR("κ (MUF-faktor)", sr.kappa != null ? sr.kappa.toFixed(2) : "2.80")}
+      ${TR("κ (MUF-faktor)", sr.kappa != null ? nf(sr.kappa, 2) : "2,80")}
     </table>
 
     ${SEC("2. KONTROLLERBARHETSTAL  k = f/n")}
     <div class="sim-k-box" style="border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span class="${kCls(sr.K_global)}" style="font-size:16px;font-weight:bold;font-family:monospace;">k = ${sr.K_global.toFixed(3)}</span>
+        <span class="${kCls(sr.K_global)}" style="font-size:16px;font-weight:bold;font-family:monospace;">k = ${nf(sr.K_global, 3)}</span>
         <span class="${kCls(sr.K_global)}" style="font-size:12px;font-weight:bold;background:color-mix(in srgb,currentColor 12%,transparent);padding:3px 10px;border-radius:2px;">${sr.K_class}</span>
       </div>
       <!-- Banden måste spegla klassificeraKtal() i core/constants.js. Klassen
            "Överbestämt" (≥0,70) saknades här, så förklaringen motsade badgen
            bredvid för k ≥ 0,70. Rättat i UI-städning Omgång 1 (2026-09-11);
            se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2. -->
-      <div class="val-muted" style="font-size:10px;line-height:1.7;">≥0.70 Överbestämt &nbsp;|&nbsp; 0.50–0.70 Starkt &nbsp;|&nbsp; 0.30–0.50 Acceptabelt &nbsp;|&nbsp; 0.10–0.30 Svagt &nbsp;|&nbsp; &lt;0.10 Otillräckligt</div>
+      <div class="val-muted" style="font-size:10px;line-height:1.7;">≥0,70 Överbestämt &nbsp;|&nbsp; 0,50–0,70 Starkt &nbsp;|&nbsp; 0,30–0,50 Acceptabelt &nbsp;|&nbsp; 0,10–0,30 Svagt &nbsp;|&nbsp; &lt;0,10 Otillräckligt</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">
-        ${TR("Medel r_i",        sr.rMean.toFixed(3),    rClass(sr.rMean))}
-        ${sr.rMinDist != null ? TR("Min r_i (avstånd)", sr.rMinDist.toFixed(3), rClass(sr.rMinDist)) : ""}
-        ${sr.rMinHz   != null ? TR("Min r_i (vinkel)",  sr.rMinHz.toFixed(3),   rClass(sr.rMinHz))   : ""}
+        ${TR("Medel r-tal",            nf(sr.rMean, 3),    rClass(sr.rMean))}
+        ${sr.rMinDist != null ? TR("Minsta r-tal (avstånd)",  nf(sr.rMinDist, 3), rClass(sr.rMinDist)) : ""}
+        ${sr.rMinHz   != null ? TR("Minsta r-tal (riktning)", nf(sr.rMinHz, 3),   rClass(sr.rMinHz))   : ""}
       </table>
     </div>
 
@@ -474,7 +481,7 @@ export function renderTab() {
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σpos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">a mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">b mm</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 0;">θ</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 0;" title="Felellipsens riktningsvinkel, gon">θ gon</th>
       </tr>
       ${sr.ptResults.map(pr => {
         const sm   = pr.sigPos * 1000 * k;
@@ -483,25 +490,25 @@ export function renderTab() {
         const ptType = pts.find(p => p.id === pr.id)?.type || "";
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td style="padding:3px 4px 3px 0;color:${PT[ptType]?.c||"var(--text-value)"};font-weight:bold;">${pr.id}</td>
-          <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${(pr.sigN*1000).toFixed(2)}</td>
-          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(pr.sigE*1000).toFixed(2)}</td>
-          <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${sm.toFixed(2)}</td>
-          <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${a_mm.toFixed(2)}</td>
-          <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${b_mm.toFixed(2)}</td>
-          <td class="val-secondary" style="text-align:right;font-family:monospace;font-size:10px;padding:0;">${fG(D_(pr.theta))}</td>
+          <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${nf(pr.sigN*1000, 2)}</td>
+          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${nf(pr.sigE*1000, 2)}</td>
+          <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${nf(sm, 2)}</td>
+          <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${nf(a_mm, 2)}</td>
+          <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${nf(b_mm, 2)}</td>
+          <td class="val-secondary" style="text-align:right;font-family:monospace;font-size:10px;padding:0;">${gon(D_(pr.theta))}</td>
         </tr>`;
       }).join("")}
     </table></div>
 
     ${sr.simStationResults && sr.simStationResults.length > 0 ? `
-    ${SEC("3b. SIMULERADE UPPSTÄLLNINGAR")}
+    ${SEC("3b. SIMULERADE STATIONER")}
     <div class="val-muted" style="font-size:10px;margin-bottom:4px;line-height:1.7;">
       σ_pos inkl. anslutningspunkternas osäkerhet. <span class="val-muted">Obs</span> = utan felfortplantning (för jämförelse).
     </div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:11px;">
       <tr style="border-bottom:1px solid var(--border-strong);">
-        <th style="text-align:left;color:#ff6090;font-weight:normal;padding:2px 4px 4px 0;">Uppst.</th>
+        <th style="text-align:left;color:#ff6090;font-weight:normal;padding:2px 4px 4px 0;">Station</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σN mm</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σE mm</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σpos mm</th>
@@ -514,20 +521,20 @@ export function renderTab() {
         const sm = ss.sigPos * 1000 * k;
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td style="padding:3px 4px 3px 0;color:#ff6090;font-weight:bold;">${ss.id}</td>
-          <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${(ss.sigN*1000*k).toFixed(2)}</td>
-          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(ss.sigE*1000*k).toFixed(2)}</td>
-          <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${sm.toFixed(2)}</td>
-          <td class="val-muted"  style="text-align:right;font-family:monospace;padding:0 3px;">${ss.sigPos_obs != null ? (ss.sigPos_obs*1000*k).toFixed(2) : "–"}</td>
-          <td style="text-align:right;color:#ff6090;font-family:monospace;padding:0 3px;">${(ss.aSemi*1000*k).toFixed(2)}</td>
-          <td style="text-align:right;color:#ff6090;font-family:monospace;padding:0;">${(ss.bSemi*1000*k).toFixed(2)}</td>
+          <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${nf(ss.sigN*1000*k, 2)}</td>
+          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${nf(ss.sigE*1000*k, 2)}</td>
+          <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${nf(sm, 2)}</td>
+          <td class="val-muted"  style="text-align:right;font-family:monospace;padding:0 3px;">${ss.sigPos_obs != null ? nf(ss.sigPos_obs*1000*k, 2) : "–"}</td>
+          <td style="text-align:right;color:#ff6090;font-family:monospace;padding:0 3px;">${nf(ss.aSemi*1000*k, 2)}</td>
+          <td style="text-align:right;color:#ff6090;font-family:monospace;padding:0;">${nf(ss.bSemi*1000*k, 2)}</td>
         </tr>`;
       }).join("")}
     </table></div>` : ""}
 
     ${SEC("4. RELIABILITET PER MÄTNING")}
     <div class="val-muted" style="font-size:10px;margin-bottom:4px;line-height:1.7;">
-      r = redundansbidrag &nbsp;|&nbsp; MUF = Minsta Urskiljbara Fel (κ=${sr.kappa||2.80})<br>
-      <span class="val-info">YT</span> = MUF×(1−r) i observationsdomänen &nbsp;|&nbsp;
+      r-tal = redundansbidrag per observation &nbsp;|&nbsp; MUF = Minsta Urskiljbara Fel (κ=${nf(sr.kappa||2.80, 2)})<br>
+      <span class="val-info">YT</span> = MUF×(1−r-tal) i observationsdomänen &nbsp;|&nbsp;
       <span class="val-warn">KP</span> = Koordinatpåverkan (mm)
     </div>
     <div style="overflow-x:auto;">
@@ -535,26 +542,26 @@ export function renderTab() {
       <tr style="border-bottom:1px solid var(--border-strong);">
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 4px 4px 0;">Sträcka</th>
         <th class="val-muted" style="text-align:left;font-weight:normal;">Typ</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">r</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">r-tal</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" title="Minsta Urskiljbara Fel – minsta systematiskt fel som ger statistisk signifikans vid givet κ">MUF</th>
-        <th class="val-info"  style="text-align:right;font-weight:normal;padding:2px 3px;" title="Yttre tillförlitlighet: MUF × (1 − r), påverkan i observationsdomänen">YT</th>
+        <th class="val-info"  style="text-align:right;font-weight:normal;padding:2px 3px;" title="Yttre tillförlitlighet: MUF × (1 − r-tal), påverkan i observationsdomänen">YT</th>
         <th class="val-warn"  style="text-align:right;font-weight:normal;padding:2px 3px;">KP mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;">Klass</th>
       </tr>
       ${sr.redund.map(rd => {
         const mufStr = rd.mdb.val === Infinity ? "∞" : rd.type === "dist"
-          ? (rd.mdb.val*1000).toFixed(1) + "mm"
-          : rd.mdb.val.toFixed(2) + "mgon";
+          ? nf(rd.mdb.val*1000, 1) + " mm"
+          : nf(rd.mdb.val, 2) + " mgon";
         const yt    = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1 - rd.ri);
         // YT ärver MUF:s enhet: mgon för riktningar (HMK F.4.1).
         const ytStr = yt === Infinity ? "∞" : rd.type === "dist"
-          ? (yt*1000).toFixed(2) + "mm"
-          : yt.toFixed(4) + "mgon";
-        const kpStr = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : (rd.yt_m*1000).toFixed(2);
+          ? nf(yt*1000, 2) + " mm"
+          : nf(yt, 4) + " mgon";
+        const kpStr = rd.yt_m === undefined || rd.yt_m === Infinity ? "∞" : nf(rd.yt_m*1000, 2);
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td class="val-secondary" style="padding:3px 4px 3px 0;font-size:10px;white-space:nowrap;">${rd.fromId}→${rd.toId}</td>
           <td class="val-muted">${rd.type === "dist" ? "Avst" : "Riktning"}</td>
-          <td class="${rClass(rd.ri)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${rd.ri.toFixed(3)}</td>
+          <td class="${rClass(rd.ri)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${nf(rd.ri, 3)}</td>
           <td class="val-secondary" style="text-align:right;font-family:monospace;font-size:10px;padding:0 3px;">${mufStr}</td>
           <td class="val-info" style="text-align:right;font-family:monospace;font-size:10px;padding:0 3px;">${ytStr}</td>
           <td class="val-warn" style="text-align:right;font-family:monospace;font-size:10px;padding:0 3px;">${kpStr}</td>
@@ -581,7 +588,7 @@ export function renderTab() {
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σ_pos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">Precision</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">Obs</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">r̄</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;" title="Medelvärde av punktens r-tal">Medel r-tal</th>
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 3px;">Reliabilitet</th>
       </tr>
       ${sr.ptResults.map(pr => {
@@ -607,10 +614,10 @@ export function renderTab() {
           : "border-bottom:1px solid var(--border-default)";
         return `<tr style="${rowBorder}">
           <td style="padding:3px 4px 3px 0;color:${PT[ptType]?.c||"var(--text-value)"};font-weight:bold;">${pr.id}</td>
-          <td class="${pcls}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${sm.toFixed(2)}</td>
-          <td class="${pcls}" style="text-align:right;font-size:10px;padding:0 3px;">${precOK ? "✓ OK" : "✗ Ej krav"}</td>
+          <td class="${pcls}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${nf(sm, 2)}</td>
+          <td class="${pcls}" style="text-align:right;font-size:10px;padding:0 3px;">${precOK ? "✓ OK" : "✗ Uppfyller ej"}</td>
           <td class="val-secondary" style="text-align:right;padding:0 3px;">${nObsMeas}</td>
-          <td class="${rcls}" style="text-align:right;font-family:monospace;padding:0 3px;">${rMeanPt != null ? rMeanPt.toFixed(3) : "–"}</td>
+          <td class="${rcls}" style="text-align:right;font-family:monospace;padding:0 3px;">${nf(rMeanPt, 3)}</td>
           <td class="${rcls}" style="padding:0 3px;">${relIcon} ${relText}</td>
         </tr>`;
       }).join("")}
@@ -680,24 +687,25 @@ export function renderTab() {
       let bc = Math.atan2(p.E-sp.E, p.N-sp.N) * 180 / Math.PI;
       if (bc < 0) bc += 360;
       const hm = myM.find(m => (m.from===selId&&m.to===p.id)||(m.to===selId&&m.from===p.id));
-      const col = { known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d", simstation:"#ff6090" }[p.type] || "#e8f4fd";
+      // Omgång 2: färgen kommer ur PT. Här låg en egen kopia av färgtabellen.
+      const col = PT[p.type]?.c || "#e8f4fd";
       return `<tr style="border-bottom:1px solid #1a2d48;">
         <td style="padding:4px 0;color:${col}">${p.id}</td>
-        <td style="text-align:right;color:#e8f4fd;font-family:monospace">${dc.toFixed(4)}</td>
+        <td style="text-align:right;color:#e8f4fd;font-family:monospace">${nf(dc, 4)}</td>
         <td style="text-align:right;color:#00ff88;font-family:monospace;font-size:10px">${fmt(bc)}</td>
         <td style="text-align:right">${hm ? '<span style="color:#ff9900">●</span>' : '<span style="color:#2a4060">○</span>'}</td>
       </tr>`;
     }).join("");
     tc.innerHTML = `<div class="sl">POLÄR FRÅN: ${sp.id}</div>
-      <div style="background:${({ known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d" }[sp.type]||"#888")}18;border:1px solid ${({ known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d" }[sp.type]||"#888")}44;border-radius:3px;padding:5px 8px;margin-bottom:8px;font-size:12px;">
+      <div style="background:${(PT[sp.type]?.c||"#888")}18;border:1px solid ${(PT[sp.type]?.c||"#888")}44;border-radius:3px;padding:5px 8px;margin-bottom:8px;font-size:12px;">
         <span style="font-weight:bold">${sp.id}</span>
-        <span style="color:#7090a8;margin-left:6px">${({ known:"Känd punkt", station:"Uppställning", new:"Ny punkt", detail:"Detaljpunkt" }[sp.type]||sp.type)}</span>
+        <span style="color:#7090a8;margin-left:6px">${ptLabel(sp.type)}</span>
       </div>
       <table style="width:100%;font-size:11px;border-collapse:collapse;">
         <thead><tr style="color:#7090a8;border-bottom:1px solid #1a2d48;">
           <th style="text-align:left;padding:2px 0;font-weight:normal;">Till</th>
-          <th style="text-align:right;font-weight:normal;">Dist (m)</th>
-          <th style="text-align:right;font-weight:normal;">Riktning</th>
+          <th style="text-align:right;font-weight:normal;">Avstånd (m)</th>
+          <th style="text-align:right;font-weight:normal;">Riktning (gon)</th>
           <th style="text-align:right;font-weight:normal;">M</th>
         </tr></thead>
         <tbody>${rows}</tbody>
@@ -735,7 +743,9 @@ export function updateGlobalInstrInfo() {
   const pr   = INSTRUMENTS[defaultInstr];
   const info = document.getElementById("global-instr-info");
   if (!info || !pr) return;
-  info.innerHTML = `σ vinkel: <span style="color:#4fc3f7">${pr.sigHz} mgon</span> &nbsp; σ avst: <span style="color:#4fc3f7">${pr.sigDmm} mm + ${pr.sigDppm} ppm</span>`;
+  // Fix 2 (Omgång 2): "σ vinkel" → "σ riktning". Observationen är en riktning
+  // mätt från en uppställd station, inte en vinkel mellan två siktmål.
+  info.innerHTML = `σ riktning: <span style="color:#4fc3f7">${komma(pr.sigHz)} mgon</span> &nbsp; σ avstånd: <span style="color:#4fc3f7">${komma(pr.sigDmm)} mm + ${komma(pr.sigDppm)} ppm</span>`;
 }
 
 export function applyMatklass(key) {

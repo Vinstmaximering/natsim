@@ -42,6 +42,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
 import { R_OBS_GOD } from './constants.js';
+import { nf } from './format.js';
 
 // Hårt krav per observation – blockerar leverans. SIS-TS 21143:2016 §6.2.2.
 export const R_MIN_HARD = SIS_TS_GENERAL_REQS.k_individual_min;   // 0,35
@@ -133,8 +134,9 @@ export function metricsFromSim(simResult, criteria = null) {
   };
 }
 
-const f3 = v => Number.isFinite(v) ? v.toFixed(3) : '∞';
-const f2 = v => Number.isFinite(v) ? v.toFixed(2) : '∞';
+// Omgång 2: svensk decimalkomma i allt som når beslutsspårningsloggen.
+const f3 = v => Number.isFinite(v) ? nf(v, 3) : '∞';
+const f2 = v => Number.isFinite(v) ? nf(v, 2) : '∞';
 
 /**
  * Prövar metrics mot kriterierna.
@@ -166,12 +168,12 @@ export function checkCriteria(metrics, criteria) {
 /** Läsbar sammanfattning av kravnivån, för dialog och beslutslogg. */
 export function describeCriteria(criteria) {
   return [
-    `Minsta r-tal per observation: r ≥ ${criteria.rMin.toFixed(2)} (hårt krav, SIS-TS §6.2.2)`,
-    `Observationer med r < ${(criteria.rSoft ?? R_MIN_SOFT).toFixed(2)} rapporteras men blockerar inte ` +
+    `Minsta r-tal per observation: r-tal ≥ ${nf(criteria.rMin, 2)} (hårt krav, SIS-TS §6.2.2)`,
+    `Observationer med r-tal < ${nf(criteria.rSoft ?? R_MIN_SOFT, 2)} rapporteras men blockerar inte ` +
       '(HMK Bilaga F.6)',
-    `Största punktosäkerhet: σ_pos ≤ ${criteria.sigmaMaxMm.toFixed(1)} mm (1σ efter utjämning` +
+    `Största punktosäkerhet: σ_pos ≤ ${nf(criteria.sigmaMaxMm, 1)} mm (1σ efter utjämning` +
       (criteria.sigmaMaxIsCustom ? ', projektets eget värde)' : ', produktval)'),
-    `Kontrollerbarhet: k ≥ ${criteria.kMin.toFixed(2)}`,
+    `Kontrollerbarhet: k ≥ ${nf(criteria.kMin, 2)}`,
     `MUF ≤ ${criteria.mufFactorMax} × σ, YT ≤ ${criteria.ytFactorMax} × σ` +
       (criteria.enforceMufYt ? ' (följer av r-kravet)' : ' (redovisas, spärrar ej)'),
   ];

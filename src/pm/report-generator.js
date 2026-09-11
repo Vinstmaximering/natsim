@@ -22,6 +22,9 @@
 // legenden under 7.2. Storheten är oförändrad – bara namnet i utskriften.
 // Den interna variabeln kstd nedan behåller sitt namn; den är inte synlig.
 
+import { nf, komma } from '../core/format.js';
+import { ptLabel } from '../core/constants.js';
+
 export function buildReport(data) {
   const { vals = {}, sr, redund = [], ptRes = [], allPts = [], knownPts = [],
           mk, mkKey = "", crs, ins, mHz, mDm, mDp, mSt, dag, centerErr,
@@ -58,8 +61,8 @@ export function buildReport(data) {
 
   const kOk   = sr.K_global >= 0.5;
   const spv   = ptRes.map(r => r.sigPos * 1000);
-  const spMax = spv.length ? Math.max(...spv).toFixed(2) : "–";
-  const spMean = spv.length ? (spv.reduce((a,b)=>a+b,0)/spv.length).toFixed(2) : "–";
+  const spMax = spv.length ? nf(Math.max(...spv), 2) : "–";
+  const spMean = spv.length ? nf(spv.reduce((a,b)=>a+b,0)/spv.length, 2) : "–";
   const allOk = spv.length > 0 && spv.every(v => v <= kravSP);
 
   const ris   = redund.map(r => r.ri);
@@ -80,49 +83,50 @@ export function buildReport(data) {
 
   const mufD = redund.filter(r=>r.type==="dist"&&r.mdb).map(r=>r.mdb.val*1000);
   const mufH = redund.filter(r=>r.type==="hz"&&r.mdb).map(r=>r.mdb.val);
-  const mufMaxD = mufD.length ? Math.max(...mufD).toFixed(1) : "–";
-  const mufMaxH = mufH.length ? Math.max(...mufH).toFixed(3) : "–";
+  const mufMaxD = mufD.length ? nf(Math.max(...mufD), 1) : "–";
+  const mufMaxH = mufH.length ? nf(Math.max(...mufH), 3) : "–";
   const ytD = redund.filter(r=>r.type==="dist"&&r.yt_m!=null&&r.yt_m!==Infinity).map(r=>r.yt_m*1000);
-  const ytMaxD = ytD.length ? Math.max(...ytD).toFixed(1) : "–";
+  const ytMaxD = ytD.length ? nf(Math.max(...ytD), 1) : "–";
 
-  const ptTypes = { known:"Känd punkt", station:"Uppställning", new:"Ny punkt", detail:"Detaljpunkt", simstation:"Sim. uppst." };
+  // Omgång 2: etiketterna kommer ur PT i core/constants.js. Här låg en
+  // ordagrann kopia av den tabellen – en av sju parallella uppsättningar.
 
   const ptTab = allPts.map(p =>
     `<tr><td style="font-weight:${p.type==='known'?'700':'normal'}">${esc(p.id)}</td>
-     <td>${ptTypes[p.type]||p.type}</td>
-     <td style="text-align:right;font-family:monospace">${p.N.toFixed(4)}</td>
-     <td style="text-align:right;font-family:monospace">${p.E.toFixed(4)}</td>
-     <td style="text-align:right;font-family:monospace">${p.H?p.H.toFixed(4):"–"}</td>
+     <td>${ptLabel(p.type)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.N, 4)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.E, 4)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(p.H, 4)}</td>
      <td>${esc(p.markering||"–")}</td>
      <td>${esc(p.prisma||"–")}</td></tr>`
   ).join("");
 
   const spTab = ptRes.map(r => {
-    const sm = (r.sigPos*1000).toFixed(2);
+    const sm = nf(r.sigPos*1000, 2);
     const ok = r.sigPos*1000 <= kravSP;
     return `<tr><td>${esc(r.id)}</td>
-     <td style="text-align:right;font-family:monospace">${(r.sigN*1000).toFixed(2)}</td>
-     <td style="text-align:right;font-family:monospace">${(r.sigE*1000).toFixed(2)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(r.sigN*1000, 2)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(r.sigE*1000, 2)}</td>
      <td style="text-align:right;font-family:monospace;font-weight:700;color:${ok?"#006600":"#cc0000"}">${sm}</td>
-     <td style="text-align:right;font-family:monospace">${r.aSemi?(r.aSemi*1000).toFixed(2):"–"}</td>
-     <td style="text-align:right;font-family:monospace">${r.bSemi?(r.bSemi*1000).toFixed(2):"–"}</td></tr>`;
+     <td style="text-align:right;font-family:monospace">${nf(r.aSemi ? r.aSemi*1000 : null, 2)}</td>
+     <td style="text-align:right;font-family:monospace">${nf(r.bSemi ? r.bSemi*1000 : null, 2)}</td></tr>`;
   }).join("");
 
   const rdTab = redund.map(r => {
     const ok  = r.ri >= 0.5;
-    const muf = r.mdb ? (r.type==="dist"?(r.mdb.val*1000).toFixed(1)+" mm":r.mdb.val.toFixed(3)+" mgon") : "–";
+    const muf = r.mdb ? (r.type==="dist"?nf(r.mdb.val*1000, 1)+" mm":nf(r.mdb.val, 3)+" mgon") : "–";
     const yt  = r.yt_m!=null&&r.yt_m!==Infinity
-      ? (r.type==="dist"?(r.yt_m*1000).toFixed(1)+" mm":(r.yt_m/r.d*(200000/Math.PI)).toFixed(3)+" mgon")
+      ? (r.type==="dist"?nf(r.yt_m*1000, 1)+" mm":nf(r.yt_m/r.d*(200000/Math.PI), 3)+" mgon")
       : (r.yt_m===Infinity?"∞":"–");
     return `<tr><td style="font-weight:700">${esc(r.fromId)}→${esc(r.toId)}</td>
-     <td>${r.type==="dist"?"Längd":"Riktning"}</td>
-     <td style="text-align:right;font-family:monospace;font-weight:700;color:${ok?"#006600":"#cc0000"}">${r.ri.toFixed(3)}</td>
+     <td>${r.type==="dist"?"Avstånd":"Riktning"}</td>
+     <td style="text-align:right;font-family:monospace;font-weight:700;color:${ok?"#006600":"#cc0000"}">${nf(r.ri, 3)}</td>
      <td style="text-align:right;font-family:monospace">${muf}</td>
      <td style="text-align:right;font-family:monospace">${yt}</td></tr>`;
   }).join("");
 
   const pbTab = allPts.filter(p=>p.markering||p.prisma).map(p =>
-    `<tr><td style="font-weight:700">${esc(p.id)}</td><td>${ptTypes[p.type]||p.type}</td>
+    `<tr><td style="font-weight:700">${esc(p.id)}</td><td>${ptLabel(p.type)}</td>
      <td>${esc(p.markering||"–")}</td><td>${esc(p.prisma||"–")}</td></tr>`
   ).join("");
 
@@ -147,7 +151,7 @@ export function buildReport(data) {
   h += `<div><strong>Datum:</strong> ${esc(rapdat)}</div>`;
   const netStab = sr.K_global>=0.5&&kstd<0.08?"rok":sr.K_global<0.3?"rerr":"rwrn";
   const netTxt  = sr.K_global>=0.5&&kstd<0.08?"✓ STABILT OCH KONTROLLERBART":sr.K_global<0.3?"✗ EJ GODKÄNT":"⚠ ACCEPTABELT";
-  h += `<div><strong>Nätbedömning:</strong> <span class="${netStab}">${netTxt} (k=${sr.K_global.toFixed(3)})</span></div>`;
+  h += `<div><strong>Nätbedömning:</strong> <span class="${netStab}">${netTxt} (k=${nf(sr.K_global, 3)})</span></div>`;
   h += `</div>`;
   h += `<div class="rstd">SIS-TS 21143:2016 · HMK Stommätning 2024 · TDOK 2014:0571 | ${esc(sek)}</div>`;
   h += `</div>`;
@@ -183,9 +187,9 @@ export function buildReport(data) {
         <table class="r">
           <tr><th>Punkt</th><th>N (m)</th><th>E (m)</th><th>H (m)</th><th>Markering</th></tr>
           ${knownPts.map(p=>`<tr><td style="font-weight:700">${esc(p.id)}</td>
-            <td style="text-align:right;font-family:monospace">${p.N.toFixed(4)}</td>
-            <td style="text-align:right;font-family:monospace">${p.E.toFixed(4)}</td>
-            <td style="text-align:right;font-family:monospace">${p.H?p.H.toFixed(4):"–"}</td>
+            <td style="text-align:right;font-family:monospace">${nf(p.N, 4)}</td>
+            <td style="text-align:right;font-family:monospace">${nf(p.E, 4)}</td>
+            <td style="text-align:right;font-family:monospace">${nf(p.H, 4)}</td>
             <td>${esc(p.markering||"–")}</td></tr>`).join("")}
         </table>`;
   h += `<h2 class="r">3.3 Referenssystem (R1.3)</h2>
@@ -200,10 +204,10 @@ export function buildReport(data) {
           <table class="r">
             <tr><th>Parameter</th><th>Krav</th></tr>
             <tr><td>Totalstation</td><td>${esc(mk.totalstation)}</td></tr>
-            <tr><td>σ riktning</td><td>${mk.sigHz_mgon} mgon</td></tr>
-            <tr><td>σ avstånd</td><td>${mk.sigDist_mm} mm + ${mk.sigDist_ppm} ppm</td></tr>
+            <tr><td>σ riktning</td><td>${komma(mk.sigHz_mgon)} mgon</td></tr>
+            <tr><td>σ avstånd</td><td>${komma(mk.sigDist_mm)} mm + ${komma(mk.sigDist_ppm)} ppm</td></tr>
             <tr><td>Helsatser</td><td>≥${mk.numSatser}</td></tr>
-            <tr><td>Centrering</td><td>${mk.centerErr} mm</td></tr>
+            <tr><td>Centrering</td><td>${komma(mk.centerErr)} mm</td></tr>
           </table>`;
   }
   h += `</div>`;
@@ -219,7 +223,7 @@ export function buildReport(data) {
   // ── 5. Nätutformning ──────────────────────────────────────────────────────
   h += `<div class="rb"><h1 class="r">5. Nätutformning (R3.1–R3.4)</h1>`;
   h += `<h2 class="r">5.1 Redogörelse</h2>
-        <div class="rbox">Observationer: ${sr.meas_n} | Obekanta: ${sr.unkn_n} | Redundans f=${sr.redundancy} | k=${sr.K_global.toFixed(3)}</div>`;
+        <div class="rbox">Observationer: ${sr.meas_n} | Obekanta: ${sr.unkn_n} | Redundans f=${sr.redundancy} | k=${nf(sr.K_global, 3)}</div>`;
   h += `<h2 class="r">5.2 Översikt av nätet (R3.2)</h2>`;
   if (r32txt) h += `<p class="r">${esc(r32txt)}</p>`;
   if (netImg) h += `<div class="fig"><img src="${netImg}" style="max-width:155mm"><div class="fcp">Figur. Nätets utbredning.</div></div>`;
@@ -257,9 +261,9 @@ export function buildReport(data) {
         <h2 class="r">6.1 A priori standardavvikelse</h2>
         <table class="r">
           <tr><th>Typ</th><th>σ</th><th>Satser</th></tr>
-          <tr><td>Riktningar</td><td>${mHz.toFixed(3)} mgon</td><td>${mSt}</td></tr>
-          <tr><td>Längder</td><td>${mDm.toFixed(1)} mm + ${mDp.toFixed(1)} ppm</td><td>–</td></tr>
-          <tr><td>Centrering</td><td>${centerErr.toFixed(1)} mm</td><td>–</td></tr>
+          <tr><td>Riktningar</td><td>${nf(mHz, 3)} mgon</td><td>${mSt}</td></tr>
+          <tr><td>Avstånd</td><td>${nf(mDm, 1)} mm + ${nf(mDp, 1)} ppm</td><td>–</td></tr>
+          <tr><td>Centrering</td><td>${nf(centerErr, 1)} mm</td><td>–</td></tr>
         </table>`;
   if (metod) h += `<h2 class="r">6.2 Mätprogram</h2><p class="r">${esc(metod)}</p>`;
   if (korr)  h += `<h2 class="r">6.3 Korrektioner</h2><p class="r">${esc(korr)}</p>`;
@@ -268,16 +272,16 @@ export function buildReport(data) {
   // ── 7. Simulering och kvalitetsbedömning ──────────────────────────────────
   h += `<div class="rb"><h1 class="r">7. Simulering och kvalitetsbedömning (R3.9)</h1>
         <p class="r">Simulering utförd enligt SIS-TS 21143:2016 §6.2.5 och HMK Stommätning 2024 Bilaga F.</p>`;
-  if (kravStr) h += `<div class="rbox"><strong>Toleranskrav:</strong> σ_pos ≤ ${esc(kravStr)} mm</div>`;
+  if (kravStr) h += `<div class="rbox"><strong>Toleranskrav:</strong> σ_pos ≤ ${komma(esc(kravStr))} mm</div>`;
   h += `<h2 class="r">7.1 Nätstatistik</h2>
         <table class="rm">
           <tr><td>Observationer (n)</td><td>${sr.meas_n}</td></tr>
           <tr><td>Obekanta (u)</td><td>${sr.unkn_n}</td></tr>
           <tr><td>Redundans f</td><td>${sr.redundancy}</td></tr>
-          <tr><td>Kontrollerbarhet k</td><td class="${kOk?"rok":"rerr"}" style="font-weight:700">${sr.K_global.toFixed(3)} – ${kOmdome}</td></tr>
-          <tr><td>κ (HMK F.16)</td><td>${sr.kappa}</td></tr>
-          <tr><td>Minsta r-tal (avst.)</td><td>${sr.rMinDist!=null?sr.rMinDist.toFixed(3):"–"}</td></tr>
-          <tr><td>Minsta r-tal (riktning)</td><td>${sr.rMinHz!=null?sr.rMinHz.toFixed(3):"–"}</td></tr>
+          <tr><td>Kontrollerbarhet k</td><td class="${kOk?"rok":"rerr"}" style="font-weight:700">${nf(sr.K_global, 3)} – ${kOmdome}</td></tr>
+          <tr><td>κ (HMK F.16)</td><td>${komma(sr.kappa)}</td></tr>
+          <tr><td>Minsta r-tal (avst.)</td><td>${nf(sr.rMinDist, 3)}</td></tr>
+          <tr><td>Minsta r-tal (riktning)</td><td>${nf(sr.rMinHz, 3)}</td></tr>
         </table>`;
   h += `<h2 class="r">7.2 Mätningars r-tal, MUF och YT</h2>
         <p class="r">r-tal = observationens redundanstal, i HMK betecknat k_i (HMK F.2) – ej att förväxla med nätets globala k-tal ovan. MUF = Minsta Urskiljbara Fel (HMK F.13). YT = Yttre Tillförlitlighet.</p>
@@ -290,10 +294,10 @@ export function buildReport(data) {
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är
           ${mufMaxD!=="–"?"avst. ≤"+mufMaxD+" mm ":""}${mufMaxH!=="–"?"riktning ≤"+mufMaxH+" mgon":""}.
-          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Homogenitet:</strong> ${homOmdome} (σ(r)=${kstd.toFixed(3)}).
+          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Homogenitet:</strong> ${homOmdome} (σ(r-tal)=${nf(kstd, 3)}).
         </div>`;
   h += `<h2 class="r">7.4 Förväntade punktmedelfel</h2>`;
-  if (kravStr) h += `<p class="r">Krav: σ_pos ≤ ${esc(kravStr)} mm. <span class="${allOk?"rok":"rerr"}">${allOk?"✓ Alla nypunkter uppfyller kravet":"✗ En eller flera uppfyller ej kravet"}</span></p>`;
+  if (kravStr) h += `<p class="r">Krav: σ_pos ≤ ${komma(esc(kravStr))} mm. <span class="${allOk?"rok":"rerr"}">${allOk?"✓ Alla nypunkter uppfyller kravet":"✗ En eller flera uppfyller ej kravet"}</span></p>`;
   h += `<table class="r" style="width:auto">
           <tr><th>Punkt</th><th>σ_N mm</th><th>σ_E mm</th><th>σ_pos mm</th><th>σ_a mm</th><th>σ_b mm</th></tr>
           ${spTab}

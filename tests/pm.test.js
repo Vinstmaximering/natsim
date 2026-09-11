@@ -104,7 +104,9 @@ describe('buildReport – rapport-generator', () => {
 
   it('innehåller k-tal formaterat till 3 decimaler', () => {
     const html = buildReport(testData);
-    expect(html).toContain('0.750');
+    // Omgång 2: svensk decimalkomma i allt som visas för användaren.
+    expect(html).toContain('0,750');
+    expect(html).not.toContain('0.750');
   });
 
   it('innehåller punkt-ID S1 i koordinattabell', () => {
@@ -117,10 +119,10 @@ describe('buildReport – rapport-generator', () => {
     expect(html).toContain('SWEREF 99 TM');
   });
 
-  it('innehåller σ_pos för S1 (2.01 mm)', () => {
+  it('innehåller σ_pos för S1 (2,01 mm)', () => {
     const html = buildReport(testData);
-    // sigPos = 0.002006 → 2.01 mm
-    expect(html).toContain('2.01');
+    // sigPos = 0.002006 → 2,01 mm (decimalkomma sedan Omgång 2)
+    expect(html).toContain('2,01');
   });
 
   it('HTML-escape förhindrar XSS i projektnamn', () => {

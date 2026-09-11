@@ -305,7 +305,7 @@ export function initInteractions(map) {
 
     if (toolNow === "simstation") {
       if (!srNow || !srNow.ok) {
-        if (cb.showToast) cb.showToast("⚠ Kör simuleringen först innan du lägger till en simulerad uppställning.", "#ff5050");
+        if (cb.showToast) cb.showToast("⚠ Beräkna simuleringen först innan du lägger till en simulerad station.", "#ff5050");
         return;
       }
       const id = `SS${nIdNow}`;

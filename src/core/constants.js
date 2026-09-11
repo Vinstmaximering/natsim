@@ -20,14 +20,49 @@ export const CRS_DEFS = {
   sweref992315: { name:"SWEREF 99 23 15", epsg:"EPSG:3018", proj:"+proj=tmerc +lat_0=0 +lon_0=23.25 +k=1 +x_0=150000 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs" },
 };
 
-// Punkttypsdefinitioner – label, ID-prefix, canvas-färg
+// ─────────────────────────────────────────────────────────────────────────────
+// PUNKTTYPER – ENDA KÄLLAN FÖR ETIKETTER I HELA UI:T
+//
+// Kanoniserat i UI-städning Omgång 2 (2026-09-11). Underlag:
+// docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 3, som hittade
+// SJU parallella uppsättningar etiketter för samma fem typer. Fyra av dem var
+// ordagranna kopior av den här tabellen på andra ställen i koden. Alla paneler,
+// rapporter och exporter läser nu härifrån i stället.
+//
+//   l  = full etikett. Knappar, dialoger, listor, rapporter.
+//   sl = kort etikett. Smala tabellkolumner och statistikkort.
+//   s  = ID-PREFIX, inte en etikett. Används av interactions.js för att
+//        generera punkt-ID (FP1, S1, D1 …). Ändra inte – det byter namn på
+//        punkter i befintliga projekt.
+//   c  = canvas-färg.
+//
+// TERMVAL: typen heter "Station", inte "Uppställning". Uppställning är den
+// operativa handlingen – att instrumentet faktiskt stått på punkten – och det
+// ordet är medvetet kvar där det är den innebörden som avses (kärnans
+// stationIds(), "Uppställningar (orienteringar)" i nätöversikten, mätbokens
+// sidhuvud). En punkt kan ha typen Station utan att vara uppställning i ett
+// visst nät, och en känd punkt kan vara uppställning utan att ha typen.
+//
+// TVÅ TYPER SAKNAR KANONISKT NAMN – se rapporten för Omgång 2:
+//   detail      har ingen motsvarighet i den beslutade fyrtypslistan.
+//               Behåller "Detaljpunkt" tills beslut fattats.
+//   simstation  är INTE ett visuellt objekt: den deltar i utjämningen och får
+//               egna felellipser (simStationResults). Det visuella lagret är
+//               en annan sak helt – state.visualPts/visualLines. Namnet följer
+//               därför Station-kanon i väntan på beslut.
+// ─────────────────────────────────────────────────────────────────────────────
 export const PT = {
-  known:     { l:"Känd punkt",             s:"FP", c:"#00ff88" },
-  station:   { l:"Uppställning",           s:"S",  c:"#4fc3f7" },
-  detail:    { l:"Detaljpunkt",            s:"D",  c:"#ffb74d" },
-  new:       { l:"Ny punkt",              s:"NY", c:"#ce93d8" },
-  simstation:{ l:"Simulerad uppställning", s:"SS", c:"#ff6090" },
+  known:     { l:"Känd punkt",         sl:"Känd",        s:"FP", c:"#00ff88" },
+  station:   { l:"Station",            sl:"Station",     s:"S",  c:"#4fc3f7" },
+  detail:    { l:"Detaljpunkt",        sl:"Detalj",      s:"D",  c:"#ffb74d" },
+  new:       { l:"Nypunkt",            sl:"Nypunkt",     s:"NY", c:"#ce93d8" },
+  simstation:{ l:"Simulerad station",  sl:"Sim.station", s:"SS", c:"#ff6090" },
 };
+
+/** Full etikett för en punkttyp. Okänd typ returneras oförändrad. */
+export const ptLabel      = t => PT[t]?.l  ?? t;
+/** Kort etikett för smala kolumner. Okänd typ returneras oförändrad. */
+export const ptLabelShort = t => PT[t]?.sl ?? t;
 
 // Instrument-presets – rena värden, inga avrundningsfel
 export const INSTRUMENTS = {

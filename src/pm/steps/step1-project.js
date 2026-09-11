@@ -1,5 +1,7 @@
 // Steg 1 – Projekt och personal
 // Bygger form via innerHTML + addEventListener (inga inline onclick-strängar).
+import { nf } from '../../core/format.js';
+
 export function render(D, container, vals) {
   const kOk = D.sr.K_global >= 0.5;
   container.innerHTML = `
@@ -38,7 +40,7 @@ export function render(D, container, vals) {
         <div class="lbl">Logotyp (valfri)</div>
         <div class="irow" id="logo-row"></div>
         <div class="hint">
-          <b>Hämtat från NätSim:</b> CRS: <b>${D.crs}</b> | k=<b class="${kOk ? "rok" : "rerr"}">${D.sr.K_global.toFixed(3)}</b>${D.mkKey ? ` | Mätklass: <b>${D.mkKey}</b>` : ""} | Punkter: <b>${D.allPts.length}</b>
+          <b>Hämtat från NätSim:</b> CRS: <b>${D.crs}</b> | k=<b class="${kOk ? "rok" : "rerr"}">${nf(D.sr.K_global, 3)}</b>${D.mkKey ? ` | Mätklass: <b>${D.mkKey}</b>` : ""} | Punkter: <b>${D.allPts.length}</b>
         </div>
         <div class="br"><button class="bp" id="btn-next1">Nästa: Referenssystem →</button></div>
       </div>

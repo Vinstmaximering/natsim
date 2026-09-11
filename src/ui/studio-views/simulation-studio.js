@@ -2,11 +2,13 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng }        from '../../map/leaflet-setup.js';
 import { calcM }                  from '../../core/designmatrix.js';
-import { klassificeraKtal }       from '../../core/constants.js';
+import { klassificeraKtal, PT, ptLabelShort } from '../../core/constants.js';
+import { nf }                    from '../../core/format.js';
 import { sortByColumn, filterByText, exportToCSV } from '../table-utils.js';
 
-const TYPE_COLOR = { known:'#00ff88', station:'#4fc3f7', new:'#ce93d8', detail:'#ffb74d', simstation:'#ff6090' };
-const TYPE_LABEL = { known:'Känd', station:'Station', new:'Ny', detail:'Detalj', simstation:'SimStn' };
+// Omgång 2: se kommentaren i net-studio.js – PT är enda källan för etiketter.
+const TYPE_COLOR = Object.fromEntries(Object.keys(PT).map(k => [k, PT[k].c]));
+const TYPE_LABEL = Object.fromEntries(Object.keys(PT).map(k => [k, ptLabelShort(k)]));
 
 const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
 const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
@@ -61,14 +63,14 @@ function _measRows(state) {
     const md  = calcM(m, pts);
     const eff = m.sigHz_mgon != null ? m.sigHz_mgon / Math.sqrt(m.numSatser || 1) : null;
     const mufStr = rd.mdb.val === Infinity ? '∞'
-      : rd.type === 'dist' ? (rd.mdb.val*1000).toFixed(1)+'mm'
-      : rd.mdb.val.toFixed(2)+'mgon';
+      : rd.type === 'dist' ? nf(rd.mdb.val*1000, 1)+' mm'
+      : nf(rd.mdb.val, 2)+' mgon';
     const yt    = rd.mdb.val === Infinity ? Infinity : rd.mdb.val * (1 - rd.ri);
     // YT ärver MUF:s enhet: mgon för riktningar (HMK F.4.1).
     const ytStr = yt === Infinity ? '∞'
-      : rd.type === 'dist' ? (yt*1000).toFixed(2)+'mm'
-      : yt.toFixed(4)+'mgon';
-    const kpStr = rd.yt_m == null || rd.yt_m === Infinity ? '∞' : (rd.yt_m*1000).toFixed(2);
+      : rd.type === 'dist' ? nf(yt*1000, 2)+' mm'
+      : nf(yt, 4)+' mgon';
+    const kpStr = rd.yt_m == null || rd.yt_m === Infinity ? '∞' : nf(rd.yt_m*1000, 2);
     return { id:rd.measId, from:rd.fromId, to:rd.toId, type:rd.type,
              dist:md?.dist??null, sigHz:eff, sigDm:m.sigDist_mm??null,
              ri:rd.ri, mufStr, ytStr, kpStr };
@@ -80,7 +82,7 @@ function _measRows(state) {
 function _sidebar(el, state) {
   const { simResult } = state;
   if (!simResult?.ok) {
-    el.innerHTML = '<div class="studio-loading">Ingen simulering körts</div>';
+    el.innerHTML = '<div class="studio-loading">Ingen simulering har beräknats</div>';
     return;
   }
   const sr    = simResult;
@@ -96,20 +98,20 @@ function _sidebar(el, state) {
   el.innerHTML = `
     <div class="studio-stat-grid" style="margin-bottom:12px">
       <div class="studio-stat-card">
-        <div class="sc-val ${kClass(sr.K_global)}">${sr.K_global.toFixed(3)}</div>
-        <div class="sc-lbl">K-tal</div>
+        <div class="sc-val ${kClass(sr.K_global)}">${nf(sr.K_global, 3)}</div>
+        <div class="sc-lbl">k-tal</div>
       </div>
       <div class="studio-stat-card">
-        <div class="sc-val ${ytCls}">${isFinite(maxYT) ? maxYT.toFixed(1) : '∞'}</div>
+        <div class="sc-val ${ytCls}">${isFinite(maxYT) ? nf(maxYT, 1) : '∞'}</div>
         <div class="sc-lbl">Max YT mm</div>
       </div>
       <div class="studio-stat-card">
-        <div class="sc-val ${rClass(isFinite(minR) ? minR : 1)}">${isFinite(minR) ? minR.toFixed(3) : '–'}</div>
-        <div class="sc-lbl">Min r_i</div>
+        <div class="sc-val ${rClass(isFinite(minR) ? minR : 1)}">${isFinite(minR) ? nf(minR, 3) : '–'}</div>
+        <div class="sc-lbl">Minsta r-tal</div>
       </div>
       <div class="studio-stat-card">
-        <div class="sc-val ${sigClass(maxSig)}">${maxSig.toFixed(1)}</div>
-        <div class="sc-lbl">Max σpos mm</div>
+        <div class="sc-val ${sigClass(maxSig)}">${nf(maxSig, 1)}</div>
+        <div class="sc-lbl">Max σ_pos mm</div>
       </div>
     </div>
 
@@ -162,10 +164,10 @@ const PT_COLS = [
   { key:'type',      label:'Typ',       align:'left'  },
   { key:'N',         label:'N (m)',     align:'right' },
   { key:'E',         label:'E (m)',     align:'right' },
-  { key:'rMean',     label:'r̄',        align:'right' },
+  { key:'rMean',     label:'Medel r-tal', align:'right' },
   { key:'a_mm',      label:'a mm',      align:'right' },
   { key:'b_mm',      label:'b mm',      align:'right' },
-  { key:'sigPos_mm', label:'σpos mm',   align:'right' },
+  { key:'sigPos_mm', label:'σ_pos mm',  align:'right' },
   { key:'_status',   label:'Status',    align:'center', nosort:true },
 ];
 
@@ -193,12 +195,12 @@ function _renderPts(el, state) {
     return `<tr data-id="${r.id}" class="${sel}" style="border-bottom:1px solid var(--border-default);cursor:pointer${bg}">
       <td style="padding:8px 12px;color:${col};font-weight:bold">${r.id}</td>
       <td style="padding:8px 12px;color:${col}">${TYPE_LABEL[r.type]??r.type}</td>
-      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${r.N.toFixed(3)}</td>
-      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${r.E.toFixed(3)}</td>
-      <td class="mono ${rCls}" style="padding:8px 12px;text-align:right;font-weight:bold">${r.rMean!=null?r.rMean.toFixed(3):'–'}</td>
-      <td class="mono val-muted" style="padding:8px 12px;text-align:right">${r.a_mm.toFixed(2)}</td>
-      <td class="mono val-muted" style="padding:8px 12px;text-align:right">${r.b_mm.toFixed(2)}</td>
-      <td class="mono ${sCls}" style="padding:8px 12px;text-align:right;font-weight:bold">${r.sigPos_mm.toFixed(2)}</td>
+      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${nf(r.N, 3)}</td>
+      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${nf(r.E, 3)}</td>
+      <td class="mono ${rCls}" style="padding:8px 12px;text-align:right;font-weight:bold">${nf(r.rMean, 3)}</td>
+      <td class="mono val-muted" style="padding:8px 12px;text-align:right">${nf(r.a_mm, 2)}</td>
+      <td class="mono val-muted" style="padding:8px 12px;text-align:right">${nf(r.b_mm, 2)}</td>
+      <td class="mono ${sCls}" style="padding:8px 12px;text-align:right;font-weight:bold">${nf(r.sigPos_mm, 2)}</td>
       <td style="padding:8px 12px;text-align:center">${icon}</td>
     </tr>`;
   }).join('');
@@ -251,10 +253,10 @@ const MEAS_COLS = [
   { key:'from',   label:'Från',      align:'left'  },
   { key:'to',     label:'Till',      align:'left'  },
   { key:'type',   label:'Typ',       align:'left'  },
-  { key:'dist',   label:'Avst (m)',  align:'right' },
-  { key:'sigHz',  label:'σ-Hz',      align:'right' },
-  { key:'sigDm',  label:'σ-Dm',      align:'right' },
-  { key:'ri',     label:'r_i',       align:'right' },
+  { key:'dist',   label:'Avstånd (m)', align:'right' },
+  { key:'sigHz',  label:'σ riktning (mgon)', align:'right' },
+  { key:'sigDm',  label:'σ avstånd (mm)',    align:'right' },
+  { key:'ri',     label:'r-tal',     align:'right' },
   { key:'mufStr', label:'MUF',       align:'right' },
   { key:'ytStr',  label:'YT',        align:'right' },
   { key:'kpStr',  label:'KP mm',     align:'right' },
@@ -272,7 +274,7 @@ function _renderMeas(el, state) {
       style="padding:8px 12px;text-align:${c.align};font-weight:normal;white-space:nowrap;cursor:pointer">${c.label}</th>`;
   }).join('');
 
-  const fmt3 = v => v!=null ? Number(v).toFixed(3) : '–';
+  const fmt3 = v => nf(v, 3);
   const tbody = rows.map(r => {
     const rcls = rClass(r.ri);
     const sel  = r.id === state.selMId ? ' sel-row' : '';
@@ -280,11 +282,11 @@ function _renderMeas(el, state) {
       <td style="padding:8px 12px;color:var(--color-measure);font-weight:bold">${r.id}</td>
       <td style="padding:8px 12px">${r.from}</td>
       <td style="padding:8px 12px">${r.to}</td>
-      <td class="val-info" style="padding:8px 12px">${r.type==='dist'?'Avst':'Riktning'}</td>
-      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${r.dist!=null?r.dist.toFixed(3):'–'}</td>
+      <td class="val-info" style="padding:8px 12px">${r.type==='dist'?'Avstånd':'Riktning'}</td>
+      <td class="mono val-secondary" style="padding:8px 12px;text-align:right">${nf(r.dist, 3)}</td>
       <td class="mono val-muted" style="padding:8px 12px;text-align:right">${fmt3(r.sigHz)}</td>
       <td class="mono val-muted" style="padding:8px 12px;text-align:right">${fmt3(r.sigDm)}</td>
-      <td class="mono ${rcls}" style="padding:8px 12px;text-align:right;font-weight:bold">${r.ri.toFixed(3)}</td>
+      <td class="mono ${rcls}" style="padding:8px 12px;text-align:right;font-weight:bold">${nf(r.ri, 3)}</td>
       <td class="mono val-muted" style="padding:8px 12px;text-align:right">${r.mufStr}</td>
       <td class="mono val-info"  style="padding:8px 12px;text-align:right">${r.ytStr}</td>
       <td class="mono val-warn"  style="padding:8px 12px;text-align:right">${r.kpStr}</td>
@@ -297,7 +299,7 @@ function _renderMeas(el, state) {
              value="${_filterMeas.search.replace(/"/g,'&quot;')}" style="max-width:200px">
       <label class="studio-filter-row" style="margin-bottom:0;cursor:pointer">
         <input type="checkbox" data-obs="dist" ${_filterMeas.types.includes('dist')?'checked':''}
-               style="accent-color:var(--accent)"> Avst
+               style="accent-color:var(--accent)"> Avstånd
       </label>
       <label class="studio-filter-row" style="margin-bottom:0;cursor:pointer">
         <input type="checkbox" data-obs="hz" ${_filterMeas.types.includes('hz')?'checked':''}
@@ -347,7 +349,7 @@ function _renderMain(mainEl, state) {
 
   if (!simResult?.ok) {
     mainEl.innerHTML = `<div class="studio-loading" style="flex-direction:column;gap:12px">
-      <span>Kör simuleringen först – gå till SIMULERING-fliken och tryck ▶</span>
+      <span>Beräkna simuleringen först – gå till fliken SIMULERING och tryck ▶ Beräkna simulering</span>
       <button class="studio-footer-btn" onclick="window._setTab?.('sim')">→ Gå till SIMULERING</button>
     </div>`;
     if (_el?.footer) _el.footer.innerHTML = '';
@@ -400,8 +402,8 @@ function _renderFooter(el, state, shown) {
       exportToCSV(rows, [
         {key:'id',label:'ID'},{key:'type',label:'Typ'},
         {key:'N',label:'N (m)'},{key:'E',label:'E (m)'},
-        {key:'rMean',label:'r̄'},{key:'a_mm',label:'a mm'},
-        {key:'b_mm',label:'b mm'},{key:'sigPos_mm',label:'σpos mm'},
+        {key:'rMean',label:'Medel r-tal'},{key:'a_mm',label:'a mm'},
+        {key:'b_mm',label:'b mm'},{key:'sigPos_mm',label:'σ_pos mm'},
       ], 'natsim-sim-punkter');
     } else {
       let rows = _measRows(state);
@@ -410,7 +412,7 @@ function _renderFooter(el, state, shown) {
       exportToCSV(rows, [
         {key:'id',label:'ID'},{key:'from',label:'Från'},
         {key:'to',label:'Till'},{key:'type',label:'Typ'},
-        {key:'ri',label:'r_i'},{key:'mufStr',label:'MUF'},
+        {key:'ri',label:'r-tal'},{key:'mufStr',label:'MUF'},
         {key:'ytStr',label:'YT'},{key:'kpStr',label:'KP mm'},
       ], 'natsim-sim-matningar');
     }

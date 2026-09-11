@@ -7,7 +7,8 @@
 import L from 'leaflet';
 import proj4 from 'proj4';
 import { CRS_DEFS, INSTRUMENTS, PT } from '../core/constants.js';
-import { d2EN, brgEN, calcM, fG, fD } from '../core/designmatrix.js';
+import { d2EN, brgEN, calcM } from '../core/designmatrix.js';
+import { nf, gon } from '../core/format.js';
 import { rColor } from '../core/redundancy.js';
 import { getState, setState } from '../state/store.js';
 import { initInteractions } from './interactions.js';
@@ -257,7 +258,7 @@ export function draw() {
 
   const state = getState();
   const { pts, meas, suggestedMeas, selId, selMId, measFrom,
-          ellScale, ellipsMode, au, obstacles = [], selObsId, symSize,
+          ellScale, ellipsMode, obstacles = [], selObsId, symSize,
           blockedSuggestions = [], optimizerProposal, netView } = state;
 
   // ── Etapp E: förslagsvyn ──
@@ -286,7 +287,9 @@ export function draw() {
   };
 
   const labelRects = [];
-  const fmt = d => au === "grad" ? fG(d) : fD(d);
+  // Bäringar i gon, fyra decimaler (Omgång 2). Kartan visar gradtalet utan
+  // enhet – "gon" står i rubriken till VISA-kryssrutan i vänsterpanelen.
+  const fmt = d => gon(d);
 
   // ── Föreslagna mätningar ──
   if (showS && suggestedMeas.length > 0) {
@@ -354,8 +357,8 @@ export function draw() {
         ctx.font = "bold 16px monospace"; ctx.textAlign = "center";
         ctx.fillStyle = hasM ? "#ff9900" : "#4fc3f7";
         ctx.strokeStyle = "#00000088"; ctx.lineWidth = 2;
-        ctx.strokeText(`${dist.toFixed(3)}m`, 0, -10);
-        ctx.fillText(`${dist.toFixed(3)}m`, 0, -10);
+        ctx.strokeText(`${nf(dist, 3)} m`, 0, -10);
+        ctx.fillText(`${nf(dist, 3)} m`, 0, -10);
         ctx.restore();
       }
       if (showA) {
@@ -389,7 +392,7 @@ export function draw() {
       ctx.strokeStyle = "#ce93d8"; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.restore();
       ctx.font = "14px monospace"; ctx.fillStyle = "#ce93d8"; ctx.textAlign = "left";
-      ctx.fillText(`σ=${(pr.sigPos*1000*k).toFixed(1)}mm`, px.x+aP+3, px.y);
+      ctx.fillText(`σ=${nf(pr.sigPos*1000*k, 1)} mm`, px.x+aP+3, px.y);
     });
   }
 
@@ -409,7 +412,7 @@ export function draw() {
       ctx.strokeStyle = "#ff6090"; ctx.lineWidth = 2; ctx.setLineDash([6,3]); ctx.stroke(); ctx.setLineDash([]);
       ctx.restore();
       ctx.font = "bold 14px monospace"; ctx.fillStyle = "#ff6090"; ctx.textAlign = "left";
-      ctx.fillText(`σ=${(ss.sigPos*1000*k).toFixed(1)}mm`, px.x+aP+3, px.y);
+      ctx.fillText(`σ=${nf(ss.sigPos*1000*k, 1)} mm`, px.x+aP+3, px.y);
     });
   }
 
@@ -450,7 +453,7 @@ export function draw() {
   // ── Skalstång ──
   const mpp = mppAtCenter();
   const barPx = 100, barM = barPx * mpp;
-  const barLabel = barM >= 1000 ? `${(barM/1000).toFixed(1)} km` : `${barM.toFixed(0)} m`;
+  const barLabel = barM >= 1000 ? `${nf(barM/1000, 1)} km` : `${nf(barM, 0)} m`;
   ctx.fillStyle="#fff"; ctx.fillRect(16,H-26,barPx,2); ctx.fillRect(16,H-31,2,7); ctx.fillRect(16+barPx,H-31,2,7);
   ctx.font="15px monospace"; ctx.fillStyle="#888"; ctx.textAlign="center"; ctx.fillText(barLabel,16+barPx/2,H-33);
 
@@ -488,7 +491,7 @@ export function initMap() {
   map.on("mousemove", e => {
     const en = latLngToEN(e.latlng);
     const el = document.getElementById("cursor-en");
-    if (el) el.textContent = `E: ${en.E.toFixed(2)}  N: ${en.N.toFixed(2)}`;
+    if (el) el.textContent = `N: ${nf(en.N, 2)}  E: ${nf(en.E, 2)}`;
   });
 
   // Zoom-visning

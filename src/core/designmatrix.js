@@ -19,15 +19,20 @@ export const brgEN = (a, b) => {
   return v < 0 ? v + 360 : v;
 };
 
-// Vinkelformatering – rad 567–568 exakt
-export function fG(d) {
-  const g=d/0.9,gi=Math.floor(g),mn=(g-gi)*100,mi=Math.floor(mn),s=(mn-mi)*100;
-  return `${String(gi).padStart(3,"0")}g${String(mi).padStart(2,"0")}'${s.toFixed(1).padStart(4,"0")}"`;
-}
-export function fD(d) {
-  const di=Math.floor(d),m=Math.floor((d-di)*60),s=((d-di)*60-m)*60;
-  return `${di}°${String(m).padStart(2,"0")}'${s.toFixed(1).padStart(4,"0")}"`;
-}
+// Vinkelformatering – BORTTAGEN i UI-städning Omgång 2 (2026-09-11).
+//
+// Här låg fG() och fD() (rad 567–568 i NätSim_Beta_2.html). fG gav
+// hybridformatet 123g45'67.8" och fD gav DMS 123°45'67.8". Båda var rena
+// visningsfunktioner – ingen beräkning använde dem – och båda är ersatta av
+// gon()/gonU() i core/format.js, som ger rena gon-decimaler.
+//
+// Hybridformatet togs bort för att det användes på åtta ytor samtidigt som
+// fyra andra ytor visade samma storhet i decimalgrader, och DMS-växlaren
+// (state.au) togs bort eftersom den bara nådde fyra av dessa åtta.
+// Se docs/troubleshooting/ui_inventering_20260910.md avsnitt A och B, punkt 5.
+//
+// Kärnan räknar fortfarande i GRADER – brgEN() nedan är oförändrad. Bara
+// visningen är gon.
 
 // Geometriska egenskaper för en mätning – rad 571–577
 export function calcM(m, pts) {

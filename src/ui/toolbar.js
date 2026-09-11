@@ -1,6 +1,6 @@
-// rad 3266–3354: buildTools, setTool, togglePanel, clearAll, toggleAU
+// rad 3266–3354: buildTools, setTool, togglePanel, clearAll
 import { getState, setState } from '../state/store.js';
-import { PT, INSTRUMENTS } from '../core/constants.js';
+import { PT, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
 import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw } from '../map/visual-drawing.js';
@@ -62,9 +62,12 @@ export function buildTools() {
     visLineBtn.style.cssText = '--c:#cfd8dc;margin-top:2px;' + (tool === 'visual-line' ? 'border-color:#cfd8dc;background:rgba(207,216,220,0.15);color:#cfd8dc' : '');
   }
 
-  const hints = { pan:"🖐 Dra kartan | Dubbelklick på punkt: redigera", known:"➕ Klicka: lägg Känd punkt | Dra: flytta",
-    station:"➕ Klicka: lägg Uppställning | Dra: flytta", detail:"➕ Klicka: lägg Detaljpunkt | Dra: flytta",
-    new:"➕ Klicka: lägg Ny punkt | Dra: flytta", simstation:"🔴 Klicka: lägg Simulerad uppställning",
+  // Omgång 2: punkttypernas namn kommer ur PT, så hjälpraden inte kan
+  // divergera från knappen den beskriver.
+  const ptHint = t => `➕ Klicka: lägg ${ptLabel(t)} | Dra: flytta`;
+  const hints = { pan:"🖐 Dra kartan | Dubbelklick på punkt: redigera",
+    known: ptHint("known"), station: ptHint("station"), detail: ptHint("detail"),
+    new: ptHint("new"), simstation:`🔴 Klicka: lägg ${ptLabel("simstation")}`,
     measure:"📏 Klicka FRÅN-punkt → klicka TILL-punkt",
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
@@ -136,14 +139,9 @@ export function clearAll() {
   }
 }
 
-export function toggleAU() {
-  const { au } = getState();
-  const next = au === "grad" ? "dms" : "grad";
-  setState({ au: next });
-  const btn = document.getElementById("btn-au");
-  if (btn) btn.textContent = "Vinkel: " + (next === "grad" ? "Gon (grad)" : "DMS");
-  draw();
-}
+// toggleAU() låg här. Borttagen i UI-städning Omgång 2 (2026-09-11)
+// tillsammans med knappen #btn-au och state.au: alla vinklar visas i gon.
+// Se core/format.js och docs/troubleshooting/ui_inventering_20260910.md.
 
 export function initToolbar() {
   ["tgc","tga","tgd","tgl","tge","tgs","tgb","tgv","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
@@ -190,7 +188,6 @@ export function initToolbar() {
   window._setTool        = setTool;
   window._togglePanel    = togglePanel;
   window._closeAllPanels = closeAllPanels;
-  window._toggleAU       = toggleAU;
   window._clearAll       = clearAll;
   window._toggleMapLayer = toggleMapLayer;
 }

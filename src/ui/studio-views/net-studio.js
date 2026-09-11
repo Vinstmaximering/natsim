@@ -2,11 +2,14 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng, draw }  from '../../map/leaflet-setup.js';
 import { saveUndo }               from '../../state/undo.js';
-import { PT }                     from '../../core/constants.js';
+import { PT, ptLabelShort }       from '../../core/constants.js';
+import { nf }                     from '../../core/format.js';
 import { sortByColumn, filterByText, filterByType, exportToCSV } from '../table-utils.js';
 
-const TYPE_LABEL = { known:'Känd', station:'Station', new:'Ny', detail:'Detalj', simstation:'SimStn' };
-const TYPE_COLOR = { known:'#00ff88', station:'#4fc3f7', new:'#ce93d8', detail:'#ffb74d', simstation:'#ff6090' };
+// Omgång 2: etiketter och färger kommer ur PT i core/constants.js. Tidigare
+// låg en egen kopia här ('Ny', 'SimStn') – en av sju parallella uppsättningar.
+const TYPE_LABEL = Object.fromEntries(Object.keys(PT).map(k => [k, ptLabelShort(k)]));
+const TYPE_COLOR = Object.fromEntries(Object.keys(PT).map(k => [k, PT[k].c]));
 const COLS = [
   { key:'id',        label:'ID' },
   { key:'type',      label:'Typ' },
@@ -41,7 +44,7 @@ function _counts(pts) {
   return Object.fromEntries(Object.keys(TYPE_LABEL).map(k => [k, pts.filter(p => p.type === k).length]));
 }
 
-const fCoord = v => (typeof v === 'number' ? v.toFixed(3) : '–');
+const fCoord = v => (typeof v === 'number' ? nf(v, 3) : '–');
 
 // ── Sidopanel ────────────────────────────────────────────────────────────────
 
@@ -75,8 +78,11 @@ function _sidebar(el, state) {
     </div>
 
     <div class="studio-filter-section">
+      <!-- Knappen sätter verktyget till 'known', alltså en KÄND punkt.
+           Etiketten sade tidigare "Ny punkt", vilket beskrev fel handling och
+           dessutom krockar med typnamnet Nypunkt sedan Omgång 2. -->
       <button class="studio-footer-btn" id="ns-new" style="width:100%">
-        ➕ Ny punkt
+        ➕ Lägg till känd punkt
       </button>
     </div>`;
 

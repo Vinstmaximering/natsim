@@ -111,10 +111,10 @@ VALFRIA KOLUMNER:
 
 PUNKTTYPER (skrivs i Typ-kolumnen):
   känd / kp / fp / known  → Känd punkt (grön)
-  uppställning / station  → Uppställning (blå)
+  uppställning / station  → Station (blå)
   detalj / detail         → Detaljpunkt (orange)
-  ny / new                → Ny punkt (lila)
-  (tomt)                  → Uppställning (default)
+  ny / new                → Nypunkt (lila)
+  (tomt)                  → Station (default)
 
 EXEMPELINNEHÅLL:
 ID;Typ;E;N;H

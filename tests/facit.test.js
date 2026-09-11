@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from 'vitest'
+import { nf } from '../src/core/format.js'
 import { runSimulation } from '../src/core/simulation.js'
 import { runSimStations } from '../src/core/stations.js'
 import { exportCalcReport } from '../src/reports/sim-report.js'
@@ -596,7 +597,9 @@ describe('F8 – enhetsmärkning av YT för riktningsobservationer', () => {
     const riktRader = txt.split('\n').filter(l => l.includes('Riktning'))
     expect(riktRader.length).toBeGreaterThan(0)
     riktRader.forEach(rad => {
-      expect(rad, rad).toMatch(/\d+mgon\s+[\d.]+mgon/)  // MUF mgon, YT mgon
+      // Omgång 2: decimalkomma i rapporten. Enheterna är oförändrade –
+      // det är dem testet vaktar.
+      expect(rad, rad).toMatch(/[\d.,]+mgon\s+[\d.,]+mgon/)  // MUF mgon, YT mgon
       // Ingen siffra får följas direkt av "gon" – då saknas m:et.
       expect(rad, rad).not.toMatch(/\d\s*gon/)
     })
@@ -665,7 +668,10 @@ describe('F9 – konfidensmärkning i simuleringsrapporten', () => {
     const txt = await simrapport()
     const p = sr.ptResults.find(x => x.id === 'P1')
     // 2,117 mm efter F5 – ska stå oförändrat i rapporten.
-    expect(txt).toContain((p.sigPos * 1000).toFixed(2))
+    // Omgång 2: rapporten skriver svensk decimalkomma, så förväntan
+    // formateras med samma funktion som rapporten använder. Låsningen är
+    // densamma: utskriften ska vara kärnans 1σ-värde, inte ett uppblåst.
+    expect(txt).toContain(nf(p.sigPos * 1000, 2))
   })
 })
 

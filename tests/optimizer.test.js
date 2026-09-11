@@ -541,7 +541,7 @@ describe('beslutsspårningslogg', () => {
                 sigmaEffectMm: 0.03, rEffect: -0.02 };
     expect(formatLogEntry(e)).toBe(
       'Iteration 1 (Fas 2): Tog bort mätning A→B. Bidrog minst till nätet: ' +
-      'σ_pos-effekt +0.03 mm, r-tal-effekt -0.020. Alla kriterier hålls fortfarande.');
+      'σ_pos-effekt +0,03 mm, r-tal-effekt -0,020. Alla kriterier hålls fortfarande.');
   });
 
   it('redovisar kvarstående brister för tillägg som inte räcker', () => {
@@ -655,7 +655,7 @@ describe('Fas 3 – dubbelmätning', () => {
     const rad = res.log.find(e => e.action === 'add');
     expect(rad.text).toContain('dubbelmätning');
     expect(rad.text).toContain('sträckan');
-    expect(rad.text).toMatch(/Höjer r-tal för sträckan .+ från \d\.\d\d till \d\.\d\d\./);
+    expect(rad.text).toMatch(/Höjer r-tal för sträckan .+ från \d,\d\d till \d,\d\d\./);
     expect(rad.lineRAfter).toBeGreaterThan(rad.lineRBefore);
   });
 
@@ -665,7 +665,7 @@ describe('Fas 3 – dubbelmätning', () => {
     expect(formatLogEntry({ ...bas, kind: 'new' })).toContain('Lade till mätning B→A');
     const rev = formatLogEntry({ ...bas, kind: 'reverse', lineRBefore: 0.22, lineRAfter: 0.56 });
     expect(rev).toContain('Lade till dubbelmätning B→A (motriktad ommätning av sträckan A–B)');
-    expect(rev).toContain('Höjer r-tal för sträckan A–B från 0.22 till 0.56.');
+    expect(rev).toContain('Höjer r-tal för sträckan A–B från 0,22 till 0,56.');
     expect(formatLogEntry({ ...bas, kind: 'duplicate', lineRBefore: 0.22, lineRAfter: 0.56 }))
       .toContain('(ytterligare mätning av sträckan A–B)');
   });
@@ -683,7 +683,7 @@ describe('Fix 2.3 – tvånivåkravet redovisas per iteration', () => {
     ops.forEach(e => {
       expect(e.belowSoft).toBe(e.metrics.nBelowSoft);
       expect(e.softLimit).toBe(0.50);
-      expect(e.text).toMatch(/observationer? under r 0.50|Inga observationer under r 0.50/);
+      expect(e.text).toMatch(/observationer? under r 0,50|Inga observationer under r 0,50/);
     });
   });
 
@@ -691,32 +691,33 @@ describe('Fix 2.3 – tvånivåkravet redovisas per iteration', () => {
     res.log.filter(e => e.action === 'add' || e.action === 'remove').forEach(e => {
       expect(e.belowHard).toBe(0);
       expect(e.hardLimit).toBe(0.35);
-      expect(e.text).toContain('Inget värde under det hårda kravet r 0.35');
+      expect(e.text).toContain('Inget värde under det hårda kravet r 0,35');
     });
   });
 
   it('sista raden speglar slutnätets faktiska antal', () => {
     const sista = res.log.filter(e => e.action === 'add' || e.action === 'remove').pop();
     expect(sista.belowSoft).toBe(res.finalMetrics.nBelowSoft);
-    expect(sista.text).toContain(`${res.finalMetrics.nBelowSoft} observationer under r 0.50`);
+    expect(sista.text).toContain(`${res.finalMetrics.nBelowSoft} observationer under r 0,50`);
   });
 
   it('formatRReport varnar när det hårda kravet är brutet', () => {
     const txt = formatRReport({ belowSoft: 4, belowHard: 2, softLimit: 0.5, hardLimit: 0.35 });
-    expect(txt).toContain('4 observationer under r 0.50 (rapporteras).');
-    expect(txt).toContain('⚠ 2 observationer UNDER det hårda kravet r 0.35.');
+    expect(txt).toContain('4 observationer under r 0,50 (rapporteras).');
+    expect(txt).toContain('⚠ 2 observationer UNDER det hårda kravet r 0,35.');
     // Singular/plural och nolläge
     expect(formatRReport({ belowSoft: 1, belowHard: 0, softLimit: 0.5, hardLimit: 0.35 }))
-      .toContain('1 observation under r 0.50');
+      .toContain('1 observation under r 0,50');
     expect(formatRReport({ belowSoft: 0, belowHard: 0, softLimit: 0.5, hardLimit: 0.35 }))
-      .toContain('Inga observationer under r 0.50.');
+      .toContain('Inga observationer under r 0,50.');
     // Saknade fält ⇒ ingen text alls (äldre poster, skip/stop-rader)
     expect(formatRReport({})).toBe('');
   });
 
   it('jämförelsetabellen visar det mjuka kravet som egen rad', () => {
     const rows = comparisonRows(res.baseMetrics, res.finalMetrics, res.criteria);
-    const rad = rows.find(r => r.label.startsWith('Obs. med r <'));
+    // Omgång 2: etiketten säger "r-tal", inte "r".
+    const rad = rows.find(r => r.label.startsWith('Obs. med r-tal <'));
     expect(rad).toBeDefined();
     expect(rad.opt).toBe(res.finalMetrics.nBelowSoft);
     expect(rad.krav).toBe('rapporteras');
@@ -847,7 +848,7 @@ describe('optimeringsförslag som eget visningslager', () => {
     const rows = comparisonRows(res.baseMetrics, res.finalMetrics, res.criteria);
     const r = rows.find(x => x.label === 'Minsta r-tal');
     expect(rows.map(x => x.label)).toContain('Största σ_pos');
-    expect(r.krav).toBe('≥ 0.35');
+    expect(r.krav).toBe('≥ 0,35');
     expect(r.ok).toBe(true);
   });
 });
@@ -887,7 +888,8 @@ describe('nätvalidering efter optimering', () => {
     expect(band.length).toBe(res.finalMetrics.nBelowSoft);
     expect(res.finalMetrics.nBelowHard).toBe(0);
     if (band.length) {
-      expect(validateNetwork().warnings.some(w => w.includes('r_i'))).toBe(true);
+      // Omgång 2: valideringen säger "r-tal" i stället för indexnotationen r_i.
+      expect(validateNetwork().warnings.some(w => w.includes('r-tal'))).toBe(true);
     }
   });
 
@@ -967,8 +969,8 @@ describe('optimeringsdialogen', () => {
     const html = document.querySelector('#opt-overlay .mo').innerHTML;
     expect(html).toContain('G2');
     expect(html).toContain('Minsta r-tal per observation');
-    expect(html).toContain('σ_pos ≤ 3.0 mm');
-    expect(html).toContain('Kontrollerbarhet: k ≥ 0.50');
+    expect(html).toContain('σ_pos ≤ 3,0 mm');
+    expect(html).toContain('Kontrollerbarhet: k ≥ 0,50');
   });
 
   it('talar om att maxavståndet respekteras', () => {
@@ -992,7 +994,7 @@ describe('optimeringsdialogen', () => {
     inp.dispatchEvent(new window.Event('input'));
     expect(getState().optimizerConfig.sigma_max_mm).toBe(1.5);
     expect(getState().optimizerConfig.weightSigma).toBe(0.5);
-    expect(document.getElementById('opt-crit-list').innerHTML).toContain('1.5 mm');
+    expect(document.getElementById('opt-crit-list').innerHTML).toContain('1,5 mm');
     // Tomt fält återställer till klassens default
     inp.value = '';
     inp.dispatchEvent(new window.Event('input'));

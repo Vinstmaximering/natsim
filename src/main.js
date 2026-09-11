@@ -10,6 +10,8 @@ window._openStudio  = openStudio;
 window.closeStudio  = closeStudio;
 
 import { getState, setState, setAutoSimHandler, subscribe } from './state/store.js';
+import { nf } from './core/format.js';
+import { ptLabel, ptLabelShort, PT } from './core/constants.js';
 // openPM definieras nedan (refererar till getState och map-imports)
 import { autoSim, undo, setUndoCallbacks, saveUndo } from './state/undo.js';
 import { loadAutosave, saveAutosave }           from './state/persistence.js';
@@ -18,7 +20,7 @@ import { setInteractionCallbacks }              from './map/interactions.js';
 import { showToast }                            from './ui/toast.js';
 import { initOnboarding, hideOnboarding }       from './ui/onboarding.js';
 import { initQualityPanel, updateQualityPanel } from './ui/quality-panel.js';
-import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleAU, toggleMapLayer } from './ui/toolbar.js';
+import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer } from './ui/toolbar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
 import { initResize }                           from './ui/panel-resize.js';
@@ -46,7 +48,6 @@ setUndoCallbacks({ draw, updateQualityPanel, showToast });
 window.setTool        = setTool;
 window.togglePanel    = togglePanel;
 window.clearAll       = clearAll;
-window.toggleAU       = toggleAU;
 window.toggleMapLayer = toggleMapLayer;
 window.locateMe       = () => import('./map/leaflet-setup.js').then(m => m.locateMe());
 window.resetView      = () => import('./map/leaflet-setup.js').then(m => m.resetView());
@@ -161,8 +162,9 @@ function _renderCoordView() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const typeLabels = { known:"Känd punkt", station:"Uppställning", new:"Ny punkt", detail:"Detaljpunkt", simstation:"Sim. uppst." };
-  const typeColors = { known:"#00ff88", station:"#4fc3f7", new:"#ce93d8", detail:"#ffb74d", simstation:"#ff6090" };
+  // Omgång 2: etiketter och färger ur PT (core/constants.js). Här låg en
+  // ordagrann kopia av den tabellen – en av sju parallella uppsättningar.
+  const typeColors = Object.fromEntries(Object.keys(PT).map(k => [k, PT[k].c]));
 
   pts.forEach((pt, i) => {
     const mc = meas.filter(m => m.from === pt.id || m.to === pt.id).length;
@@ -171,10 +173,10 @@ function _renderCoordView() {
     tr.innerHTML = `
       <td style="padding:5px 6px;color:#506070;font-size:11px;">${i + 1}</td>
       <td style="padding:5px 6px;color:${typeColors[pt.type]||"#e8f4fd"};font-weight:bold;font-family:monospace;">${pt.id}</td>
-      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${typeLabels[pt.type]||pt.type}</td>
-      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.N.toFixed(4)}</td>
-      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.E.toFixed(4)}</td>
-      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${pt.H ? pt.H.toFixed(3) : "–"}</td>
+      <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${ptLabel(pt.type)}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${nf(pt.N, 4)}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${nf(pt.E, 4)}</td>
+      <td style="padding:5px 6px;text-align:right;font-family:monospace;">${nf(pt.H, 3)}</td>
       <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${mc || ""}</td>
       <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${pt.markering || ""}</td>
       <td style="padding:5px 6px;color:#7090a8;font-size:11px;">${pt.prisma || ""}</td>
@@ -189,10 +191,11 @@ function _renderCoordView() {
   const known = pts.filter(p => p.type === "known").length;
   const stn   = pts.filter(p => p.type === "station").length;
   const newPt = pts.filter(p => p.type === "new" || p.type === "detail").length;
+  // Omgång 2: samma etiketter som resten av UI:t, hämtade ur PT.
   const st = document.getElementById("cv-stat-total");   if (st) st.textContent = `Totalt: ${total} punkter`;
-  const sk = document.getElementById("cv-stat-known");   if (sk) sk.textContent = `Kända: ${known}`;
-  const ss = document.getElementById("cv-stat-station"); if (ss) ss.textContent = `Uppst: ${stn}`;
-  const sn = document.getElementById("cv-stat-new");     if (sn) sn.textContent = `Nya/Detalj: ${newPt}`;
+  const sk = document.getElementById("cv-stat-known");   if (sk) sk.textContent = `${ptLabelShort("known")}: ${known}`;
+  const ss = document.getElementById("cv-stat-station"); if (ss) ss.textContent = `${ptLabelShort("station")}: ${stn}`;
+  const sn = document.getElementById("cv-stat-new");     if (sn) sn.textContent = `${ptLabelShort("new")}/${ptLabelShort("detail")}: ${newPt}`;
 }
 
 function cvSaveNewRow() {
@@ -247,7 +250,7 @@ async function openPM() {
     return;
   }
   const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr, obstacles, activeLayerKey } = getState();
-  if (!simResult?.ok) { alert("Kör simuleringen först."); return; }
+  if (!simResult?.ok) { alert("Beräkna simuleringen först."); return; }
 
   const popup = window.open(
     `${import.meta.env.BASE_URL}src/pm/pm.html`,

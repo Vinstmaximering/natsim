@@ -78,7 +78,8 @@ describe('Fix 1 (följd) – bandförklaringen speglar klassificeraKtal()', () =
 
   it('anger Överbestämt-gränsen som klassificeraren använder', () => {
     expect(K_OVERBESTAMD_PRELIMINAR).toBe(0.7);
-    expect(legend).toMatch(/0\.70/);
+    // Omgång 2: decimalkomma i UI-text.
+    expect(legend).toMatch(/0,70/);
   });
 });
 
@@ -177,8 +178,9 @@ describe('Fix 4 – σN står före σE i alla utdataformat', () => {
   it('PM-rapportens värdeceller följer rubrikordningen', () => {
     const html = buildReport(pmData);
     const rad = html.slice(html.indexOf('>S1<'));
-    const iN = rad.indexOf('1.80');   // sigN = 0.0018 m
-    const iE = rad.indexOf('2.10');   // sigE = 0.0021 m
+    // Omgång 2: decimalkomma.
+    const iN = rad.indexOf('1,80');   // sigN = 0.0018 m
+    const iE = rad.indexOf('2,10');   // sigE = 0.0021 m
     expect(iN).toBeGreaterThan(-1);
     expect(iE).toBeGreaterThan(-1);
     expect(iN, 'σN ska stå före σE även i cellerna').toBeLessThan(iE);

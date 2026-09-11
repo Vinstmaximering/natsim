@@ -1,13 +1,17 @@
 // Steg 3 – Instrument och mätmetod
+import { nf } from '../../core/format.js';
+
 export function render(D, container, vals) {
   container.innerHTML = `
     <div class="card">
       <div class="ch"><div class="ci">📡</div><div><div class="ct">Instrument och mätmetod</div><div class="cd">R3.5 – SIS-TS 21143:2016 Bilaga B</div></div></div>
       <div class="cb">
         <div class="hint">
-          <b>Hämtat från NätSim:</b> <b>${D.ins}</b> | σ_Hz=<b>${D.mHz.toFixed(3)} mgon</b> |
-          σ_D=<b>${D.mDm.toFixed(1)} mm+${D.mDp.toFixed(1)} ppm</b> |
-          ${D.mSt} satser | e_c=${D.centerErr.toFixed(1)} mm
+          <!-- Omgång 2: "σ riktning"/"σ avstånd" i stället för σ_Hz/σ_D, samma
+               ord som mätningsmodalen och studiovyerna. Se Fix 2. -->
+          <b>Hämtat från NätSim:</b> <b>${D.ins}</b> | σ riktning=<b>${nf(D.mHz, 3)} mgon</b> |
+          σ avstånd=<b>${nf(D.mDm, 1)} mm + ${nf(D.mDp, 1)} ppm</b> |
+          ${D.mSt} helsatser | centreringsfel=${nf(D.centerErr, 1)} mm
         </div>
         <div class="g2">
           <div><div class="lbl">Totalstation</div><input id="v_instr" placeholder="fabrikat/typ" value="${D.ins}"></div>

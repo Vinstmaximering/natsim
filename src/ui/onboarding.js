@@ -15,7 +15,7 @@ function _buildContent() {
   if (phone) {
     // 4 komprimerade steg för telefon
     steps = [
-      `<b>Tryck på kartan</b> → välj <i>"Känd punkt"</i>.<br>Lägg till fler kända punkter + en <b>uppställning</b>.`,
+      `<b>Tryck på kartan</b> → välj <i>"Känd punkt"</i>.<br>Lägg till fler kända punkter + en <b>station</b>.`,
       `Tryck <b>📏 Mätning</b> och koppla punkterna.`,
       `<b>Tryck och håll</b> på en punkt för att redigera den.`,
       `Tryck <b>☰ / ⊞</b> för paneler. <span style="color:#ff9900">PM kräver tablet/dator.</span>`,
@@ -24,7 +24,7 @@ function _buildContent() {
     // Touch-tablet: 5 steg, touch-justerade termer
     steps = [
       `<b>Tryck på kartan</b> för att lägga första punkten – välj <i>"Känd punkt"</i>.`,
-      `Lägg till fler kända punkter och minst en <b>uppställning</b>.`,
+      `Lägg till fler kända punkter och minst en <b>station</b>.`,
       `Tryck <b>📏 Lägg till mätning</b> och dra linjer mellan punkter.`,
       `<b>Tryck och håll</b> på en punkt för att redigera den.`,
       `Tryck <b>🔍 Validera nät</b> och sedan <b>📐 Generera PM</b>.`,
@@ -33,7 +33,7 @@ function _buildContent() {
     // Desktop: 5 steg, original
     steps = [
       `<b>Klicka på kartan</b> för att lägga första punkten – välj <i>"Känd punkt"</i>.`,
-      `Lägg till fler kända punkter och minst en <b>uppställning</b>.`,
+      `Lägg till fler kända punkter och minst en <b>station</b>.`,
       `Klicka <b>📏 Lägg till mätning</b> och dra linjer mellan punkter.`,
       `Aktivera <b>mätklass G1–G4</b> i högerpanelen om SIS-TS-krav ska gälla.`,
       `Tryck <b>🔍 Validera nät</b> och sedan <b>📐 Generera PM</b>.`,

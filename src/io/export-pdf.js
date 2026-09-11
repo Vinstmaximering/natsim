@@ -3,16 +3,17 @@
 // jsPDF används för Fas 7 (PM-rapporten) – se src/reports/pdf-helpers.js.
 import { getState } from '../state/store.js';
 import { CRS_DEFS, INSTRUMENTS, MATKLASSER } from '../core/constants.js';
+import { nf } from '../core/format.js';
 
 export async function exportSimPDF() {
   const { simResult, activeCRS, defaultInstr, activeMatklass } = getState();
-  if (!simResult || !simResult.ok) { alert("Kör simuleringen först."); return; }
+  if (!simResult || !simResult.ok) { alert("Beräkna simuleringen först."); return; }
 
   // Öppna popup synkront – måste ske före await
   const w = window.open("", "_blank", "width=950,height=800");
-  if (!w) { alert("Popup blockerades – tillåt popups."); return; }
+  if (!w) { alert("Popup blockerades – tillåt popups för den här sidan."); return; }
   w.document.write(`<html><body style="background:#111;color:#aaa;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-    <div style="text-align:center;"><div style="font-size:24px;margin-bottom:12px;">⏳</div><div>Genererar simuleringsrapport...</div></div></body></html>`);
+    <div style="text-align:center;"><div style="font-size:24px;margin-bottom:12px;">⏳</div><div>Genererar simuleringsrapport…</div></div></body></html>`);
 
   const sr       = simResult;
   const crsName  = CRS_DEFS[activeCRS]?.name || activeCRS;
@@ -25,20 +26,20 @@ export async function exportSimPDF() {
 
   const ptRows = (sr.allPtResults || sr.ptResults || []).map(r => `<tr>
     <td>${r.id}</td>
-    <td style="text-align:right;font-family:monospace;">${(r.sigN*1000).toFixed(2)}</td>
-    <td style="text-align:right;font-family:monospace;">${(r.sigE*1000).toFixed(2)}</td>
-    <td style="text-align:right;font-family:monospace;font-weight:bold;">${(r.sigPos*1000).toFixed(2)}</td>
-    <td style="text-align:right;font-family:monospace;">${r.aSemi?(r.aSemi*1000).toFixed(2):"–"}</td>
-    <td style="text-align:right;font-family:monospace;">${r.bSemi?(r.bSemi*1000).toFixed(2):"–"}</td>
+    <td style="text-align:right;font-family:monospace;">${nf(r.sigN*1000, 2)}</td>
+    <td style="text-align:right;font-family:monospace;">${nf(r.sigE*1000, 2)}</td>
+    <td style="text-align:right;font-family:monospace;font-weight:bold;">${nf(r.sigPos*1000, 2)}</td>
+    <td style="text-align:right;font-family:monospace;">${nf(r.aSemi ? r.aSemi*1000 : null, 2)}</td>
+    <td style="text-align:right;font-family:monospace;">${nf(r.bSemi ? r.bSemi*1000 : null, 2)}</td>
   </tr>`).join("");
 
   const rdRows = sr.redund.map(r => {
-    const muf = r.mdb.val === Infinity ? "∞" : r.type === "dist" ? (r.mdb.val*1000).toFixed(1)+" mm" : r.mdb.val.toFixed(3)+" mgon";
+    const muf = r.mdb.val === Infinity ? "∞" : r.type === "dist" ? nf(r.mdb.val*1000, 1)+" mm" : nf(r.mdb.val, 3)+" mgon";
     const col = r.ri >= 0.5 ? "#006600" : r.ri >= 0.3 ? "#7a5800" : "#990000";
     return `<tr>
       <td>${r.fromId}→${r.toId}</td>
-      <td>${r.type === "dist" ? "Avst" : "Riktning"}</td>
-      <td style="text-align:right;font-weight:bold;color:${col};">${r.ri.toFixed(3)}</td>
+      <td>${r.type === "dist" ? "Avstånd" : "Riktning"}</td>
+      <td style="text-align:right;font-weight:bold;color:${col};">${nf(r.ri, 3)}</td>
       <td style="text-align:right;font-family:monospace;">${muf}</td>
     </tr>`;
   }).join("");
@@ -74,7 +75,7 @@ export async function exportSimPDF() {
     ${mk ? `<div class="kv"><span>Mätklass:</span><span>${mk.l}</span></div>` : ""}
   </div>
   <div>
-    <div class="kv"><span>k-tal:</span><span>${sr.K_global.toFixed(3)} (${sr.K_class})</span></div>
+    <div class="kv"><span>k-tal:</span><span>${nf(sr.K_global, 3)} (${sr.K_class})</span></div>
     <div class="kv"><span>Frihetsgrader f:</span><span>${sr.redundancy}</span></div>
     <div class="kv"><span>Observationer n:</span><span>${sr.meas_n}</span></div>
     <div class="kv"><span>Obekanta u:</span><span>${sr.unkn_n}</span></div>
@@ -85,9 +86,9 @@ export async function exportSimPDF() {
   <thead><tr><th>Punkt</th><th>σN mm</th><th>σE mm</th><th>σpos mm</th><th>a mm</th><th>b mm</th></tr></thead>
   <tbody>${ptRows}</tbody>
 </table>
-<h2>RELIABILITET</h2>
+<h2>RELIABILITET PER MÄTNING</h2>
 <table>
-  <thead><tr><th>Sträcka</th><th>Typ</th><th>r_i</th><th>MUF</th></tr></thead>
+  <thead><tr><th>Sträcka</th><th>Typ</th><th>r-tal</th><th>MUF</th></tr></thead>
   <tbody>${rdRows}</tbody>
 </table>
 </body></html>`;

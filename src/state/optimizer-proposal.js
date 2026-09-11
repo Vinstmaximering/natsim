@@ -11,6 +11,7 @@
 import { getState, setState } from './store.js';
 import { saveUndo } from './undo.js';
 import { computeSimulation } from '../core/simulation.js';
+import { nf } from '../core/format.js';
 
 /**
  * Bygger förslagsobjektet ur ett optimeringsresultat. Förslagets egen
@@ -90,24 +91,25 @@ export function discardProposal() {
  * vyerna inte kan visa olika avrundning.
  */
 export function comparisonRows(baseMetrics, finalMetrics, criteria) {
+  // Omgång 2: decimalkomma – raderna visas i dialogen och i högerpanelen.
   const num = (v, dec, suffix = '') =>
-    v == null || !Number.isFinite(v) ? '–' : v.toFixed(dec) + suffix;
+    v == null || !Number.isFinite(v) ? '–' : nf(v, dec) + suffix;
   const rows = [
     { label: 'Antal mätningar', base: baseMetrics.nMeas, opt: finalMetrics.nMeas, krav: '–',
       ok: true },
     { label: 'Minsta r-tal', base: num(baseMetrics.minR, 3), opt: num(finalMetrics.minR, 3),
-      krav: '≥ ' + criteria.rMin.toFixed(2), ok: finalMetrics.minR >= criteria.rMin },
+      krav: '≥ ' + nf(criteria.rMin, 2), ok: finalMetrics.minR >= criteria.rMin },
     // Fix 2.3: det mjuka kravet redovisas bredvid det hårda. Raden är
     // informativ – den kan aldrig underkänna ett nät (ok: true).
-    { label: `Obs. med r < ${(criteria.rSoft ?? 0.5).toFixed(2)}`,
+    { label: `Obs. med r-tal < ${nf(criteria.rSoft ?? 0.5, 2)}`,
       base: baseMetrics.nBelowSoft ?? '–', opt: finalMetrics.nBelowSoft ?? '–',
       krav: 'rapporteras', ok: true },
     { label: 'Största σ_pos', base: num(baseMetrics.maxSigPosMm, 2, ' mm'),
       opt: num(finalMetrics.maxSigPosMm, 2, ' mm'),
-      krav: '≤ ' + criteria.sigmaMaxMm.toFixed(1) + ' mm',
+      krav: '≤ ' + nf(criteria.sigmaMaxMm, 1) + ' mm',
       ok: finalMetrics.maxSigPosMm <= criteria.sigmaMaxMm },
     { label: 'Kontrollerbarhet k', base: num(baseMetrics.kGlobal, 3), opt: num(finalMetrics.kGlobal, 3),
-      krav: '≥ ' + criteria.kMin.toFixed(2), ok: finalMetrics.kGlobal >= criteria.kMin },
+      krav: '≥ ' + nf(criteria.kMin, 2), ok: finalMetrics.kGlobal >= criteria.kMin },
     { label: 'Största MUF', base: num(baseMetrics.maxMufFactor, 2, ' × σ'),
       opt: num(finalMetrics.maxMufFactor, 2, ' × σ'),
       krav: '≤ ' + criteria.mufFactorMax + ' × σ',

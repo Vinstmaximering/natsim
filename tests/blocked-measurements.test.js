@@ -83,7 +83,8 @@ describe('validateNetwork använder samma källa', () => {
     const v = validateNetwork();
     const issue = v.issues.find(i => i.includes('saknar siktlinje'));
     expect(issue).toBeDefined();
-    expect(issue).toContain('2 mätning(ar)');
+    // Omgång 2: korrekt pluralböjning i stället för parentesplural.
+    expect(issue).toContain('2 mätningar saknar');
     expect(issue).toContain('S1→B1 (obs_1)');
   });
 });

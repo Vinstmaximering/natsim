@@ -1,12 +1,15 @@
 // RAPPORT studio-vy – simuleringsdata i läsbart fullskärmsformat med sektionsnavigering.
 import { getState, setState } from '../../state/store.js';
-import { CRS_DEFS, klassificeraKtal } from '../../core/constants.js';
-import { fG }                 from '../../core/designmatrix.js';
+import { CRS_DEFS, klassificeraKtal, PT } from '../../core/constants.js';
+import { rLabel }            from '../../core/redundancy.js';
+import { nf, gon }           from '../../core/format.js';
 
 const rClass   = r  => r  >= 0.5 ? 'val-good' : r  >= 0.3 ? 'val-caution' : r  >= 0.1 ? 'val-warn' : 'val-danger';
 const sigClass = mm => mm <  5   ? 'val-good' : mm <  20  ? 'val-caution' : 'val-danger';
 const kClass   = kv => klassificeraKtal(kv).cssKlass;
-const rLabel   = r  => r  >= 0.5 ? 'Starkt' : r >= 0.3 ? 'Acceptabelt' : r >= 0.1 ? 'Svagt' : 'Otillräckligt';
+// Omgång 1 noterade att detta var en lokal kopia av core/redundancy.js rLabel.
+// Importeras nu därifrån så att de två inte kan divergera.
+
 const D        = r  => r * 180 / Math.PI;
 
 let _el = null;
@@ -80,68 +83,69 @@ function _buildReportHTML(state) {
       ${TR('Koordinatobekanta', sr.nCoordUnkn ?? sr.unkn_n, 'val-info')}
       ${TR('Frihetsgrader f', sr.redundancy, sr.redundancy > 0 ? 'val-good' : 'val-danger')}
       ${TR('Σ redundansbidrag', sr.redundTotal)}
-      ${TR('κ (MUF-faktor)', sr.kappa != null ? sr.kappa.toFixed(2) : '2.80')}
+      ${TR('κ (MUF-faktor)', sr.kappa != null ? nf(sr.kappa, 2) : '2,80')}
     </table>`;
 
   // ── SEK 2: Kontrollerbarhetstal ──
   const s2 = `
     <div class="rs-k-box" style="border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)">
-      <span class="${kClass(sr.K_global)} rs-k-val">k = ${sr.K_global.toFixed(3)}</span>
+      <span class="${kClass(sr.K_global)} rs-k-val">k = ${nf(sr.K_global, 3)}</span>
       <span class="${kClass(sr.K_global)} rs-k-cls">${sr.K_class}</span>
     </div>
     <table class="rs-tbl">
-      ${TR('Medel r_i',        sr.rMean.toFixed(3),    rClass(sr.rMean))}
-      ${sr.rMinDist!=null ? TR('Min r_i (avstånd)', sr.rMinDist.toFixed(3), rClass(sr.rMinDist)) : ''}
-      ${sr.rMinHz  !=null ? TR('Min r_i (vinkel)',  sr.rMinHz.toFixed(3),   rClass(sr.rMinHz))   : ''}
+      ${TR('Medel r-tal',            nf(sr.rMean, 3),    rClass(sr.rMean))}
+      ${sr.rMinDist!=null ? TR('Minsta r-tal (avstånd)',  nf(sr.rMinDist, 3), rClass(sr.rMinDist)) : ''}
+      ${sr.rMinHz  !=null ? TR('Minsta r-tal (riktning)', nf(sr.rMinHz, 3),   rClass(sr.rMinHz))   : ''}
     </table>`;
 
   // ── SEK 3: Punktosäkerheter ──
-  const ptCols = '<th>Punkt</th><th>σN mm</th><th>σE mm</th><th>σpos mm</th><th>a mm</th><th>b mm</th><th>θ</th>';
+  const ptCols = '<th>Punkt</th><th>σN mm</th><th>σE mm</th><th>σ_pos mm</th><th>a mm</th><th>b mm</th><th>θ gon</th>';
   const ptRows = sr.ptResults.map(pr => {
     const sm = pr.sigPos * 1000 * k;
     const { pts } = state;
     const pt = (pts || []).find(p => p.id === pr.id);
-    const c  = pt?.type ? ({ known:'#00ff88',station:'#4fc3f7',new:'#ce93d8',detail:'#ffb74d' }[pt.type]||'var(--text-primary)') : 'var(--text-primary)';
+    // Omgång 2: färgen ur PT. Här låg en egen kopia av färgtabellen.
+    const c  = PT[pt?.type]?.c || 'var(--text-primary)';
     return `<tr class="rs-row">
       <td style="color:${c};font-weight:bold">${pr.id}</td>
-      <td class="val-warn">${(pr.sigN*1000).toFixed(2)}</td>
-      <td class="val-purple">${(pr.sigE*1000).toFixed(2)}</td>
-      <td class="${sigClass(sm)}" style="font-weight:bold">${sm.toFixed(2)}</td>
-      <td class="val-muted">${(pr.aSemi*1000*k).toFixed(2)}</td>
-      <td class="val-muted">${(pr.bSemi*1000*k).toFixed(2)}</td>
-      <td class="val-muted" style="font-size:12px">${fG(D(pr.theta))}</td>
+      <td class="val-warn">${nf(pr.sigN*1000, 2)}</td>
+      <td class="val-purple">${nf(pr.sigE*1000, 2)}</td>
+      <td class="${sigClass(sm)}" style="font-weight:bold">${nf(sm, 2)}</td>
+      <td class="val-muted">${nf(pr.aSemi*1000*k, 2)}</td>
+      <td class="val-muted">${nf(pr.bSemi*1000*k, 2)}</td>
+      <td class="val-muted" style="font-size:12px">${gon(D(pr.theta))}</td>
     </tr>`;
   }).join('');
   const s3 = `<div style="overflow-x:auto"><table class="rs-tbl rs-tbl-full">
     <thead><tr class="rs-th">${ptCols}</tr></thead><tbody>${ptRows}</tbody>
   </table></div>
-  <div class="val-muted rs-note">Felellipsskala: ${ellipsMode==='95'?'95% (k=2.45)':'1σ (Geo Professional)'}</div>`;
+  <div class="val-muted rs-note">Felellipsskala: ${ellipsMode==='95'?'95 % (k=2,45)':'1σ (Geo)'}</div>`;
 
   // ── SEK 4: Reliabilitet ──
-  const relCols = '<th>Sträcka</th><th>Typ</th><th>r_i</th><th>MUF</th><th class="val-info">YT</th><th class="val-warn">KP mm</th><th>Klass</th>';
+  const relCols = '<th>Sträcka</th><th>Typ</th><th>r-tal</th><th>MUF</th><th class="val-info">YT</th><th class="val-warn">KP mm</th><th>Klass</th>';
   const relRows = sr.redund.map(rd => {
-    const mufStr = rd.mdb.val===Infinity?'∞':rd.type==='dist'?(rd.mdb.val*1000).toFixed(1)+'mm':rd.mdb.val.toFixed(2)+'mgon';
+    const mufStr = rd.mdb.val===Infinity?'∞':rd.type==='dist'?nf(rd.mdb.val*1000, 1)+' mm':nf(rd.mdb.val, 2)+' mgon';
     const yt     = rd.mdb.val===Infinity?Infinity:rd.mdb.val*(1-rd.ri);
     // YT ärver MUF:s enhet: mgon för riktningar (HMK F.4.1).
-    const ytStr  = yt===Infinity?'∞':rd.type==='dist'?(yt*1000).toFixed(2)+'mm':yt.toFixed(4)+'mgon';
-    const kpStr  = rd.yt_m==null||rd.yt_m===Infinity?'∞':(rd.yt_m*1000).toFixed(2);
+    const ytStr  = yt===Infinity?'∞':rd.type==='dist'?nf(yt*1000, 2)+' mm':nf(yt, 4)+' mgon';
+    const kpStr  = rd.yt_m==null||rd.yt_m===Infinity?'∞':nf(rd.yt_m*1000, 2);
     return `<tr class="rs-row">
       <td class="val-secondary">${rd.fromId}→${rd.toId}</td>
-      <td class="val-muted">${rd.type==='dist'?'Avst':'Riktning'}</td>
-      <td class="${rClass(rd.ri)}" style="font-weight:bold">${rd.ri.toFixed(3)}</td>
+      <td class="val-muted">${rd.type==='dist'?'Avstånd':'Riktning'}</td>
+      <td class="${rClass(rd.ri)}" style="font-weight:bold">${nf(rd.ri, 3)}</td>
       <td class="val-muted">${mufStr}</td>
       <td class="val-info">${ytStr}</td>
       <td class="val-warn">${kpStr}</td>
       <td class="${rClass(rd.ri)}">${rLabel(rd.ri)}</td>
     </tr>`;
   }).join('');
-  const s4 = `<div class="val-muted rs-note">r = redundansbidrag | MUF = Minsta Urskiljbara Fel (κ=${sr.kappa||2.80})</div>
+  const s4 = `<div class="val-muted rs-note">r-tal = redundansbidrag per observation | MUF = Minsta Urskiljbara Fel (κ=${nf(sr.kappa||2.80, 2)})</div>
   <div style="overflow-x:auto"><table class="rs-tbl rs-tbl-full">
     <thead><tr class="rs-th">${relCols}</tr></thead><tbody>${relRows}</tbody>
   </table></div>`;
 
   // ── SEK 5: Punktkvalitet ──
-  const qCols = '<th>Punkt</th><th>σ_pos mm</th><th>Precision</th><th>Obs</th><th>r̄</th><th>Reliabilitet</th>';
+  const qCols = '<th>Punkt</th><th>σ_pos mm</th><th>Precision</th><th>Obs</th><th>Medel r-tal</th><th>Reliabilitet</th>';
   const qRows = sr.ptResults.map(pr => {
     const sm      = pr.sigPos * 1000;
     const precOK  = sm <= sigReq;
@@ -159,17 +163,17 @@ function _buildReportHTML(state) {
     else                { rcls='val-good';   relText='God';               relIcon='✓'; }
     const { pts } = state;
     const pt = (pts||[]).find(p=>p.id===pr.id);
-    const c  = pt?.type ? ({known:'#00ff88',station:'#4fc3f7',new:'#ce93d8',detail:'#ffb74d'}[pt.type]||'var(--text-primary)') : 'var(--text-primary)';
+    const c  = PT[pt?.type]?.c || 'var(--text-primary)';
     return `<tr class="rs-row">
       <td style="color:${c};font-weight:bold">${pr.id}</td>
-      <td class="${pcls}" style="font-weight:bold">${sm.toFixed(2)}</td>
-      <td class="${pcls}">${precOK?'✓ OK':'✗ Ej krav'}</td>
+      <td class="${pcls}" style="font-weight:bold">${nf(sm, 2)}</td>
+      <td class="${pcls}">${precOK?'✓ OK':'✗ Uppfyller ej'}</td>
       <td class="val-secondary">${Math.round(nObs/2)}</td>
-      <td class="${rcls}">${rMean!=null?rMean.toFixed(3):'–'}</td>
+      <td class="${rcls}">${nf(rMean, 3)}</td>
       <td class="${rcls}">${relIcon} ${relText}</td>
     </tr>`;
   }).join('');
-  const s5 = `<div class="val-muted rs-note">Krav σ_pos ≤ <b>${sigReq} mm</b></div>
+  const s5 = `<div class="val-muted rs-note">Krav σ_pos ≤ <b>${nf(sigReq, 1)} mm</b></div>
   <div style="overflow-x:auto"><table class="rs-tbl rs-tbl-full">
     <thead><tr class="rs-th">${qCols}</tr></thead><tbody>${qRows}</tbody>
   </table></div>`;
@@ -247,7 +251,7 @@ function _renderMain(mainEl, state) {
   const { simResult } = state;
   if (!simResult?.ok) {
     mainEl.innerHTML = `<div class="studio-loading" style="flex-direction:column;gap:12px">
-      <span>Ingen simulering körts. Gå till SIMULERING-fliken och tryck ▶</span>
+      <span>Ingen simulering har beräknats. Gå till fliken SIMULERING och tryck ▶ Beräkna simulering</span>
       <button class="studio-footer-btn" onclick="window._setTab?.('sim')">→ Gå till SIMULERING</button>
     </div>`;
     return;

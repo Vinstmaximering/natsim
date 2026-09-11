@@ -2,6 +2,7 @@
 // openEditPt(id) – ej openPM(id) (den buggen är rättad)
 import { getState, setState } from '../state/store.js';
 import { INSTRUMENTS, PT } from '../core/constants.js';
+import { nf, gon, komma, degToGonInput, gonToDeg } from '../core/format.js';
 import { calcM } from '../core/designmatrix.js';
 import { saveUndo } from '../state/undo.js';
 import { draw } from '../map/leaflet-setup.js';
@@ -24,9 +25,14 @@ export function openMM(id) {
     <div style="margin-bottom:8px;">
       <div style="font-size:11px;color:#7090a8;margin-bottom:3px;">Observationstyp</div>
       <div style="display:flex;gap:4px;">
-        ${btn("both","📐 Vinkel + Avstånd","#00ff88")}
-        ${btn("hz_only","📐 Endast vinkel","#4fc3f7")}
+        ${btn("both","📐 Riktning + Avstånd","#00ff88")}
+        ${btn("hz_only","📐 Endast riktning","#4fc3f7")}
         ${btn("dist_only","📏 Endast avstånd","#ffb74d")}
+      </div>
+      <div style="font-size:11px;color:#4a6070;margin-top:4px;line-height:1.5;">
+        Riktning = horisontalriktning mätt från uppställningen ${m.from} mot ${m.to}.
+        Utjämningen skattar en orienteringskonstant per uppställning, inte
+        vinklar mellan siktmål.
       </div>
     </div>
     <div style="margin-bottom:8px;">
@@ -35,7 +41,7 @@ export function openMM(id) {
         ${Object.entries(INSTRUMENTS).map(([k,v]) => `<option value="${k}"${k===preset?" selected":""}>${v.l}</option>`).join("")}
       </select>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-top:4px;">
-        <div><div style="font-size:11px;color:#7090a8;margin-bottom:2px;">σ vinkel (mgon)</div><input id="mm_shz" type="number" step="0.01" value="${m.sigHz_mgon??INSTRUMENTS[preset].sigHz}"></div>
+        <div><div style="font-size:11px;color:#7090a8;margin-bottom:2px;">σ riktning (mgon)</div><input id="mm_shz" type="number" step="0.01" value="${m.sigHz_mgon??INSTRUMENTS[preset].sigHz}"></div>
         <div><div style="font-size:11px;color:#7090a8;margin-bottom:2px;">σ avst mm</div><input id="mm_sdmm" type="number" step="0.1" value="${m.sigDist_mm??INSTRUMENTS[preset].sigDmm}"></div>
         <div><div style="font-size:11px;color:#7090a8;margin-bottom:2px;">σ avst ppm</div><input id="mm_sdppm" type="number" step="0.1" value="${m.sigDist_ppm??INSTRUMENTS[preset].sigDppm}"></div>
         <div><div style="font-size:11px;color:#ffb74d;margin-bottom:2px;">Satser</div><input id="mm_nsat" type="number" step="1" min="1" max="20" value="${m.numSatser??3}" style="border-color:#ffb74d44;"></div>
@@ -43,12 +49,17 @@ export function openMM(id) {
       <div id="mm_sigeff" style="font-size:11px;color:#6080a0;margin-top:3px;"></div>
     </div>
     <div style="margin-bottom:6px;">
-      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Uppmätt avstånd (m) — kalk: ${md?md.dc.toFixed(4):"-"} m</div>
+      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Uppmätt avstånd (m) — kalkylerat: ${md?nf(md.dc, 4):"–"} m</div>
       <input id="mm_d" type="number" step="0.001" placeholder="Lämna tomt = beräknat" value="${m.measDist??''}">
     </div>
     <div style="margin-bottom:8px;">
-      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Uppmätt riktningsvinkel (°) — kalk: ${md?md.bc.toFixed(4):"-"}°</div>
-      <input id="mm_h" type="number" step="0.0001" placeholder="Lämna tomt = beräknad" value="${m.measHz??''}">
+      <!-- Omgång 2: fältet tog tidigare decimalGRADER, den enda ytan i UI:t som
+           gjorde det. Nu gon, som all annan vinkelvisning. Värdet LAGRAS
+           fortfarande i grader (measHz) så att beräkningskärnan och sparade
+           projektfiler är oförändrade – konverteringen sker här och i saveMM().
+           Inputfält får inte ha decimalkomma, därav degToGonInput(). -->
+      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Uppmätt riktning (gon) — kalkylerat: ${md?gon(md.bc):"–"} gon</div>
+      <input id="mm_h" type="number" step="0.0001" placeholder="Lämna tomt = beräknad" value="${m.measHz!=null?degToGonInput(m.measHz):''}">
     </div>
     <div style="margin-bottom:8px;">
       <div style="font-size:11px;color:#4fc3f7;margin-bottom:4px;">FRÅN:</div>
@@ -80,9 +91,9 @@ export function setObsType(id, t) {
 function _updateSigEff() {
   const shz  = parseFloat(document.getElementById("mm_shz")?.value)  || 0;
   const nsat = parseInt(document.getElementById("mm_nsat")?.value)    || 3;
-  const eff  = (shz / Math.sqrt(nsat)).toFixed(4);
+  const eff  = shz / Math.sqrt(nsat);
   const el   = document.getElementById("mm_sigeff");
-  if (el) el.innerHTML = `σ vinkel effektiv: <span style="color:#00ff88">${eff} mgon</span> (${shz}/${Math.sqrt(nsat).toFixed(2)})`;
+  if (el) el.innerHTML = `σ riktning effektiv: <span style="color:#00ff88">${nf(eff, 4)} mgon</span> (${komma(shz)}/${nf(Math.sqrt(nsat), 2)})`;
 }
 
 export function saveMM(id) {
@@ -92,7 +103,8 @@ export function saveMM(id) {
   const dv = document.getElementById("mm_d").value.trim();
   const hv = document.getElementById("mm_h").value.trim();
   m.measDist   = dv !== "" ? parseFloat(dv) : null;
-  m.measHz     = hv !== "" ? parseFloat(hv) : null;
+  // Fältet är i gon, measHz lagras i grader – se kommentaren i openMM().
+  m.measHz     = hv !== "" ? gonToDeg(hv) : null;
   m.instrPreset = document.getElementById("mm_instr").value;
   m.obsType    = m.obsType || "both";
   m.sigHz_mgon  = parseFloat(document.getElementById("mm_shz").value)  || null;
@@ -113,10 +125,11 @@ export function openEditPt(id) {
   const mc = meas.filter(m => m.from === id || m.to === id).length;
   mi().innerHTML = `
     <div style="font-size:14px;color:${c};margin-bottom:10px;font-weight:bold;">Redigera: ${pt.id}</div>
-    ${mc ? `<div style="font-size:12px;color:#ff9900;margin-bottom:8px;">⚠ ${mc} mätning(ar) kopplade</div>` : ""}
+    ${mc ? `<div style="font-size:12px;color:#ff9900;margin-bottom:8px;">⚠ ${mc} ${mc === 1 ? "mätning kopplad" : "mätningar kopplade"}</div>` : ""}
     <div style="font-size:11px;color:#7090a8;background:#091424;padding:6px;border-radius:3px;margin-bottom:8px;">Ändra E/N-koordinater för att flytta punkten på kartan.</div>
-    ${[["id","Punkt-ID","text",pt.id],["E","E-koordinat (m)","number",(pt.E||0).toFixed(3)],
-       ["N","N-koordinat (m)","number",(pt.N||0).toFixed(3)],["H","Höjd (m ö.h.)","number",(pt.H||0).toFixed(3)]]
+    ${/* Inputfält: rå punktnotation, komma tömmer fältet i webbläsaren. */""}
+    ${[["id","Punkt-ID","text",pt.id],["N","N-koordinat (m)","number",(pt.N||0).toFixed(3)],
+       ["E","E-koordinat (m)","number",(pt.E||0).toFixed(3)],["H","Höjd (m ö.h.)","number",(pt.H||0).toFixed(3)]]
       .map(([k,l,t,v]) => `<div style="margin-bottom:6px;"><div style="font-size:11px;color:#7090a8;margin-bottom:2px;">${l}</div><input id="me_${k}" type="${t}" value="${v}"></div>`).join("")}
     <div style="margin-bottom:6px;">
       <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Befästning / markering</div>
@@ -127,8 +140,8 @@ export function openEditPt(id) {
       <input id="me_prisma" type="text" placeholder="ex. Leica Standardprisma..." value="${(pt.prisma||'').replace(/"/g,'&quot;')}" list="prisma-list">
     </div>
     <div style="margin-bottom:8px;">
-      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Centreringsfel (mm) — lämna tomt = globalt (${centerErr} mm)</div>
-      <input id="me_ce" type="number" step="0.1" min="0" placeholder="Globalt (${centerErr} mm)" value="${pt.centerErr != null ? pt.centerErr : ''}">
+      <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">Centreringsfel (mm) — lämna tomt = globalt (${komma(centerErr)} mm)</div>
+      <input id="me_ce" type="number" step="0.1" min="0" placeholder="Globalt (${komma(centerErr)} mm)" value="${pt.centerErr != null ? pt.centerErr : ''}">
     </div>
     <div style="margin-bottom:8px;">
       <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">Typ</div>

@@ -31,6 +31,7 @@ import { computeSimulation, stationIds } from './simulation.js';
 import { d2EN } from './designmatrix.js';
 import { hasLineOfSight } from './visibility.js';
 import { INSTRUMENTS } from './constants.js';
+import { nf } from './format.js';
 import { criteriaForClass, metricsFromSim, checkCriteria } from './optimizer-criteria.js';
 
 // Säkerhetsgränser. Fas 1 får aldrig lägga till mer än MAX_ADDITIONS mätningar
@@ -160,8 +161,9 @@ export function scoreDelta(before, after, criteria, weights) {
   return weights.sigma * dSigma + weights.r * dR;
 }
 
-const fmtMm = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(2) : 'oändlig');
-const fmtR  = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + v.toFixed(3) : 'oändlig');
+// Omgång 2: decimalkomma i beslutsspårningsloggen, som visas i dialogen.
+const fmtMm = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + nf(v, 2) : 'oändlig');
+const fmtR  = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '') + nf(v, 3) : 'oändlig');
 
 /**
  * Fix 2.3: raden som redovisar tvånivåkravet på r efter varje operation.
@@ -171,7 +173,7 @@ const fmtR  = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '')
  */
 export function formatRReport(e) {
   if (e.belowSoft == null) return '';
-  const soft = Number(e.softLimit).toFixed(2), hard = Number(e.hardLimit).toFixed(2);
+  const soft = nf(e.softLimit, 2), hard = nf(e.hardLimit, 2);
   const mjuk = e.belowSoft === 0
     ? `Inga observationer under r ${soft}.`
     : `${e.belowSoft} observation${e.belowSoft === 1 ? '' : 'er'} under r ${soft} (rapporteras).`;
@@ -194,7 +196,7 @@ export function formatLogEntry(e) {
         ? `dubbelmätning ${e.from}→${e.to} (ytterligare mätning av sträckan ${e.line})`
         : `mätning ${e.from}→${e.to}`;
     const strackan = e.lineRBefore != null && e.lineRAfter != null
-      ? ` Höjer r-tal för sträckan ${e.line} från ${e.lineRBefore.toFixed(2)} till ${e.lineRAfter.toFixed(2)}.`
+      ? ` Höjer r-tal för sträckan ${e.line} från ${nf(e.lineRBefore, 2)} till ${nf(e.lineRAfter, 2)}.`
       : '';
     return head + `Lade till ${vad}. Störst förbättring av nätet: ${eff}.${strackan} ` +
       (e.criteriaOk ? 'Alla acceptanskriterier hålls nu.'

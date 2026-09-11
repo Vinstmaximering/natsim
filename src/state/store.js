@@ -57,7 +57,8 @@ let _state = {
   symSize: 10,
   ellScale: 50,
   ellipsMode: "1sig",   // "1sig" = 1σ (Geo Professional), "95" = 95%-konfidensellips
-  au: "grad",           // vinkelenhet: "grad" (gon) eller "dms"
+  // state.au (vinkelenhet grad/dms) togs bort i UI-städning Omgång 2
+  // (2026-09-11). Alla vinklar visas i gon – se core/format.js.
 };
 
 const _listeners = [];

@@ -93,11 +93,12 @@ describe('simulation-studio med simResult', () => {
     expect(rows).toHaveLength(2); // S1 och NY1
   });
 
-  it('stat-kort i sidopanelen visar K-tal', () => {
+  it('stat-kort i sidopanelen visar k-tal', () => {
     const c = makeContainers();
     render(c, getState());
-    expect(c.sidebar.textContent).toContain('K-tal');
-    expect(c.sidebar.textContent).toContain('0.65');
+    // Omgång 2: etiketten är gemen ("k-tal") och värdet har decimalkomma.
+    expect(c.sidebar.textContent).toContain('k-tal');
+    expect(c.sidebar.textContent).toContain('0,65');
   });
 
   it('sub-flik Mätningar renderar Från/Till-kolumner', () => {
@@ -136,14 +137,16 @@ describe('simulation-studio med simResult', () => {
     }
   });
 
-  it('sortering på σpos-kolumn sorterar rader', () => {
+  it('sortering på σ_pos-kolumn sorterar rader', () => {
     const c = makeContainers();
     render(c, getState());
     const sigHdr = [...c.main.querySelectorAll('thead th')]
-      .find(th => th.textContent.trim() === 'σpos mm');
-    sigHdr?.click();
+      .find(th => th.textContent.trim() === 'σ_pos mm');
+    expect(sigHdr, 'σ_pos-kolumnen hittades inte').toBeTruthy();
+    sigHdr.click();
+    // Omgång 2: cellerna visas med decimalkomma, så parseFloat() duger inte.
     const cells = [...c.main.querySelectorAll('tbody td:nth-child(8)')]
-      .map(td => parseFloat(td.textContent));
+      .map(td => parseFloat(td.textContent.replace(',', '.')));
     expect(cells).toEqual([...cells].sort((a,b) => a - b));
   });
 });

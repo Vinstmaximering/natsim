@@ -1,9 +1,12 @@
 // MÄTNINGAR studio-vy – mätningstabell med sortering, filter och residual-kolumn.
 import { getState, setState }    from '../../state/store.js';
 import { calcM }                 from '../../core/designmatrix.js';
+import { nf }                    from '../../core/format.js';
 import { sortByColumn, filterByText, filterByType, exportToCSV } from '../table-utils.js';
 
-const OBS_LABEL = { both:'Hz+Dm', hz_only:'Hz', dist_only:'Dm' };
+// Omgång 2: Hz står för horisontalRIKTNING, inte vinkel. Se Fix 2 i
+// docs/troubleshooting/ui_inventering_20260910.md.
+const OBS_LABEL = { both:'Riktning + Avstånd', hz_only:'Endast riktning', dist_only:'Endast avstånd' };
 const OBS_COLOR = { both:'var(--color-success)', hz_only:'var(--accent)', dist_only:'var(--color-measure)' };
 
 // Modul-scope filter/sort – bevaras under sessionen.
@@ -44,7 +47,7 @@ function _avgSig(meas, field) {
   return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
 }
 
-const fmt3 = v => v != null ? Number(v).toFixed(3) : '–';
+const fmt3 = v => nf(v, 3);
 
 // ── Sidopanel ────────────────────────────────────────────────────────────────
 
@@ -72,15 +75,15 @@ function _sidebar(el, state) {
       </div>
       <div class="studio-stat-card">
         <div class="sc-val" style="color:var(--color-success)">${nBoth}</div>
-        <div class="sc-lbl">Hz+Dm</div>
+        <div class="sc-lbl">Riktn. + avst.</div>
       </div>
       <div class="studio-stat-card">
         <div class="sc-val" style="color:var(--accent)">${nHz}</div>
-        <div class="sc-lbl">Enbart Hz</div>
+        <div class="sc-lbl">Endast riktning</div>
       </div>
       <div class="studio-stat-card">
         <div class="sc-val" style="color:var(--color-measure)">${nDm}</div>
-        <div class="sc-lbl">Enbart Dm</div>
+        <div class="sc-lbl">Endast avstånd</div>
       </div>
     </div>
 
@@ -111,8 +114,8 @@ function _sidebar(el, state) {
     ${meanHz != null || meanDm != null ? `
     <div class="studio-filter-section">
       <div class="sf-head">Medel σ (effektiv)</div>
-      ${meanHz != null ? `<div class="studio-filter-row" style="cursor:default">σ-Hz: <span style="color:var(--text-value);margin-left:auto;font-family:monospace">${fmt3(meanHz)} mgon</span></div>` : ''}
-      ${meanDm != null ? `<div class="studio-filter-row" style="cursor:default">σ-Dm: <span style="color:var(--text-value);margin-left:auto;font-family:monospace">${fmt3(meanDm)} mm</span></div>` : ''}
+      ${meanHz != null ? `<div class="studio-filter-row" style="cursor:default">σ riktning: <span style="color:var(--text-value);margin-left:auto;font-family:monospace">${fmt3(meanHz)} mgon</span></div>` : ''}
+      ${meanDm != null ? `<div class="studio-filter-row" style="cursor:default">σ avstånd: <span style="color:var(--text-value);margin-left:auto;font-family:monospace">${fmt3(meanDm)} mm</span></div>` : ''}
     </div>` : ''}`;
 
   el.querySelectorAll('input[data-obs]').forEach(cb =>
@@ -143,11 +146,11 @@ const COLS = [
   { key:'from',     label:'Från' },
   { key:'to',       label:'Till' },
   { key:'type',     label:'Typ' },
-  { key:'dist',     label:'Avst kalk (m)' },
-  { key:'sigHz',    label:'σ-Hz (mgon)' },
-  { key:'sigDm',    label:'σ-Dm (mm)' },
+  { key:'dist',     label:'Avstånd kalk. (m)' },
+  { key:'sigHz',    label:'σ riktning (mgon)' },
+  { key:'sigDm',    label:'σ avstånd (mm)' },
   { key:'hasInput', label:'Inmatat' },
-  { key:'ri',       label:'r_i' },
+  { key:'ri',       label:'r-tal' },
 ];
 
 function _main(el, rows, state) {
@@ -169,7 +172,7 @@ function _main(el, rows, state) {
       <td class="mono">${fmt3(r.sigHz)}</td>
       <td class="mono">${fmt3(r.sigDm)}</td>
       <td style="text-align:center">${r.hasInput ? '✓' : ''}</td>
-      <td class="mono" style="color:${r.ri != null ? (r.ri < 0.1 ? 'var(--color-danger)' : r.ri < 0.3 ? 'var(--color-warning-text)' : 'var(--color-success)') : 'var(--text-muted)'}">${r.ri != null ? r.ri.toFixed(3) : '–'}</td>
+      <td class="mono" style="color:${r.ri != null ? (r.ri < 0.1 ? 'var(--color-danger)' : r.ri < 0.3 ? 'var(--color-warning-text)' : 'var(--color-success)') : 'var(--text-muted)'}">${nf(r.ri, 3)}</td>
     </tr>`;
   }).join('');
 
@@ -215,10 +218,10 @@ function _footer(el, total, shown) {
       { key:'from',  label:'Från' },
       { key:'to',    label:'Till' },
       { key:'type',  label:'Typ' },
-      { key:'dist',  label:'Avst kalk (m)' },
-      { key:'sigHz', label:'σ-Hz (mgon)' },
-      { key:'sigDm', label:'σ-Dm (mm)' },
-      { key:'ri',    label:'r_i' },
+      { key:'dist',  label:'Avstånd kalk. (m)' },
+      { key:'sigHz', label:'σ riktning (mgon)' },
+      { key:'sigDm', label:'σ avstånd (mm)' },
+      { key:'ri',    label:'r-tal' },
     ], 'natsim-matningar')
   );
 }

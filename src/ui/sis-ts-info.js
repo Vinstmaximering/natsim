@@ -8,6 +8,8 @@
 // eftersom den speglar HMK:s beteckning k_i (Formel F.6).
 // Se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 1.
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
+// Omgång 2: all sifferformatering går genom core/format.js.
+import { nf, komma } from '../core/format.js';
 
 function row(label, value) {
   return `<div style="display:flex;justify-content:space-between;padding:2px 0;">
@@ -28,16 +30,16 @@ export function renderClassInfo(klass) {
     <div style="padding:6px 8px;border-bottom:1px solid var(--border-default);">
       <div style="font-size:10px;font-weight:bold;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:4px;">MÄTKRAV (SIS-TS 21143:2016 A.9)</div>
       ${row('Totalstation', c.totalstation)}
-      ${row('Spridning Hv/Vv', '≤ ' + c.spridningHvVv_mgon.toFixed(1).replace('.', ',') + ' mgon')}
+      ${row('Spridning Hv/Vv', '≤ ' + nf(c.spridningHvVv_mgon, 1) + ' mgon')}
       ${row('Spridning längd', '≤ ' + c.spridningLangd_mm + ' mm')}
       ${row('Antal helsatser', '≥ ' + c.antalHelsatser)}
-      ${row('Dubbelmätta läng.', c.dubbelmattaLangder)}
-      ${row('Centrering', c.centreringMedelfel_mm + ' mm')}
+      ${row('Dubbelmätta längder', komma(c.dubbelmattaLangder))}
+      ${row('Centrering', komma(c.centreringMedelfel_mm) + ' mm')}
     </div>
     <div style="padding:6px 8px;border-bottom:1px solid var(--border-default);">
       <div style="font-size:10px;font-weight:bold;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:4px;">GENERELLA KRAV (ALLA KLASSER)</div>
-      ${row('k-tal nätet', '≥ ' + g.k_global_min.toFixed(2).replace('.', ','))}
-      ${row('r-tal per obs.', '≥ ' + g.k_individual_min.toFixed(2).replace('.', ','))}
+      ${row('k-tal nätet', '≥ ' + nf(g.k_global_min, 2))}
+      ${row('r-tal per obs.', '≥ ' + nf(g.k_individual_min, 2))}
       ${row('MUF', '≤ ' + g.muf_factor_max + ' × σ_mät')}
       ${row('YT', '≤ ' + g.yt_factor_max + ' × σ_mät')}
     </div>

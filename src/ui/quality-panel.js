@@ -5,6 +5,7 @@ import { viewNet } from '../state/optimizer-proposal.js';
 import { setAutoSim } from '../state/undo.js';
 import { findBlockedMeasurements } from '../core/visibility.js';
 import { klassificeraKtal } from '../core/constants.js';
+import { nf } from '../core/format.js';
 
 export { setAutoSim };
 
@@ -37,18 +38,18 @@ export function updateQualityPanel() {
 
   const k = sr.K_global;
   document.getElementById("qK").innerHTML =
-    `<span class="${kClass(k)}" style="font-weight:700">${k.toFixed(3)}</span> (${sr.K_class})`;
+    `<span class="${kClass(k)}" style="font-weight:700">${nf(k, 3)}</span> (${sr.K_class})`;
   document.getElementById("qNu").textContent = `${sr.meas_n}/${sr.unkn_n}`;
   document.getElementById("qF").textContent  = sr.redundancy;
 
   const minR = Math.min(sr.rMinDist ?? Infinity, sr.rMinHz ?? Infinity);
   document.getElementById("qRmin").innerHTML =
-    `<span class="${rClass(isFinite(minR) ? minR : 0)}">${isFinite(minR) ? minR.toFixed(3) : "–"}</span>`;
+    `<span class="${rClass(isFinite(minR) ? minR : 0)}">${isFinite(minR) ? nf(minR, 3) : "–"}</span>`;
 
   const sigPosVals = (sr.allPtResults || []).filter(r => r.type !== "known" && r.sigPos > 0).map(r => r.sigPos * 1000);
   const sMax = sigPosVals.length ? Math.max(...sigPosVals) : 0;
   document.getElementById("qSmax").innerHTML = sigPosVals.length
-    ? `<span class="${sClass(sMax)}">${sMax.toFixed(1)} mm</span>`
+    ? `<span class="${sClass(sMax)}">${nf(sMax, 1)} mm</span>`
     : "–";
 
   // Mätningar utan sikt (visas bara när hinder finns)

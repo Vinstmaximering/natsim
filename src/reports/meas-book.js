@@ -1,27 +1,28 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 2935–3228.
 // openMeasBook, buildSchemeText, exportMeasScheme
 import { getState } from '../state/store.js';
-import { CRS_DEFS, INSTRUMENTS, PT } from '../core/constants.js';
-import { calcM, fG, fD } from '../core/designmatrix.js';
+import { CRS_DEFS, INSTRUMENTS, ptLabel, ptLabelShort } from '../core/constants.js';
+import { calcM } from '../core/designmatrix.js';
+import { nf, gon } from '../core/format.js';
 
 // ── Mätschema som text – rad 2935–2955 exakt ────────────────────────────────
 export function buildSchemeText() {
-  const { meas, pts, defaultInstr, centerErr, au } = getState();
+  const { meas, pts, defaultInstr, centerErr } = getState();
   if (meas.length === 0) return "Inga mätningar definierade.";
-  const fmt     = d => au === "grad" ? fG(d) : fD(d);
+  const fmt     = d => gon(d);
   const fromIds = [...new Set(meas.map(m => m.from))];
   let txt = `MÄTSCHEMA – ${new Date().toLocaleDateString("sv-SE")}\n${"═".repeat(44)}\n`;
-  txt += `Instrument: ${INSTRUMENTS[defaultInstr].l}\nCentreringsfel: ${centerErr} mm\n\n`;
+  txt += `Instrument: ${INSTRUMENTS[defaultInstr].l}\nCentreringsfel: ${nf(centerErr, 1)} mm\n\n`;
   fromIds.forEach(fid => {
     const fp     = pts.find(p => p.id === fid);
     const myMeas = meas.filter(m => m.from === fid);
-    const ptType = fp ? PT[fp.type].l : "okänd";
+    const ptType = fp ? ptLabel(fp.type) : "okänd";
     txt += `${"─".repeat(44)}\nUPPSTÄLLNING: ${fid}  (${ptType})\n${"─".repeat(44)}\n`;
-    txt += `${"Nr".padEnd(6)} ${"Till".padEnd(12)} ${"Dist(m)".padStart(9)} ${"Riktning".padStart(13)} Satser\n`;
+    txt += `${"Nr".padEnd(6)} ${"Till".padEnd(12)} ${"Dist(m)".padStart(9)} ${"Riktning (gon)".padStart(14)} Satser\n`;
     myMeas.forEach((m, i) => {
       const md = calcM(m, pts);
       const ns = m.numSatser != null ? m.numSatser : 3;
-      txt += `${(i+1+".").padEnd(6)} ${m.to.padEnd(12)} ${(md?md.dist.toFixed(3):"–").padStart(9)} ${(md?fmt(md.hz):"–").padStart(13)} ${ns} sat\n`;
+      txt += `${(i+1+".").padEnd(6)} ${m.to.padEnd(12)} ${(md?nf(md.dist,3):"–").padStart(9)} ${(md?fmt(md.hz):"–").padStart(14)} ${ns} sat\n`;
     });
     txt += `  Totalt: ${myMeas.length} mätning(ar)\n\n`;
   });
@@ -39,9 +40,9 @@ export function exportMeasScheme() {
 
 // ── Mätbok A4 – popup-fönster för utskrift – rad 2965–3228 exakt ─────────────
 export function openMeasBook() {
-  const { meas, pts, defaultInstr, centerErr, au, activeCRS } = getState();
+  const { meas, pts, defaultInstr, centerErr, activeCRS } = getState();
   if (meas.length === 0) { alert("Inga mätningar definierade."); return; }
-  const fmt      = d => au === "grad" ? fG(d) : fD(d);
+  const fmt      = d => gon(d);
   const crsName  = CRS_DEFS[activeCRS]?.name || activeCRS;
   const dateStr  = new Date().toLocaleDateString("sv-SE");
   const instrName = INSTRUMENTS[defaultInstr].l.split("(")[0].trim();
@@ -50,7 +51,7 @@ export function openMeasBook() {
   const stationPages = fromIds.map(fid => {
     const fp         = pts.find(p => p.id === fid);
     const myMeas     = meas.filter(m => m.from === fid);
-    const ptType     = fp ? PT[fp.type].l : "okänd";
+    const ptType     = fp ? ptLabel(fp.type) : "okänd";
     const knownCount = myMeas.filter(m => pts.find(p => p.id===m.to && p.type==="known")).length;
 
     const rows = myMeas.map((m, i) => {
@@ -58,11 +59,13 @@ export function openMeasBook() {
       const ns      = m.numSatser != null ? m.numSatser : 3;
       const toType  = pts.find(p => p.id===m.to)?.type || "";
       const typeCol = toType==="known" ? "#1a4a1a" : toType==="station" ? "#1a2a4a" : "#2a2a2a";
-      const typeLbl = toType==="known" ? "KP" : toType==="station" ? "UPS" : toType==="detail" ? "DET" : "NY";
+      // Omgång 2: badgen använder PT:s korta etikett. Här låg en egen
+      // förkortningsuppsättning (KP/UPS/DET/NY) – en av sju.
+      const typeLbl = ptLabelShort(toType);
       return `<tr>
         <td class="nr">${i+1}</td>
         <td class="ptid"><span class="badge" style="background:${typeCol}">${typeLbl}</span> ${m.to}</td>
-        <td class="num mono">${md ? md.dist.toFixed(3) : "–"}</td>
+        <td class="num mono">${md ? nf(md.dist, 3) : "–"}</td>
         <td class="num mono">${md ? fmt(md.hz) : "–"}</td>
         <td class="num">${ns}</td>
         <td class="inp"></td><td class="inp"></td><td class="inp"></td><td class="inp wide"></td>
@@ -79,7 +82,7 @@ export function openMeasBook() {
       <div class="page-header">
         <div class="header-left">
           <div class="project-title">STOMNÄTSMÄTNING – MÄTBOK</div>
-          <div class="project-sub">${crsName} &nbsp;|&nbsp; ${instrName} &nbsp;|&nbsp; Centreringsfel: ${centerErr} mm</div>
+          <div class="project-sub">${crsName} &nbsp;|&nbsp; ${instrName} &nbsp;|&nbsp; Centreringsfel: ${nf(centerErr, 1)} mm</div>
         </div>
         <div class="header-right">
           <div class="date-box">Datum: <span class="date-line">____________________</span></div>
@@ -100,7 +103,7 @@ export function openMeasBook() {
       </div>
       <table class="meas-table"><thead><tr>
         <th class="nr">Nr</th><th class="ptid">Målpunkt</th>
-        <th class="num">Kalk. dist (m)</th><th class="num">Kalk. riktning</th>
+        <th class="num">Kalk. dist (m)</th><th class="num">Kalk. riktning (gon)</th>
         <th class="num">Sat.</th>
         <th class="inp">Hz 1 (sats 1)</th><th class="inp">Hz 2 (sats 2)</th>
         <th class="inp">Dist. (m)</th><th class="inp wide">Anmärkning</th>
@@ -124,7 +127,7 @@ export function openMeasBook() {
       <div class="cover-row"><span>Projekt:</span><span class="cover-line"></span></div>
       <div class="cover-row"><span>Koordinatsystem:</span><span class="cover-val">${crsName}</span></div>
       <div class="cover-row"><span>Instrument:</span><span class="cover-val">${instrName}</span></div>
-      <div class="cover-row"><span>Centreringsfel:</span><span class="cover-val">${centerErr} mm</span></div>
+      <div class="cover-row"><span>Centreringsfel:</span><span class="cover-val">${nf(centerErr, 1)} mm</span></div>
       <div class="cover-row"><span>Antal uppställningar:</span><span class="cover-val">${fromIds.length}</span></div>
       <div class="cover-row"><span>Antal mätningar:</span><span class="cover-val">${meas.length}</span></div>
       <div class="cover-row"><span>Skapad:</span><span class="cover-val">${dateStr}</span></div>
@@ -135,7 +138,7 @@ export function openMeasBook() {
       ${fromIds.map((fid,i) => {
         const fp = pts.find(p=>p.id===fid);
         const n  = meas.filter(m=>m.from===fid).length;
-        return `<div class="toc-row"><span>${i+2}. Uppst. ${fid} (${fp?PT[fp.type].l:"?"})</span><span>${n} mätningar</span></div>`;
+        return `<div class="toc-row"><span>${i+2}. Uppställning ${fid} (${fp?ptLabel(fp.type):"?"})</span><span>${n} mätningar</span></div>`;
       }).join("")}
     </div>
   </div><div class="page-break"></div>`;
