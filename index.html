@@ -146,13 +146,27 @@
         <input type="checkbox" id="autoSimToggle" checked style="margin:0;cursor:pointer"> auto
       </label>
     </div>
+    <!--
+      Tooltiparna nedan rättade i UI-städning Omgång 1 (2026-09-11).
+      Se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2.
+
+      HISTORIK – k-tooltipen: den tidigare texten "≥1.14 utmärkt, ≥0.5 bra,
+      ≥0.3 godkänt" beskrev en klassificering som INTE längre finns i koden.
+      Gränsen 1,14 ströks medvetet ur beräkningskärnan – se blockkommentaren i
+      src/core/constants.js (K_NAT_GOLV / klassificeraKtal): 1,14 är maxvärdet
+      för viktsenhetens standardosäkerhet u₀ vid f = 70, en helt annan storhet,
+      och var matematiskt onåbar för k = f/n ∈ [0,1]. Dessutom var "≥0.3
+      godkänt" fel mot normen: normgolvet är 0,50 (SIS-TS 21143:2016 §6.2.2),
+      och bandet 0,30–0,50 uppfyller INTE kravet (uppfyllerNorm: false).
+      Ändra inte tillbaka utan att först läsa constants.js.
+    -->
     <div id="qPanelBody" style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-family:monospace">
-      <span class="qpl val-muted" title="K-tal: global redundanskvot. ≥1.14 utmärkt, ≥0.5 bra, ≥0.3 godkänt." data-tip="K-tal: global redundanskvot. ≥1.14=utmärkt, ≥0.5=bra, ≥0.3=godkänt">k</span><span id="qK">–</span>
-      <span class="qpl val-muted" title="Antal mätningar (n) / antal okända (u)." data-tip="n/u: antal mätningar / antal okända">n/u</span><span id="qNu">–</span>
+      <span class="qpl val-muted" title="Global kontrollerbarhet k = f/n. Normgolv ≥ 0,50 enligt SIS-TS 21143:2016 §6.2.2 – gäller alla mätklasser. Högre värde = bättre redundans i nätet." data-tip="k: global kontrollerbarhet f/n. Normgolv ≥0,50 (SIS-TS §6.2.2, alla mätklasser). Högre = bättre redundans.">k</span><span id="qK">–</span>
+      <span class="qpl val-muted" title="Antal observationer (n) / antal obekanta (u). En mätning ger 1–2 observationer beroende på observationstyp." data-tip="n/u: antal observationer / antal obekanta">n/u</span><span id="qNu">–</span>
       <span class="qpl val-muted" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
-      <span class="qpl val-muted" title="Minsta enskilda redundanstal r_i. ≥0.5 bra, <0.1 risk." data-tip="min r_i: minsta redundanstal ≥0.5=bra, <0.1=risk">min r_i</span><span id="qRmin">–</span>
-      <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland nya punkter." data-tip="max σ_pos: störst positionsosäkerhet bland nya punkter">max σ_pos</span><span id="qSmax">–</span>
-      <span class="qpl val-muted" title="Antal befintliga mätningar utan siktlinje till hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
+      <span class="qpl val-muted" title="Minsta enskilda redundanstal r_i. Under 0,30 underkänner valideringen observationen; 0,50 är nivån för ingen anmärkning (HMK Bilaga F.6)." data-tip="min r_i: minsta redundanstal. <0,30 underkänt, ≥0,50 ingen anmärkning">min r_i</span><span id="qRmin">–</span>
+      <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland fria punkter. Kända punkter är fixerade och räknas inte." data-tip="max σ_pos: störst positionsosäkerhet bland fria punkter">max σ_pos</span><span id="qSmax">–</span>
+      <span class="qpl val-muted" title="Antal befintliga mätningar vars siktlinje blockeras av ett hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
     </div>
     <div id="qTip" style="display:none;margin-top:5px;font-size:9px;line-height:1.4;padding-top:4px;"></div>
   </div>

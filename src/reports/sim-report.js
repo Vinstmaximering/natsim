@@ -43,10 +43,10 @@ export function exportSimReport() {
   // värdena skalades, vilket underskattade dem med faktor 2,45 mot sin egen
   // rubrik.
   r += `3. PUNKTOSÄKERHETER – standardosäkerhet 1σ (k=1)\n${sep}\n`;
-  r += `${pad("Punkt",7)} ${rpad("σE mm",7)} ${rpad("σN mm",7)} ${rpad("σpos mm",8)} ${rpad("a mm",7)} ${rpad("b mm",7)} θ\n`;
+  r += `${pad("Punkt",7)} ${rpad("σN mm",7)} ${rpad("σE mm",7)} ${rpad("σpos mm",8)} ${rpad("a mm",7)} ${rpad("b mm",7)} θ\n`;
   sr.ptResults.forEach(pr => {
     const sm = (pr.sigPos*1000).toFixed(2);
-    r += `${pad(pr.id,7)} ${rpad((pr.sigE*1000).toFixed(2),7)} ${rpad((pr.sigN*1000).toFixed(2),7)} ${rpad(sm,8)} ${rpad((pr.aSemi*1000).toFixed(2),7)} ${rpad((pr.bSemi*1000).toFixed(2),7)} ${fG(D(pr.theta))}\n`;
+    r += `${pad(pr.id,7)} ${rpad((pr.sigN*1000).toFixed(2),7)} ${rpad((pr.sigE*1000).toFixed(2),7)} ${rpad(sm,8)} ${rpad((pr.aSemi*1000).toFixed(2),7)} ${rpad((pr.bSemi*1000).toFixed(2),7)} ${fG(D(pr.theta))}\n`;
   });
   r += "\n";
 
@@ -105,7 +105,7 @@ export function exportCalcReport() {
   const f6 = v => v.toFixed(6), f4 = v => v.toFixed(4), f3 = v => v.toFixed(3);
   let r = "";
 
-  r += `${SEP}\nDETALJERED BERÄKNINGSRAPPORT – NÄTSIMULERING\n${SEP}\n`;
+  r += `${SEP}\nDETALJERAD BERÄKNINGSRAPPORT – NÄTSIMULERING\n${SEP}\n`;
   r += `Datum/tid:       ${now}\n`;
   r += `Koordinatsystem: ${crsName}\n`;
   r += `Metod:           Minsta-kvadrat-utjämning, riktningsmodell med orienteringskonstanter\n`;
@@ -211,7 +211,7 @@ export function exportCalcReport() {
       const Qee=sr.Qxx[i*2][i*2],Qnn=sr.Qxx[i*2+1][i*2+1],Qen=sr.Qxx[i*2][i*2+1];
       const mean=(Qee+Qnn)/2, disc=Math.sqrt(((Qee-Qnn)/2)**2+Qen*Qen);
       r += `${p.id}:\n  Qee=${f6(Qee)}  Qnn=${f6(Qnn)}  Qen=${f6(Qen)}\n`;
-      r += `  σ_E=${f4(Math.sqrt(Math.max(0,Qee))*1000)} mm  σ_N=${f4(Math.sqrt(Math.max(0,Qnn))*1000)} mm\n`;
+      r += `  σ_N=${f4(Math.sqrt(Math.max(0,Qnn))*1000)} mm  σ_E=${f4(Math.sqrt(Math.max(0,Qee))*1000)} mm\n`;
       r += `  a=${f4(Math.sqrt(mean+disc)*1000)} mm  b=${f4(Math.sqrt(Math.max(0,mean-disc))*1000)} mm  θ=${f4(Math.atan2(2*Qen,Qee-Qnn)*0.5*180/Math.PI)}°\n\n`;
     });
   }

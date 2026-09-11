@@ -33,16 +33,16 @@ export function render(D, container, vals, imgs) {
           <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r32txt" rows="2"></textarea></div>
           <div class="gw" id="row-r32"></div>
 
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.3 Nätkarta</div></div>
+          <div class="gw"><div class="sec" style="margin-top:6px">R3.3 Kända anslutningspunkter</div></div>
           <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r33txt" rows="2"></textarea></div>
           <div class="gw" id="row-r33"></div>
 
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.4 Anslutningspunkter</div></div>
+          <div class="gw"><div class="sec" style="margin-top:6px">R3.4 Mätgeometri</div></div>
           <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r34txt" rows="2"></textarea></div>
           <div class="gw" id="row-r34"></div>
 
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.12 Punktbeskrivningar</div></div>
-          <div class="gw"><div class="lbl">Text R3.12</div><textarea id="v_r312txt" rows="2"></textarea></div>
+          <div class="gw"><div class="sec" style="margin-top:6px">R3.12 Lägesosäkerheter</div></div>
+          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r312txt" rows="2"></textarea></div>
           <div class="gw" id="row-r312"></div>
         </div>
         <div class="br">
@@ -57,11 +57,18 @@ export function render(D, container, vals, imgs) {
   if (sel) sel.value = _defaultBg(D.activeLayerKey);
 
   const PRESET_MAP = { r32: 'R3.2', r33: 'R3.3', r34: 'R3.4', r312: 'R3.12' };
+  // Etiketterna MÅSTE beskriva den bild sloten faktiskt producerar, dvs. samma
+  // sak som IMAGE_PRESETS[...].options.title och som rubriken på den sektion i
+  // PM-rapporten där bilden hamnar (report-generator.js 5.2–5.6). r33, r34 och
+  // r312 hette tidigare "Nätkarta", "Anslutningspunkter" respektive
+  // "Punktbeskrivningar" och beskrev därmed fel bild. Rättat i UI-städning
+  // Omgång 1 (2026-09-11); se docs/troubleshooting/ui_inventering_20260910.md
+  // avsnitt B, punkt 6.
   const labels = {
     r32:  'R3.2 Översiktskarta',
-    r33:  'R3.3 Nätkarta',
-    r34:  'R3.4 Anslutningspunkter',
-    r312: 'R3.12 Punktbeskrivningar',
+    r33:  'R3.3 Kända anslutningspunkter',
+    r34:  'R3.4 Mätgeometri',
+    r312: 'R3.12 Lägesosäkerheter',
   };
 
   ['r32', 'r33', 'r34', 'r312'].forEach(key => {

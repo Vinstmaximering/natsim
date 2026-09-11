@@ -135,13 +135,12 @@ function _sidebar(el, state) {
               </span>
             </div>`;
           }).join('')}
-    </div>
-
-    <div class="studio-filter-section">
-      <div class="sf-head val-muted">Minikarta</div>
-      <div style="aspect-ratio:1.5;background:var(--bg-card);border:1px solid var(--border-default);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:22px;">🗺</div>
-      <div class="val-muted" style="font-size:10px;text-align:center;margin-top:4px">Mini-karta (implementeras i fas D)</div>
     </div>`;
+  // Här satt tidigare en tom "Minikarta"-ruta med texten
+  // "Mini-karta (implementeras i fas D)". Den ritade ingenting och var en
+  // utvecklingsplatshållare som av misstag nådde slutanvändaren – borttagen i
+  // UI-städning Omgång 1 (2026-09-11). Se avsnitt B, punkt 6 i
+  // docs/troubleshooting/ui_inventering_20260910.md.
 
   el.querySelectorAll('.sim-prob-row').forEach(div =>
     div.addEventListener('click', () => {

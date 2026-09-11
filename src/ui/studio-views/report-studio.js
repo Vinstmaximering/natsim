@@ -96,7 +96,7 @@ function _buildReportHTML(state) {
     </table>`;
 
   // ── SEK 3: Punktosäkerheter ──
-  const ptCols = '<th>Punkt</th><th>σE mm</th><th>σN mm</th><th>σpos mm</th><th>a mm</th><th>b mm</th><th>θ</th>';
+  const ptCols = '<th>Punkt</th><th>σN mm</th><th>σE mm</th><th>σpos mm</th><th>a mm</th><th>b mm</th><th>θ</th>';
   const ptRows = sr.ptResults.map(pr => {
     const sm = pr.sigPos * 1000 * k;
     const { pts } = state;
@@ -104,8 +104,8 @@ function _buildReportHTML(state) {
     const c  = pt?.type ? ({ known:'#00ff88',station:'#4fc3f7',new:'#ce93d8',detail:'#ffb74d' }[pt.type]||'var(--text-primary)') : 'var(--text-primary)';
     return `<tr class="rs-row">
       <td style="color:${c};font-weight:bold">${pr.id}</td>
-      <td class="val-purple">${(pr.sigE*1000).toFixed(2)}</td>
       <td class="val-warn">${(pr.sigN*1000).toFixed(2)}</td>
+      <td class="val-purple">${(pr.sigE*1000).toFixed(2)}</td>
       <td class="${sigClass(sm)}" style="font-weight:bold">${sm.toFixed(2)}</td>
       <td class="val-muted">${(pr.aSemi*1000*k).toFixed(2)}</td>
       <td class="val-muted">${(pr.bSemi*1000*k).toFixed(2)}</td>

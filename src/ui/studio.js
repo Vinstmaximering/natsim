@@ -8,7 +8,7 @@ export const STUDIO_TABS = new Set(['net', 'meas', 'sim', 'rep']);
 
 const TAB_LABELS = { net: 'NÄT', meas: 'MÄTNINGAR', sim: 'SIMULERING', rep: 'RAPPORT' };
 
-// Registrerade vyer per flik (fylls på i Etapp B/C via initStudioForTab).
+// Registrerade vyer per flik. Fylls i av main.js via initStudioForTab().
 const _views = {};
 
 let _activeTab = null;
@@ -48,8 +48,13 @@ export function openStudio(tabId) {
   if (view?.render) {
     view.render({ sidebar, main, footer }, getState());
   } else {
-    if (sidebar) sidebar.innerHTML = '<div class="studio-loading">…</div>';
-    if (main)    main.innerHTML    = '<div class="studio-loading">Vy laddas i Etapp B/C</div>';
+    // Alla fyra STUDIO_TABS registrerar en vy i main.js, så den här grenen nås
+    // bara om en vy-modul inte gick att ladda. Texten sade tidigare "Vy laddas
+    // i Etapp B/C" – en utvecklingsplatshållare som nådde slutanvändaren.
+    // Bytt i UI-städning Omgång 1 (2026-09-11); se avsnitt B, punkt 6 i
+    // docs/troubleshooting/ui_inventering_20260910.md.
+    if (sidebar) sidebar.innerHTML = '';
+    if (main)    main.innerHTML    = '<div class="studio-loading">Vyn kunde inte laddas för den här fliken.</div>';
     if (footer)  footer.innerHTML  = '';
   }
 

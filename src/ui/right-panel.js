@@ -447,7 +447,11 @@ export function renderTab() {
         <span class="${kCls(sr.K_global)}" style="font-size:16px;font-weight:bold;font-family:monospace;">k = ${sr.K_global.toFixed(3)}</span>
         <span class="${kCls(sr.K_global)}" style="font-size:12px;font-weight:bold;background:color-mix(in srgb,currentColor 12%,transparent);padding:3px 10px;border-radius:2px;">${sr.K_class}</span>
       </div>
-      <div class="val-muted" style="font-size:10px;line-height:1.7;">≥0.50 Starkt &nbsp;|&nbsp; 0.30–0.50 Acceptabelt &nbsp;|&nbsp; 0.10–0.30 Svagt &nbsp;|&nbsp; &lt;0.10 Otillräckligt</div>
+      <!-- Banden måste spegla klassificeraKtal() i core/constants.js. Klassen
+           "Överbestämt" (≥0,70) saknades här, så förklaringen motsade badgen
+           bredvid för k ≥ 0,70. Rättat i UI-städning Omgång 1 (2026-09-11);
+           se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2. -->
+      <div class="val-muted" style="font-size:10px;line-height:1.7;">≥0.70 Överbestämt &nbsp;|&nbsp; 0.50–0.70 Starkt &nbsp;|&nbsp; 0.30–0.50 Acceptabelt &nbsp;|&nbsp; 0.10–0.30 Svagt &nbsp;|&nbsp; &lt;0.10 Otillräckligt</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">
         ${TR("Medel r_i",        sr.rMean.toFixed(3),    rClass(sr.rMean))}
         ${sr.rMinDist != null ? TR("Min r_i (avstånd)", sr.rMinDist.toFixed(3), rClass(sr.rMinDist)) : ""}
@@ -465,8 +469,8 @@ export function renderTab() {
     <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:300px;">
       <tr style="border-bottom:1px solid var(--border-strong);">
         <th class="val-muted" style="text-align:left;font-weight:normal;padding:2px 4px 4px 0;">Punkt</th>
-        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σE mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σN mm</th>
+        <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σE mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">σpos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">a mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">b mm</th>
@@ -479,8 +483,8 @@ export function renderTab() {
         const ptType = pts.find(p => p.id === pr.id)?.type || "";
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td style="padding:3px 4px 3px 0;color:${PT[ptType]?.c||"var(--text-value)"};font-weight:bold;">${pr.id}</td>
-          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(pr.sigE*1000).toFixed(2)}</td>
           <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${(pr.sigN*1000).toFixed(2)}</td>
+          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(pr.sigE*1000).toFixed(2)}</td>
           <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${sm.toFixed(2)}</td>
           <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${a_mm.toFixed(2)}</td>
           <td class="val-value"  style="text-align:right;font-family:monospace;padding:0 3px;">${b_mm.toFixed(2)}</td>
@@ -498,8 +502,8 @@ export function renderTab() {
     <table style="width:100%;border-collapse:collapse;font-size:11px;">
       <tr style="border-bottom:1px solid var(--border-strong);">
         <th style="text-align:left;color:#ff6090;font-weight:normal;padding:2px 4px 4px 0;">Uppst.</th>
-        <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σE mm</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σN mm</th>
+        <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σE mm</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">σpos mm</th>
         <th class="val-muted" style="text-align:right;font-weight:normal;padding:2px 3px;">Obs mm</th>
         <th style="text-align:right;color:#ff6090;font-weight:normal;padding:2px 3px;">a mm</th>
@@ -510,8 +514,8 @@ export function renderTab() {
         const sm = ss.sigPos * 1000 * k;
         return `<tr style="border-bottom:1px solid var(--border-default);">
           <td style="padding:3px 4px 3px 0;color:#ff6090;font-weight:bold;">${ss.id}</td>
-          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(ss.sigE*1000*k).toFixed(2)}</td>
           <td class="val-warn"   style="text-align:right;font-family:monospace;padding:0 3px;">${(ss.sigN*1000*k).toFixed(2)}</td>
+          <td class="val-purple" style="text-align:right;font-family:monospace;padding:0 3px;">${(ss.sigE*1000*k).toFixed(2)}</td>
           <td class="${sigClass(sm)}" style="text-align:right;font-family:monospace;font-weight:bold;padding:0 3px;">${sm.toFixed(2)}</td>
           <td class="val-muted"  style="text-align:right;font-family:monospace;padding:0 3px;">${ss.sigPos_obs != null ? (ss.sigPos_obs*1000*k).toFixed(2) : "–"}</td>
           <td style="text-align:right;color:#ff6090;font-family:monospace;padding:0 3px;">${(ss.aSemi*1000*k).toFixed(2)}</td>

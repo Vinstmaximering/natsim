@@ -6,6 +6,21 @@
 //          crs, ins, mHz, mDm, mDp, mSt, dag, centerErr, img, imgs }
 //
 // 10 sektioner (1-10) identiska med originalet pmPopupHTML/genReport.
+//
+// NOTERING OM r-tal kontra k_i (UI-städning Omgång 1, 2026-09-11).
+// Se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 1.
+// Sektion 7.1 och 7.2 kallade tidigare den OBSERVATIONSVISA redundansen för
+// k_i. Det är HMK-Stommätning 2024:s egen beteckning (Formel F.6: Σk_i = f,
+// se tests/ref-angle.mjs), men i den här rapporten stod k_i två rader under
+// "Kontrollerbarhet k" – nätets GLOBALA k-tal – i samma tabell. Två olika
+// storheter med samma bokstav i samma tabell är en läsfälla i ett dokument
+// som går till beställare.
+//
+// Rapporten säger därför "r-tal", som resten av NätSim (constants.js
+// R_OBS_GOLV/R_OBS_GOD, valideringen, optimeringen, alla paneler), och
+// behåller kopplingen till normen genom att skriva ut k_i-beteckningen i
+// legenden under 7.2. Storheten är oförändrad – bara namnet i utskriften.
+// Den interna variabeln kstd nedan behåller sitt namn; den är inte synlig.
 
 export function buildReport(data) {
   const { vals = {}, sr, redund = [], ptRes = [], allPts = [], knownPts = [],
@@ -261,21 +276,21 @@ export function buildReport(data) {
           <tr><td>Redundans f</td><td>${sr.redundancy}</td></tr>
           <tr><td>Kontrollerbarhet k</td><td class="${kOk?"rok":"rerr"}" style="font-weight:700">${sr.K_global.toFixed(3)} – ${kOmdome}</td></tr>
           <tr><td>κ (HMK F.16)</td><td>${sr.kappa}</td></tr>
-          <tr><td>Min k_i (avst.)</td><td>${sr.rMinDist!=null?sr.rMinDist.toFixed(3):"–"}</td></tr>
-          <tr><td>Min k_i (riktning)</td><td>${sr.rMinHz!=null?sr.rMinHz.toFixed(3):"–"}</td></tr>
+          <tr><td>Minsta r-tal (avst.)</td><td>${sr.rMinDist!=null?sr.rMinDist.toFixed(3):"–"}</td></tr>
+          <tr><td>Minsta r-tal (riktning)</td><td>${sr.rMinHz!=null?sr.rMinHz.toFixed(3):"–"}</td></tr>
         </table>`;
-  h += `<h2 class="r">7.2 Mätningars k_i, MUF och YT</h2>
-        <p class="r">k_i = individuellt k-tal (HMK F.2). MUF = Minsta Urskiljbara Fel (HMK F.13). YT = Yttre Tillförlitlighet.</p>
+  h += `<h2 class="r">7.2 Mätningars r-tal, MUF och YT</h2>
+        <p class="r">r-tal = observationens redundanstal, i HMK betecknat k_i (HMK F.2) – ej att förväxla med nätets globala k-tal ovan. MUF = Minsta Urskiljbara Fel (HMK F.13). YT = Yttre Tillförlitlighet.</p>
         <table class="r">
-          <tr><th>Från → Till</th><th>Typ</th><th>k_i</th><th>MUF</th><th>YT</th></tr>
+          <tr><th>Från → Till</th><th>Typ</th><th>r-tal</th><th>MUF</th><th>YT</th></tr>
           ${rdTab}
         </table>
-        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = k_i ≥ 0,50 (SIS-TS), röd = under gräns.</p>`;
+        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50 (HMK Bilaga F.6), röd = under gräns.</p>`;
   h += `<h2 class="r">7.3 Tillförlitlighet och homogenitet</h2>
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är
           ${mufMaxD!=="–"?"avst. ≤"+mufMaxD+" mm ":""}${mufMaxH!=="–"?"riktning ≤"+mufMaxH+" mgon":""}.
-          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Homogenitet:</strong> ${homOmdome} (σ(k_i)=${kstd.toFixed(3)}).
+          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Homogenitet:</strong> ${homOmdome} (σ(r)=${kstd.toFixed(3)}).
         </div>`;
   h += `<h2 class="r">7.4 Förväntade punktmedelfel</h2>`;
   if (kravStr) h += `<p class="r">Krav: σ_pos ≤ ${esc(kravStr)} mm. <span class="${allOk?"rok":"rerr"}">${allOk?"✓ Alla nypunkter uppfyller kravet":"✗ En eller flera uppfyller ej kravet"}</span></p>`;
