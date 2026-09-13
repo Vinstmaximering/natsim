@@ -121,7 +121,7 @@ describe('criteriaForClass', () => {
     expect(c.rMin).toBe(R_MIN_HARD);
     expect(c.rMin).toBe(0.35);
     expect(R_MIN_HARD).toBe(SIS_TS_GENERAL_REQS.k_individual_min);
-    // Mjukt krav = HMK Bilaga F.6, samma nivå som valideringen kallar godkänd.
+    // Mjukt krav = HMK Bilaga F.2, samma nivå som valideringen kallar godkänd.
     expect(c.rSoft).toBe(R_MIN_SOFT);
     expect(c.rSoft).toBe(R_OBS_GOD);
     // Den avgörande ordningen: valideringens FELgräns sammanfaller med dett hårda

@@ -207,7 +207,9 @@ export const K_NAT_GOLV = 0.50;
 //                §3.2.2 b) för triangel- och fackverksnät.
 //   r-tal ≥ 0,35 SIS-TS 21143:2016 §6.2.2, enskild observation. Samma värde
 //                som SIS_TS_GENERAL_REQS.k_individual_min.
-//   r-tal ≥ 0,50 HMK-Stommätning 2024 Bilaga F.6 – nivån för ingen anmärkning.
+//   r-tal ≥ 0,50 HMK-Stommätning 2024 Bilaga F.2 "Kontrollerbarhet och k-tal"
+//                – rekommendation, nivån för ingen anmärkning. Samma tröskel
+//                återkommer i HMK §3.3.1 och Tabell 9.
 //
 // r_i säger hur stor del av ett grovfel i observationen som syns i
 // residualerna. Lågt r-tal = grovfelet slår rakt in i koordinaterna.
@@ -221,7 +223,7 @@ export const K_NAT_GOLV = 0.50;
 /** SIS-TS 21143:2016 §6.2.2 – golv för ENSKILD observation. */
 export const R_OBS_NORM = 0.35;
 
-/** HMK-Stommätning 2024 Bilaga F.6 – nivå för ingen anmärkning. */
+/** HMK-Stommätning 2024 Bilaga F.2 "Kontrollerbarhet och k-tal" – rekommendation. */
 export const R_OBS_GOD  = 0.50;
 
 /**
@@ -256,7 +258,7 @@ export const K_BAND = Object.freeze([
 ]);
 
 export const R_BAND = Object.freeze([
-  { min: R_OBS_GOD,  klass: "Ingen anmärkning", kalla: "HMK Bilaga F.6" },
+  { min: R_OBS_GOD,  klass: "Ingen anmärkning", kalla: "HMK Bilaga F.2" },
   { min: R_OBS_NORM, klass: "Uppfyller norm",   kalla: "SIS-TS 21143:2016 §6.2.2" },
   { min: 0,          klass: "Under norm",       kalla: "under SIS-TS-golvet 0,35" },
 ]);

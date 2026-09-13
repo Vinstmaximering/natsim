@@ -112,7 +112,7 @@ läsvärden – σ_max är ett produktval och kan sättas per projekt:
 | Storhet | Krav | Status | Källa |
 |---|---|---|---|
 | Minsta r-tal per observation | r ≥ **0,35** | **Hårt** – blockerar leverans | SIS-TS 21143:2016 §6.2.2 |
-| r-tal per observation | r ≥ 0,50 | **Mjukt** – räknas och rapporteras | HMK Stommätning 2024 Bilaga F.6 |
+| r-tal per observation | r ≥ 0,50 | **Mjukt** – räknas och rapporteras | HMK Stommätning 2024 Bilaga F.2 |
 | Största punktosäkerhet σ_pos (1σ efter utjämning) | G1 2 · G2 **3 mm** · G3 5 · G4 8 | Hårt | **Produktval**, konfigurerbart |
 | Kontrollerbarhet k = f/n | k ≥ 0,50 | Hårt | SIS-TS 21143:2016 §6.2.2 |
 | MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | Redovisas, spärrar ej | SIS-TS 21143:2016 §6.2.2 |

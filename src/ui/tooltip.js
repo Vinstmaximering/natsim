@@ -43,7 +43,7 @@ export const TIPS = Object.freeze({
 
   SIG_0: 'Grundmedelfel a posteriori – viktsenhetens standardosäkerhet efter utjämning. I en simulering utan observationer är den 1 per konstruktion.',
 
-  R_TAL: 'Kontrollerbarhet per observation (1 minus leverage). Golv 0,35 enligt SIS-TS 21143:2016 §6.2.2; 0,50 ger ingen anmärkning enligt HMK Bilaga F.6. HMK Stommätning 2024 Formel F.6 benämner storheten k_i.',
+  R_TAL: 'Kontrollerbarhet per observation (1 minus leverage). Golv 0,35 enligt SIS-TS 21143:2016 §6.2.2; 0,50 ger ingen anmärkning enligt HMK Bilaga F.2. HMK Stommätning 2024 Formel F.6 benämner storheten k_i.',
 
   K_TAL: 'Global kontrollerbarhet f/n. Normgolv ≥ 0,50 enligt SIS-TS 21143:2016 §6.2.2, gäller alla mätklasser.',
 

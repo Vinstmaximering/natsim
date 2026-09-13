@@ -167,7 +167,7 @@ const fmtR  = v => (v == null ? '–' : Number.isFinite(v) ? (v >= 0 ? '+' : '')
 
 /**
  * Fix 2.3: raden som redovisar tvånivåkravet på r efter varje operation.
- * Det mjuka kravet (r < 0,50, HMK Bilaga F.6) räknas och redovisas så att
+ * Det mjuka kravet (r < 0,50, HMK Bilaga F.2) räknas och redovisas så att
  * användaren kan motivera observationerna i planeringsrapporten; det hårda
  * (r < 0,35, SIS-TS §6.2.2) bekräftas vara uppfyllt.
  */

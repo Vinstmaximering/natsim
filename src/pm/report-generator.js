@@ -301,7 +301,7 @@ export function buildReport(data) {
           <tr><th>Från → Till</th><th>Typ</th><th>r-tal</th><th>MUF</th><th>YT</th></tr>
           ${rdTab}
         </table>
-        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.6) · gul = 0,35–0,50, uppfyller SIS-TS 21143:2016 §6.2.2 · röd = under 0,35, uppfyller inte §6.2.2.</p>`;
+        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.2) · gul = 0,35–0,50, uppfyller SIS-TS 21143:2016 §6.2.2 · röd = under 0,35, uppfyller inte §6.2.2.</p>`;
   h += `<h2 class="r">7.3 Tillförlitlighet och homogenitet</h2>
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är

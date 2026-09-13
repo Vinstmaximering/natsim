@@ -12,7 +12,7 @@
 //   på ett ställe i kodbasen.
 //
 // r_soft (MJUKT KRAV, rapporteras men blockerar inte)   r_i ≥ 0,50
-//   HMK-Stommätning 2024 Bilaga F.6. Observationer mellan 0,35 och 0,50
+//   HMK-Stommätning 2024 Bilaga F.2. Observationer mellan 0,35 och 0,50
 //   levereras, men räknas och redovisas i beslutsspårningsloggen så att
 //   användaren kan motivera dem i planeringsrapporten. Samma nivå som
 //   nätvalideringen (R_OBS_GOD) och studio-vyerna kallar godkänd, vilket
@@ -48,7 +48,7 @@ import { nf } from './format.js';
 export const R_MIN_HARD = SIS_TS_GENERAL_REQS.k_individual_min;   // 0,35
 
 // Mjukt krav per observation – rapporteras, blockerar inte.
-// HMK-Stommätning 2024 Bilaga F.6.
+// HMK-Stommätning 2024 Bilaga F.2.
 export const R_MIN_SOFT = R_OBS_GOD;                              // 0,50
 
 // σ_pos-tak per mätklass i mm. PRODUKTVAL, inte normcitat – se blockkommentaren.
@@ -90,7 +90,7 @@ export function criteriaForClass(klass, overrides = {}) {
     // Se blockkommentaren: MUF/YT motsvarar r ≥ 0,49 och skulle annars göra
     // det hårda kravet 0,35 verkningslöst.
     enforceMufYt: false,
-    source: 'SIS-TS 21143:2016 §6.2.2 + HMK-Stommätning 2024 Bilaga F.6; ' +
+    source: 'SIS-TS 21143:2016 §6.2.2 + HMK-Stommätning 2024 Bilaga F.2; ' +
             'σ_max är produktval',
   };
 }
@@ -148,7 +148,7 @@ export function checkCriteria(metrics, criteria) {
     v.push({ key: 'berakning', text: `Nätet kan inte beräknas: ${(metrics.error || '').split('\n')[0]}` });
     return { ok: false, violations: v };
   }
-  // HÅRT krav (SIS-TS §6.2.2). Det mjuka kravet r ≥ 0,50 (HMK Bilaga F.6)
+  // HÅRT krav (SIS-TS §6.2.2). Det mjuka kravet r ≥ 0,50 (HMK Bilaga F.2)
   // prövas medvetet INTE här – det rapporteras via metrics.nBelowSoft.
   if (metrics.minR < criteria.rMin)
     v.push({ key: 'rMin', text: `Minsta r-tal ${f3(metrics.minR)} < hårt krav ${f3(criteria.rMin)}` });
@@ -170,7 +170,7 @@ export function describeCriteria(criteria) {
   return [
     `Minsta r-tal per observation: r-tal ≥ ${nf(criteria.rMin, 2)} (hårt krav, SIS-TS §6.2.2)`,
     `Observationer med r-tal < ${nf(criteria.rSoft ?? R_MIN_SOFT, 2)} rapporteras men blockerar inte ` +
-      '(HMK Bilaga F.6)',
+      '(HMK Bilaga F.2)',
     `Största punktosäkerhet: σ_pos ≤ ${nf(criteria.sigmaMaxMm, 1)} mm (1σ efter utjämning` +
       (criteria.sigmaMaxIsCustom ? ', projektets eget värde)' : ', produktval)'),
     `Kontrollerbarhet: k ≥ ${nf(criteria.kMin, 2)}`,

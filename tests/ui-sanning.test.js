@@ -136,10 +136,10 @@ describe('Fix 2 – PM-rapporten kallar observationsvis redundans r-tal', () => 
   });
 
   it('attribuerar 0,50-gränsen till HMK, inte till SIS-TS', () => {
-    // SIS-TS §6.2.2 anger 0,35 per observation; 0,50 är HMK Bilaga F.6.
+    // SIS-TS §6.2.2 anger 0,35 per observation; 0,50 är HMK Bilaga F.2.
     // Färgsättningen i rdTab slår om vid 0,50, alltså HMK:s nivå.
     expect(html).not.toMatch(/≥ 0,50 \(SIS-TS\)/);
-    expect(html).toMatch(/HMK Bilaga F\.6/);
+    expect(html).toMatch(/HMK Bilaga F\.2/);
   });
 });
 

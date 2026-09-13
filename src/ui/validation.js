@@ -36,7 +36,7 @@ export function validateNetwork() {
   const medium = (sr.redund || []).filter(r => r.ri >= R_OBS_NORM && r.ri < R_OBS_GOD);
   if (medium.length) warnings.push(
     `${medium.length} ${medium.length === 1 ? "mätning har" : "mätningar har"} ${nf(R_OBS_NORM, 2)} ≤ r-tal < ` +
-    `${nf(R_OBS_GOD, 2)} – uppfyller SIS-TS men under HMK Bilaga F.6:s nivå för ingen anmärkning.`);
+    `${nf(R_OBS_GOD, 2)} – uppfyller SIS-TS men under HMK Bilaga F.2:s nivå för ingen anmärkning.`);
 
   const knownN = pts.filter(p => p.type === "known").length;
   if (knownN < 1) issues.push("Inga kända punkter – nätet saknar absolut anslutning.");
