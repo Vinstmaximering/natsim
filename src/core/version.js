@@ -8,10 +8,10 @@
 // versionssträngen hamnar i bundeln – inte hela package.json.
 import { version } from '../../package.json';
 
-/** Versionen ur package.json, t.ex. "0.3.0". */
+/** Versionen ur package.json. Höjs med `npm version`, aldrig för hand här. */
 export const APP_VERSION = version;
 
-/** Visningsform för UI: "v0.3.0". */
+/** Visningsform för UI, t.ex. "v0.4.0". */
 export const APP_VERSION_LABEL = `v${version}`;
 
 /** Produktnamn. Hålls här så att titel, panelhuvud och onboarding delar källa. */

@@ -1,6 +1,6 @@
 {
   "name": "natsim",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Stomnätssimulator enligt SIS-TS 21143:2016 och HMK Stommätning 2024",
   "type": "module",
   "scripts": {
