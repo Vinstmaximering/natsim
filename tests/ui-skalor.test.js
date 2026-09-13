@@ -12,8 +12,7 @@ import { dirname, join } from 'node:path';
 
 import {
   klassificeraKtal, klassificeraRtal, K_BAND, R_BAND,
-  K_NAT_GOLV, K_GOD_MARGINAL, R_OBS_GOLV, R_OBS_NORM, R_OBS_GOD,
-  sigPosKlass, SIG_POS_BRA_MM, SIG_POS_DALIG_MM, PT,
+  K_NAT_GOLV, R_OBS_NORM, R_OBS_GOD, sigPosKlass, PT,
 } from '../src/core/constants.js';
 import { rLabel, rColor, rClass } from '../src/core/redundancy.js';
 import { SIS_TS_GENERAL_REQS } from '../src/data/sis-ts-classes.js';
@@ -92,9 +91,10 @@ describe('Fix 2 – k-tal och r-tal delar ordförråd men har egna trösklar', (
     expect(klassificeraRtal(0.36).uppfyllerNorm).toBe(true);
   });
 
-  it('varje r-bandgräns motsvarar en konstant som styr produktens logik', () => {
+  it('varje r-bandgräns är en normhänvisning', () => {
     const granser = R_BAND.map(b => b.min).filter(m => m > 0).sort((a, b) => a - b);
-    expect(granser).toEqual([R_OBS_GOLV, R_OBS_NORM, R_OBS_GOD]);
+    expect(granser).toEqual([R_OBS_NORM, R_OBS_GOD]);
+    for (const b of R_BAND) expect(b.kalla, b.klass).toBeTruthy();
   });
 
   it('bandtabellerna och klassificerarna kan inte divergera', () => {
@@ -115,9 +115,16 @@ describe('Fix 2 – k-tal och r-tal delar ordförråd men har egna trösklar', (
     }
   });
 
-  it('skalorna delar ordförråd', () => {
+  it('skalorna delar de ord som betyder samma sak', () => {
+    // Båda storheterna har ett normgolv, och de två utfallen kring det golvet
+    // heter likadant. r-talet har dessutom HMK:s extra nivå, som k saknar
+    // motsvarighet till – den får inte tvingas in i k-skalan.
     const kOrd = new Set(K_BAND.map(b => b.klass));
-    for (const b of R_BAND) expect(kOrd, `r-klassen "${b.klass}"`).toContain(b.klass);
+    expect(kOrd).toEqual(new Set(['Uppfyller norm', 'Under norm']));
+    const rOrd = new Set(R_BAND.map(b => b.klass));
+    expect(rOrd).toContain('Uppfyller norm');
+    expect(rOrd).toContain('Under norm');
+    expect(rOrd).toContain('Ingen anmärkning');
   });
 
   it('men tvingas INTE till samma trösklar – storheterna har olika golv', () => {
@@ -168,13 +175,16 @@ describe('Fix 2 – k-tal och r-tal delar ordförråd men har egna trösklar', (
     }
   });
 
-  it('σ_pos har EN skala – kvalitetspanelen och tabellerna använde 10 mot 20', () => {
-    expect(SIG_POS_BRA_MM).toBe(5);
-    expect(SIG_POS_DALIG_MM).toBe(20);
-    expect(sigPosKlass(3)).toBe('val-good');
-    expect(sigPosKlass(12)).toBe('val-caution');   // var röd i kvalitetspanelen
-    expect(sigPosKlass(25)).toBe('val-danger');
-    expect(sigPosKlass(NaN)).toBe('val-muted');
+  it('σ_pos bedöms mot projektets eget krav, inte mot påhittade mm-gränser', () => {
+    // 2026-09-13: 5 mm och 20 mm var produktval utan källa (och dessutom
+    // 10 mm i kvalitetspanelen). SIS-TS anger inget golv för σ_pos.
+    expect(sigPosKlass(3, 5)).toBe('val-good');
+    expect(sigPosKlass(7, 5)).toBe('val-danger');
+    expect(sigPosKlass(5, 5)).toBe('val-good');      // precis på kravet
+    // Utan krav uttalar sig produkten inte alls.
+    expect(sigPosKlass(12)).toBe('val-value');
+    expect(sigPosKlass(12, null)).toBe('val-value');
+    expect(sigPosKlass(NaN, 5)).toBe('val-muted');
   });
 
   it('PM-rapporten kallar aldrig ett underkänt nät acceptabelt', () => {
@@ -195,6 +205,57 @@ describe('Fix 2 – k-tal och r-tal delar ordförråd men har egna trösklar', (
     const over = buildReport({ ...bas, sr: { K_global:0.80, redundancy:9, meas_n:12,
       unkn_n:3, kappa:2.8, rMinDist:0.6, rMinHz:0.6 } });
     expect(over).toMatch(/UPPFYLLER NORMEN/);
+  });
+});
+
+// ── Principen: inga påståenden utan normstöd (beslut 2026-09-13) ────────────
+describe('Produkten uttalar sig bara där normen ger täckning', () => {
+  it('varje bandgräns bär en normhänvisning', () => {
+    for (const band of [K_BAND, R_BAND]) {
+      for (const b of band) {
+        expect(b.kalla, `bandet "${b.klass}" saknar källa`).toBeTruthy();
+        expect(b.kalla, `bandet "${b.klass}"`).toMatch(/SIS-TS|HMK/);
+      }
+    }
+  });
+
+  it('k-skalan har exakt ett golv – normen definierar inget mer', () => {
+    // Varken SIS-TS eller HMK anger någon övre gräns för k, och ingen av dem
+    // graderar hur långt under golvet ett nät ligger.
+    const granser = K_BAND.map(b => b.min).filter(m => m > 0);
+    expect(granser).toEqual([K_NAT_GOLV]);
+  });
+
+  it('inga graderande omdömen finns kvar i skalorna', () => {
+    // Ord som värderar utan normstöd: "god", "stark", "svag", "acceptabel",
+    // "otillräcklig", "överbestämd".
+    const VARDERANDE = /god|stark|svag|acceptab|otillräck|överbestäm|marginal/i;
+    for (const band of [K_BAND, R_BAND]) {
+      for (const b of band) {
+        expect(b.klass, `bandet "${b.klass}" värderar`).not.toMatch(VARDERANDE);
+      }
+    }
+  });
+
+  it('valideringen varnar inte för att nätet är "för bra"', () => {
+    // Varningen om överbestämt nät byggde på gränsen 0,70 utan normstöd.
+    const src = read('src/ui/validation.js').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).not.toMatch(/överbestämt/i);
+    expect(src).not.toMatch(/mervärde/i);
+  });
+
+  it('PM-rapporten graderar inte spridningen i r-talen', () => {
+    // "Homogent"/"Inhomogent" med gränserna 0,08 och 0,15 saknade källa.
+    const src = read('src/pm/report-generator.js').replace(/^\s*\/\/.*$/gm, '');
+    expect(src).not.toMatch(/Inhomogent|Homogent/);
+    expect(src).toMatch(/σ\(r-tal\)/);
+  });
+
+  it('valideringens felgräns är normens tal, inte produktens', () => {
+    const src = read('src/ui/validation.js');
+    expect(src).toMatch(/R_OBS_NORM/);
+    expect(src).not.toMatch(/R_OBS_GOLV/);
+    expect(R_OBS_NORM).toBe(SIS_TS_GENERAL_REQS.k_individual_min);
   });
 });
 

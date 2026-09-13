@@ -6,7 +6,8 @@ import { nf, gon }           from '../../core/format.js';
 import { TIPS, tipAttr }     from '../tooltip.js';
 
 // Omgång 3: skalorna kommer ur core/. Här låg lokala kopior.
-const sigClass = sigPosKlass;
+// σ_pos färgas mot projektets eget krav; utan krav blir den neutral.
+const sigClass = (mm, krav) => sigPosKlass(mm, krav);
 const kClass   = kv => klassificeraKtal(kv).cssKlass;
 // Omgång 1 noterade att detta var en lokal kopia av core/redundancy.js rLabel.
 // Importeras nu därifrån så att de två inte kan divergera.
@@ -113,7 +114,7 @@ function _buildReportHTML(state) {
       <td style="color:${c};font-weight:bold">${pr.id}</td>
       <td class="val-warn">${nf(pr.sigN*1000, 2)}</td>
       <td class="val-purple">${nf(pr.sigE*1000, 2)}</td>
-      <td class="${sigClass(sm)}" style="font-weight:bold">${nf(sm, 2)}</td>
+      <td class="${sigClass(sm, sigReq)}" style="font-weight:bold">${nf(sm, 2)}</td>
       <td class="val-muted">${nf(pr.aSemi*1000*k, 2)}</td>
       <td class="val-muted">${nf(pr.bSemi*1000*k, 2)}</td>
       <td class="val-muted" style="font-size:12px">${gon(D(pr.theta))}</td>
@@ -162,8 +163,8 @@ function _buildReportHTML(state) {
     const maxR    = nObs>0 ? Math.max(...myR.map(r=>r.ri)) : 0;
     const hasRed  = maxR > 0.05;
     // Omgång 3: samma r-talsskala som högerpanelen och kartan.
-    const REL_IKON = { 'God marginal':'✓', 'Uppfyller norm':'◇',
-                       'Under norm':'△', 'Otillräckligt':'✕' };
+    const REL_IKON = { 'Ingen anmärkning':'✓', 'Uppfyller norm':'◇',
+                       'Under norm':'✕' };
     let relText, relIcon, rcls;
     if (!nObs)        { rcls='val-danger'; relText='Ingen mätning';    relIcon='⛔'; }
     else if (!hasRed) { rcls='val-danger'; relText='Ej kontrollerbar'; relIcon='⚠'; }

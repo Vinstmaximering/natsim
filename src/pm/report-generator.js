@@ -17,7 +17,7 @@
 // som går till beställare.
 //
 // Rapporten säger därför "r-tal", som resten av NätSim (constants.js
-// R_OBS_GOLV/R_OBS_GOD, valideringen, optimeringen, alla paneler), och
+// R_OBS_NORM/R_OBS_GOD, valideringen, optimeringen, alla paneler), och
 // behåller kopplingen till normen genom att skriva ut k_i-beteckningen i
 // legenden under 7.2. Storheten är oförändrad – bara namnet i utskriften.
 // Den interna variabeln kstd nedan behåller sitt namn; den är inte synlig.
@@ -80,17 +80,16 @@ export function buildReport(data) {
   const kOmdome  = kKlass.klass;
   // Homogenitet är spridningen i r-talen. Ingen norm anger någon gräns, så
   // detta är ett rent produktvärde – därför andra ord än normskalorna.
-  const homOmdome = kstd<0.08 ? "Homogent" : kstd<0.15 ? "Jämnt fördelat" : "Inhomogent";
+  // Homogenitetsomdömet ("Homogent"/"Inhomogent", gränser 0,08 och 0,15) låg
+  // här. Borttaget 2026-09-13: ingen norm graderar spridningen i r-talen.
+  // Spridningen redovisas som tal i 7.3 så att läsaren kan bedöma själv.
   // Omgång 3: bedömningen utgår från uppfyllerNorm. Tidigare kunde ett nät
   // med k mellan 0,30 och 0,50 – alltså under SIS-TS §6.2.2:s golv – få
   // omdömet "viss kontrollerbarhet" i stället för underkänt.
-  const homOk     = kstd < 0.08;
-  const stabCls   = !kKlass.uppfyllerNorm ? "berr" : homOk ? "bok" : "bwrn";
-  const stabTxt   = !kKlass.uppfyllerNorm
-    ? `Nätet uppfyller inte SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50). Kontrollerbarheten är otillräcklig – fler mätningar krävs.`
-    : homOk
-    ? "Nätet uppfyller normens krav på kontrollerbarhet och r-talen är jämnt fördelade."
-    : "Nätet uppfyller normens krav på kontrollerbarhet, men r-talen är ojämnt fördelade – homogeniteten bör förbättras.";
+  const stabCls   = kKlass.uppfyllerNorm ? "bok" : "berr";
+  const stabTxt   = kKlass.uppfyllerNorm
+    ? "Nätet uppfyller SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50)."
+    : "Nätet uppfyller inte SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50).";
 
   const mufD = redund.filter(r=>r.type==="dist"&&r.mdb).map(r=>r.mdb.val*1000);
   const mufH = redund.filter(r=>r.type==="hz"&&r.mdb).map(r=>r.mdb.val);
@@ -162,10 +161,8 @@ export function buildReport(data) {
   h += `<div><strong>Datum:</strong> ${esc(rapdat)}</div>`;
   // Omgång 3: samma normgräns som överallt annars. "⚠ ACCEPTABELT" kunde
   // tidigare stå på ett nät som normen underkänner.
-  const netStab = !kKlass.uppfyllerNorm ? "rerr" : homOk ? "rok" : "rwrn";
-  const netTxt  = !kKlass.uppfyllerNorm ? "✗ UPPFYLLER INTE NORMEN"
-                : homOk                 ? "✓ UPPFYLLER NORMEN"
-                :                         "⚠ UPPFYLLER NORMEN – OJÄMN REDUNDANS";
+  const netStab = kKlass.uppfyllerNorm ? "rok" : "rerr";
+  const netTxt  = kKlass.uppfyllerNorm ? "✓ UPPFYLLER NORMEN" : "✗ UPPFYLLER INTE NORMEN";
   h += `<div><strong>Nätbedömning:</strong> <span class="${netStab}">${netTxt} (k=${nf(sr.K_global, 3)})</span></div>`;
   h += `</div>`;
   h += `<div class="rstd">SIS-TS 21143:2016 · HMK Stommätning 2024 · TDOK 2014:0571 | ${esc(sek)}</div>`;
@@ -304,12 +301,12 @@ export function buildReport(data) {
           <tr><th>Från → Till</th><th>Typ</th><th>r-tal</th><th>MUF</th><th>YT</th></tr>
           ${rdTab}
         </table>
-        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50 (HMK Bilaga F.6, ingen anmärkning) · gul = 0,35–0,50 (uppfyller SIS-TS §6.2.2) · orange = 0,30–0,35 (under norm) · röd = under 0,30.</p>`;
+        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.6) · gul = 0,35–0,50, uppfyller SIS-TS 21143:2016 §6.2.2 · röd = under 0,35, uppfyller inte §6.2.2.</p>`;
   h += `<h2 class="r">7.3 Tillförlitlighet och homogenitet</h2>
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är
           ${mufMaxD!=="–"?"avst. ≤"+mufMaxD+" mm ":""}${mufMaxH!=="–"?"riktning ≤"+mufMaxH+" mgon":""}.
-          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Homogenitet:</strong> ${homOmdome} (σ(r-tal)=${nf(kstd, 3)}).
+          <strong>YT:</strong> Max påverkan ${ytMaxD} mm. <strong>Spridning i r-talen:</strong> σ(r-tal) = ${nf(kstd, 3)}.
         </div>`;
   h += `<h2 class="r">7.4 Förväntade punktmedelfel</h2>`;
   if (kravStr) h += `<p class="r">Krav: σ_pos ≤ ${komma(esc(kravStr))} mm. <span class="${allOk?"rok":"rerr"}">${allOk?"✓ Alla nypunkter uppfyller kravet":"✗ En eller flera uppfyller ej kravet"}</span></p>`;

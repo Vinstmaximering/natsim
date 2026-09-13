@@ -16,7 +16,8 @@ const kClass = k => klassificeraKtal(k).cssKlass;
 // Omgång 3: rClass och sClass låg som lokala trappor här. sClass använde
 // dessutom 10 mm som röd gräns medan de tre tabellerna använde 20 – samma
 // punkt kunde vara gul i en vy och röd i en annan. Båda kommer nu ur core/.
-const sClass = sigPosKlass;
+// σ_pos färgas mot projektets eget krav; utan krav blir den neutral.
+const sClass = (mm, krav) => sigPosKlass(mm, krav);
 
 export function updateQualityPanel() {
   const panel = document.getElementById("qPanel");
@@ -40,7 +41,7 @@ export function updateQualityPanel() {
   const sigPosVals = (sr.allPtResults || []).filter(r => r.type !== "known" && r.sigPos > 0).map(r => r.sigPos * 1000);
   const sMax = sigPosVals.length ? Math.max(...sigPosVals) : 0;
   document.getElementById("qSmax").innerHTML = sigPosVals.length
-    ? `<span class="${sClass(sMax)}">${nf(sMax, 1)} mm</span>`
+    ? `<span class="${sClass(sMax, getState().sigReq)}">${nf(sMax, 1)} mm</span>`
     : "–";
 
   // Mätningar utan sikt (visas bara när hinder finns)

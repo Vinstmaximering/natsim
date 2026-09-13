@@ -422,7 +422,8 @@ export function renderTab() {
     // ── Klasser för statusfärger (tema-anpassade via tokens.css) ──────────────
     // Omgång 3: skalorna kommer ur core/constants.js. Här låg lokala trappor
     // med egna trösklar – se KVALITETSSKALOR i constants.js.
-    const sigClass  = sigPosKlass;
+    // σ_pos har inget normgolv – färgas mot projektets eget krav (sigReq).
+    const sigClass  = mm => sigPosKlass(mm, sigReq);
     const precClass = (mm, req) => mm < req * 0.5 ? "val-good" : mm <= req ? "val-caution" : "val-danger";
     const kCls      = kv => klassificeraKtal(kv).cssKlass;
     // Punktens medel-r-tal klassas med SAMMA skala som enskilda r-tal.
@@ -621,8 +622,8 @@ export function renderTab() {
         const nObsMeas = Math.round(nObs / 2);
         // Omgång 3: etiketterna kommer ur r-talsskalan i stället för tre
         // egna ord (Svag/Acceptabel/God) med egna trösklar.
-        const REL_IKON = { "God marginal":"✓", "Uppfyller norm":"◇",
-                           "Under norm":"△", "Otillräckligt":"✕" };
+        const REL_IKON = { "Ingen anmärkning":"✓", "Uppfyller norm":"◇",
+                           "Under norm":"✕" };
         let relText, relIcon;
         if (nObs === 0)          { relText="Ingen mätning";    relIcon="⛔"; }
         else if (!hasRedundans)  { relText="Ej kontrollerbar"; relIcon="⚠"; }

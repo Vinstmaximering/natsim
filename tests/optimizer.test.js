@@ -14,7 +14,7 @@ import {
   R_MIN_HARD, R_MIN_SOFT, SIGMA_MAX_DEFAULT_MM,
 } from '../src/core/optimizer-criteria.js';
 import { SIS_TS_GENERAL_REQS } from '../src/data/sis-ts-classes.js';
-import { R_OBS_GOLV, R_OBS_GOD } from '../src/core/constants.js';
+import { R_OBS_NORM, R_OBS_GOD } from '../src/core/constants.js';
 import { runOptimization, shouldUseWorker, WORKER_MEAS_THRESHOLD } from '../src/core/optimizer-runner.js';
 import { computeSimulation } from '../src/core/simulation.js';
 import { getState, setState } from '../src/state/store.js';
@@ -124,9 +124,11 @@ describe('criteriaForClass', () => {
     // Mjukt krav = HMK Bilaga F.6, samma nivå som valideringen kallar godkänd.
     expect(c.rSoft).toBe(R_MIN_SOFT);
     expect(c.rSoft).toBe(R_OBS_GOD);
-    // Den avgörande ordningen: valideringens FELgräns ligger under det hårda
+    // Den avgörande ordningen: valideringens FELgräns sammanfaller med dett hårda
     // kravet, så ett optimerat nät kan få varningar men aldrig fel.
-    expect(R_OBS_GOLV).toBeLessThan(c.rMin);
+    // hårda kravet (båda är SIS-TS §6.2.2:s 0,35), och det mjuka ligger över.
+    // Ett optimerat nät kan därför få varningar men aldrig fel.
+    expect(R_OBS_NORM).toBe(c.rMin);
     expect(c.rMin).toBeLessThan(c.rSoft);
   });
 
@@ -864,16 +866,17 @@ describe('nätvalidering efter optimering', () => {
   beforeEach(() => setState({ ...BASE_STATE, pts: PTS, meas: RICH, nMid: 100 }));
 
   it('ett optimerat nät ger inga FEL i valideringen', () => {
-    // Kontraktet efter Fas 2: hårt krav 0,35 ligger över valideringens
-    // felgräns 0,30, så ett optimerat nät kan aldrig underkännas av
-    // validateNetwork() på r-talen.
+    // Kontraktet efter Fas 2: optimeringens hårda krav och valideringens
+    // felgräns är samma normtal (SIS-TS §6.2.2, 0,35), så ett optimerat nät
+    // kan aldrig underkännas av validateNetwork() på r-talen.
+    // 2026-09-13: felgränsen var tidigare produktens egen 0,30.
     const res = run({ meas: RICH });
     setState({ meas: res.meas, simResult: null });
     runSimulation();
     const v = validateNetwork();
     expect(v.issues.filter(i => i.includes('r_i'))).toEqual([]);
     expect(v.ok).toBe(true);
-    expect(getState().simResult.redund.every(r => r.ri >= R_OBS_GOLV)).toBe(true);
+    expect(getState().simResult.redund.every(r => r.ri >= R_OBS_NORM)).toBe(true);
   });
 
   it('varningarna i bandet 0,35–0,50 är exakt de optimeringen rapporterar', () => {
@@ -884,7 +887,7 @@ describe('nätvalidering efter optimering', () => {
     setState({ meas: res.meas, simResult: null });
     runSimulation();
     const band = getState().simResult.redund
-      .filter(r => r.ri >= R_OBS_GOLV && r.ri < R_OBS_GOD);
+      .filter(r => r.ri >= R_OBS_NORM && r.ri < R_OBS_GOD);
     expect(band.length).toBe(res.finalMetrics.nBelowSoft);
     expect(res.finalMetrics.nBelowHard).toBe(0);
     if (band.length) {

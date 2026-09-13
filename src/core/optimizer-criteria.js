@@ -17,8 +17,8 @@
 //   användaren kan motivera dem i planeringsrapporten. Samma nivå som
 //   nätvalideringen (R_OBS_GOD) och studio-vyerna kallar godkänd, vilket
 //   betyder att ett optimerat nät kan få VARNINGAR i "Validera nät" – men
-//   aldrig FEL, eftersom valideringens felgräns (R_OBS_GOLV = 0,30) ligger
-//   under det hårda kravet.
+//   aldrig FEL, eftersom valideringens felgräns är samma normtal som det
+//   hårda kravet (R_OBS_NORM = 0,35, SIS-TS §6.2.2).
 //
 // σ_max (PRODUKTVAL, inte normcitat)   σ_pos ≤ 3 mm för G2
 //   Avser punktens standardosäkerhet σ_pos (1σ) EFTER UTJÄMNING, alltså

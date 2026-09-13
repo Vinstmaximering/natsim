@@ -1,8 +1,8 @@
 // D7: Validera nät – rad 824–866 exakt
 import { getState } from '../state/store.js';
 import { nf } from '../core/format.js';
-import { MATKLASSER, klassificeraKtal, K_NAT_GOLV, K_OVERBESTAMD_PRELIMINAR,
-         R_OBS_GOLV, R_OBS_GOD } from '../core/constants.js';
+import { MATKLASSER, klassificeraKtal, K_NAT_GOLV,
+         R_OBS_NORM, R_OBS_GOD } from '../core/constants.js';
 import { viewNet } from '../state/optimizer-proposal.js';
 import { findBlockedMeasurements } from '../core/visibility.js';
 
@@ -23,17 +23,20 @@ export function validateNetwork() {
   // Normgolv enligt SIS-TS 21143:2016 §6.2.2 och HMK-Stommätning 2024 §3.2.2 b).
   if (!klassificeraKtal(sr.K_global).uppfyllerNorm)
     issues.push(`Kontrollerbarhet k=${nf(sr.K_global, 3)} < ${nf(K_NAT_GOLV, 2)} – nätet uppfyller inte SIS-TS-kravet.`);
-  if (sr.K_global >= K_OVERBESTAMD_PRELIMINAR)
-    warnings.push(`k=${nf(sr.K_global, 3)} ≥ ${nf(K_OVERBESTAMD_PRELIMINAR, 2)} – överbestämt nät, kontrollera att mätinsatsen ger mervärde.`);
+  // Varningen "överbestämt nät, kontrollera att mätinsatsen ger mervärde"
+  // låg här. Borttagen 2026-09-13: gränsen 0,70 var ett produktval utan
+  // normstöd, och varningen var en värdering av användarens mätinsats som
+  // varken SIS-TS eller HMK ger täckning för. k-talet redovisas som tal.
 
-  const weak = (sr.redund || []).filter(r => r.ri < R_OBS_GOLV);
-  if (weak.length) issues.push(`${weak.length} ${weak.length === 1 ? "mätning har" : "mätningar har"} r-tal < ${nf(R_OBS_GOLV, 2)}: ` +
+  // Felgränsen är normens tal (SIS-TS §6.2.2), inte produktens tidigare 0,30.
+  const weak = (sr.redund || []).filter(r => r.ri < R_OBS_NORM);
+  if (weak.length) issues.push(`${weak.length} ${weak.length === 1 ? "mätning har" : "mätningar har"} r-tal < ${nf(R_OBS_NORM, 2)} (SIS-TS §6.2.2): ` +
     weak.slice(0, 3).map(r => `${r.fromId}→${r.toId} (${r.type === "dist" ? "avstånd" : "riktning"}, r-tal ${nf(r.ri, 2)})`).join(", ") +
     (weak.length > 3 ? " m.fl." : ""));
-  const medium = (sr.redund || []).filter(r => r.ri >= R_OBS_GOLV && r.ri < R_OBS_GOD);
+  const medium = (sr.redund || []).filter(r => r.ri >= R_OBS_NORM && r.ri < R_OBS_GOD);
   if (medium.length) warnings.push(
-    `${medium.length} ${medium.length === 1 ? "mätning har" : "mätningar har"} ${nf(R_OBS_GOLV, 2)} ≤ r-tal < ` +
-    `${nf(R_OBS_GOD, 2)}.`);
+    `${medium.length} ${medium.length === 1 ? "mätning har" : "mätningar har"} ${nf(R_OBS_NORM, 2)} ≤ r-tal < ` +
+    `${nf(R_OBS_GOD, 2)} – uppfyller SIS-TS men under HMK Bilaga F.6:s nivå för ingen anmärkning.`);
 
   const knownN = pts.filter(p => p.type === "known").length;
   if (knownN < 1) issues.push("Inga kända punkter – nätet saknar absolut anslutning.");

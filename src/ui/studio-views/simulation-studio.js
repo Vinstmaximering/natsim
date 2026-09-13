@@ -2,7 +2,7 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng }        from '../../map/leaflet-setup.js';
 import { calcM }                  from '../../core/designmatrix.js';
-import { klassificeraKtal, sigPosKlass, PT, ptLabelShort } from '../../core/constants.js';
+import { klassificeraKtal, sigPosKlass, R_OBS_NORM, PT, ptLabelShort } from '../../core/constants.js';
 import { rClass }                from '../../core/redundancy.js';
 import { nf }                    from '../../core/format.js';
 import { TIPS, tipAttr }         from '../tooltip.js';
@@ -13,7 +13,8 @@ const TYPE_COLOR = Object.fromEntries(Object.keys(PT).map(k => [k, PT[k].c]));
 const TYPE_LABEL = Object.fromEntries(Object.keys(PT).map(k => [k, ptLabelShort(k)]));
 
 // Omgång 3: båda skalorna kommer ur core/. Här låg lokala kopior.
-const sigClass = sigPosKlass;
+// σ_pos färgas mot projektets eget krav; utan krav blir den neutral.
+const sigClass = (mm, krav) => sigPosKlass(mm, krav);
 const kClass   = kv => klassificeraKtal(kv).cssKlass;
 
 let _subTab     = 'pts';
@@ -35,7 +36,8 @@ export function _resetForTest() {
 // ── Radgeneratorer ────────────────────────────────────────────────────────────
 
 function _ptRows(state) {
-  const { simResult, pts } = state;
+  const { simResult, pts, sigReq } = state;
+  const kravMm = Number.isFinite(sigReq) && sigReq > 0 ? sigReq : null;
   if (!simResult?.ok) return [];
   return simResult.ptResults.map(pr => {
     const pt   = pts.find(p => p.id === pr.id) || {};
@@ -52,7 +54,10 @@ function _ptRows(state) {
       a_mm:       pr.aSemi * 1000,
       b_mm:       pr.bSemi * 1000,
       sigPos_mm,
-      isProb:     (rMean != null && rMean < 0.3) || sigPos_mm > 5,
+      // "Problempunkt" = bryter mot en normgräns eller mot projektets krav.
+      // Tidigare låg gränserna på 0,3 respektive 5 mm, båda utan normstöd.
+      isProb:     (rMean != null && rMean < R_OBS_NORM)
+                  || (Number.isFinite(kravMm) && sigPos_mm > kravMm),
     };
   });
 }
@@ -94,6 +99,7 @@ function _sidebar(el, state) {
   const sigPosVals = (sr.allPtResults || sr.ptResults || []).map(p => p.sigPos * 1000);
   const maxSig = sigPosVals.length ? Math.max(...sigPosVals) : 0;
   const probs  = _ptRows(state).filter(r => r.isProb);
+  const kravMm = Number.isFinite(state.sigReq) && state.sigReq > 0 ? state.sigReq : null;
 
   const ytCls = maxYT > 20 ? 'val-danger' : maxYT > 10 ? 'val-warn' : 'val-good';
 
@@ -112,7 +118,7 @@ function _sidebar(el, state) {
         <div class="sc-lbl" ${tipAttr(TIPS.R_TAL)}>Minsta r-tal</div>
       </div>
       <div class="studio-stat-card">
-        <div class="sc-val ${sigClass(maxSig)}">${nf(maxSig, 1)}</div>
+        <div class="sc-val ${sigClass(maxSig, state.sigReq)}">${nf(maxSig, 1)}</div>
         <div class="sc-lbl" ${tipAttr(TIPS.SIG_POS)}>Max σ_pos mm</div>
       </div>
     </div>
@@ -120,17 +126,17 @@ function _sidebar(el, state) {
     <div class="studio-filter-section">
       <div class="sf-head">Problempunkter (${probs.length})</div>
       ${probs.length === 0
-        ? '<div class="val-good" style="font-size:12px;padding:4px 0">✓ Alla punkter inom kvalitetskrav</div>'
+        ? '<div class="val-good" style="font-size:12px;padding:4px 0">✓ Inga punkter under normgolv eller projektkrav</div>'
         : probs.map(r => {
-            const reas = r.sigPos_mm > 5 && (r.rMean == null || r.rMean >= 0.3)
-              ? 'Stor osäkerhet'
-              : r.rMean != null && r.rMean < 0.3 && r.sigPos_mm <= 5
-              ? 'Låg redundans'
-              : 'Låg redundans + stor osäkerhet';
-            const bcls = r.rMean != null && r.rMean < 0.1 ? 'val-danger'
-              : r.sigPos_mm > 20 ? 'val-danger'
-              : r.rMean != null && r.rMean < 0.3 ? 'val-warn'
-              : 'val-caution';
+            // 2026-09-13: motiveringen bygger på normgolvet och projektets
+            // eget σ_pos-krav. Tidigare låg gränserna på 0,3 och 5 mm –
+            // tal utan normstöd.
+            const lagR   = r.rMean != null && r.rMean < R_OBS_NORM;
+            const storSp = Number.isFinite(kravMm) && r.sigPos_mm > kravMm;
+            const reas = lagR && storSp ? 'r-tal under norm + över σ_pos-kravet'
+              : lagR                    ? `r-tal under ${nf(R_OBS_NORM, 2)} (SIS-TS §6.2.2)`
+              :                           `σ_pos över projektets krav ${nf(kravMm, 1)} mm`;
+            const bcls = lagR ? 'val-danger' : 'val-warn';
             return `<div class="studio-filter-row sim-prob-row" data-prob-id="${r.id}"
               style="cursor:pointer;padding:5px 6px;border-left:3px solid currentColor;margin-bottom:4px;border-radius:0 3px 3px 0;background:color-mix(in srgb,currentColor 6%,transparent)">
               <span class="${bcls}">
@@ -190,9 +196,9 @@ function _renderPts(el, state) {
     const sel  = r.id === state.selId ? ' sel-row' : '';
     const bg   = r.isProb ? ';background:color-mix(in srgb,var(--color-danger) 6%,transparent)' : '';
     const rCls = r.rMean != null ? rClass(r.rMean) : 'val-muted';
-    const sCls = sigClass(r.sigPos_mm);
+    const sCls = sigClass(r.sigPos_mm, state.sigReq);
     const icon = !r.isProb ? '<span class="val-good">✓</span>'
-      : r.sigPos_mm > 5 ? '<span class="val-danger">✕</span>'
+      : (r.rMean != null && r.rMean < R_OBS_NORM) ? '<span class="val-danger">✕</span>'
       : '<span class="val-warn">⚠</span>';
     return `<tr data-id="${r.id}" class="${sel}" style="border-bottom:1px solid var(--border-default);cursor:pointer${bg}">
       <td style="padding:8px 12px;color:${col};font-weight:bold">${r.id}</td>

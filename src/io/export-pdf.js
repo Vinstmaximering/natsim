@@ -38,8 +38,8 @@ export async function exportSimPDF() {
     const muf = r.mdb.val === Infinity ? "∞" : r.type === "dist" ? nf(r.mdb.val*1000, 1)+" mm" : nf(r.mdb.val, 3)+" mgon";
     // Omgång 3: samma bandindelning som skärmen, men mörkare toner för
     // utskrift på vitt papper.
-    const UTSKRIFT = { "God marginal":"#006600", "Uppfyller norm":"#7a5800",
-                       "Under norm":"#9a4b00", "Otillräckligt":"#990000" };
+    const UTSKRIFT = { "Ingen anmärkning":"#006600", "Uppfyller norm":"#7a5800",
+                       "Under norm":"#990000" };
     const col = UTSKRIFT[klassificeraRtal(r.ri).klass] || "#990000";
     return `<tr>
       <td>${r.fromId}→${r.toId}</td>

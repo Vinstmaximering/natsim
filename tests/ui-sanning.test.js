@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { klassificeraKtal, K_NAT_GOLV, K_GOD_MARGINAL, K_BAND } from '../src/core/constants.js';
+import { klassificeraKtal, K_NAT_GOLV, K_BAND } from '../src/core/constants.js';
 import { bandForklaring } from '../src/ui/right-panel.js';
 import { renderClassInfo } from '../src/ui/sis-ts-info.js';
 import { buildReport } from '../src/pm/report-generator.js';
@@ -79,9 +79,11 @@ describe('Fix 1 (följd) – bandförklaringen speglar klassificeraKtal()', () =
     }
   });
 
-  it('anger den översta bandgränsen som klassificeraren använder', () => {
-    expect(K_GOD_MARGINAL).toBe(0.7);
-    expect(legend).toMatch(/0,70/);
+  it('anger normgolvet som klassificeraren använder', () => {
+    // 2026-09-13: skalan har bara normstödda gränser. Den enda gräns som
+    // finns för k är SIS-TS §6.2.2:s golv.
+    expect(K_NAT_GOLV).toBe(0.5);
+    expect(legend).toMatch(/0,50/);
   });
 });
 
@@ -137,7 +139,7 @@ describe('Fix 2 – PM-rapporten kallar observationsvis redundans r-tal', () => 
     // SIS-TS §6.2.2 anger 0,35 per observation; 0,50 är HMK Bilaga F.6.
     // Färgsättningen i rdTab slår om vid 0,50, alltså HMK:s nivå.
     expect(html).not.toMatch(/≥ 0,50 \(SIS-TS\)/);
-    expect(html).toMatch(/0,50 \(HMK/);
+    expect(html).toMatch(/HMK Bilaga F\.6/);
   });
 });
 

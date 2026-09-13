@@ -178,173 +178,108 @@ export const D = r => r * 180 / Math.PI;
 export const K_NAT_GOLV = 0.50;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REDUNDANSTALET r_i PER OBSERVATION – bandgränser
+// KVALITETSSKALOR – ENDAST NORMSTÖDDA GRÄNSER
+//
+// Underlag: docs/troubleshooting/ui_inventering_20260910.md samt beställarens
+// beslut 2026-09-13:
+//
+//   "Vi ska inte ta hänsyn till något som inte har normstöd. Utan stöd för det
+//    vi säger ska vi bara ange siffrorna och låta användaren själv bedöma om
+//    det är god marginal, accepterat eller dåligt. Vi kan dock flagga om
+//    värden går under acceptabel nivå."
+//
+// Följden: produkten klassificerar INTE kvalitet. Den redovisar talet och
+// säger en enda sak om det – om det uppfyller normen eller inte. Varje gräns
+// nedan bär en normhänvisning. Band utan sådan är borttagna:
+//
+//   BORTTAGET   0,70 för k ("God marginal", tidigare "Överbestämt").
+//               Varken SIS-TS eller HMK anger någon övre gräns för k.
+//   BORTTAGET   0,30 och 0,10 för k ("Under norm"/"Svagt"/"Otillräckligt" som
+//               tre steg). Ingen norm graderar HUR långt under golvet ett nät
+//               ligger – bara att det är under. Talet visas, användaren dömer.
+//   BORTTAGET   0,30 för r-tal. Var produktens egen felgräns; SIS-TS anger
+//               0,35. Se R_OBS_NORM nedan.
+//   BORTTAGET   5 mm och 20 mm för σ_pos. Rena produktval. σ_pos färgas nu mot
+//               projektets EGET krav (state.sigReq), som användaren själv satt.
+//
+// ── GRÄNSERNA SOM FINNS KVAR, MED KÄLLA ────────────────────────────────────
+//   k ≥ 0,50     SIS-TS 21143:2016 §6.2.2, nätet. Även HMK-Stommätning 2024
+//                §3.2.2 b) för triangel- och fackverksnät.
+//   r-tal ≥ 0,35 SIS-TS 21143:2016 §6.2.2, enskild observation. Samma värde
+//                som SIS_TS_GENERAL_REQS.k_individual_min.
+//   r-tal ≥ 0,50 HMK-Stommätning 2024 Bilaga F.6 – nivån för ingen anmärkning.
 //
 // r_i säger hur stor del av ett grovfel i observationen som syns i
-// residualerna. Låg redundans = grovfelet slår rakt in i koordinaterna.
+// residualerna. Lågt r-tal = grovfelet slår rakt in i koordinaterna.
 //
-//   r_i < 0,30           Underkänt. Observationen är i praktiken okontrollerad.
-//   0,30 ≤ r_i < 0,50    Svag kontroll – valideringen varnar.
-//   r_i ≥ 0,50           Godkänd nivå, ingen anmärkning.
-//
-// Värdena låg tidigare hårdkodade i valideringen och i studio-vyernas
-// färgsättning. Etapp E flyttade hit dem så att optimeringen och valideringen
-// läser samma trösklar.
-//
-// Optimeringens krav ligger MELLAN de två (se core/optimizer-criteria.js):
-//   hårt krav  r ≥ 0,35  – blockerar leverans, SIS-TS §6.2.2
-//   mjukt krav r ≥ 0,50  – rapporteras, HMK Bilaga F.6 = R_OBS_GOD
-// Ordningen R_OBS_GOLV < 0,35 < R_OBS_GOD är avsiktlig och måste bevaras: den
-// garanterar att ett optimerat nät kan få VARNINGAR i valideringen men aldrig
-// FEL. Sänks det hårda kravet under R_OBS_GOLV levererar optimeringen nät som
-// produktens egen validering underkänner.
-// ─────────────────────────────────────────────────────────────────────────────
-export const R_OBS_GOLV = 0.30;   // under detta: fel
-export const R_OBS_GOD  = 0.50;   // vid/över detta: ingen anmärkning
-
-// Gräns för det översta bandet. PRODUKTVAL, inte normstyrt – varken SIS-TS
-// eller HMK anger någon övre k-gräns. Värdet är satt genom att förlänga den
-// befintliga bandstrukturen, som har bandbredden 0,2 ovanför 0,1
-// (0,1 → 0,3 → 0,5 → 0,7). Det motsvarar n ≈ 3⅓·u.
-// Facittesterna låser medvetet inte värdet, bara att översta bandet är nåbart
-// för något k ≤ 1.
-//
-// NAMNET ÄNDRAT i UI-städning Omgång 3 (2026-09-11): konstanten hette
-// K_OVERBESTAMD_PRELIMINAR och bandet hette "Överbestämt". Se KVALITETSSKALOR
-// nedan för varför den etiketten togs bort. Det gamla namnet re-exporteras
-// längst ned för bakåtkompatibilitet.
-export const K_GOD_MARGINAL = 0.70;
-
-// Bandgränser under normgolvet.
-const K_BAND_UNDER_NORM = 0.30;
-const K_BAND_SVAGT      = 0.10;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// KVALITETSSKALOR – HARMONISERADE (UI-städning Omgång 3, 2026-09-11)
-//
-// Underlag: docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2,
-// som hittade fyra oförenliga kvalitetsskalor. Genomgången inför den här
-// omgången hittade ytterligare tre (se commit-meddelandet). Alla läser nu
-// härifrån.
-//
-// ── PROBLEM 1: etiketter som ljög om normen ────────────────────────────────
-// "Acceptabelt" användes för k ∈ [0,30, 0,50). Hela det bandet ligger UNDER
-// SIS-TS 21143:2016 §6.2.2:s golv – nätet underkänns. Att kalla det acceptabelt
-// är att beskriva ett underkänt nät som godtagbart. Heter nu "Under norm".
-// (Den här filen erkände problemet i en kommentar sedan tidigare men lämnade
-// det olöst med motiveringen att omdöpning var ett produktbeslut.)
-//
-// "Överbestämt" användes för k ≥ 0,70. Överbestämning betyder n > u och gäller
-// varje nät med f > 0, alltså hela intervallet k > 0 – termen beskriver inte
-// det bandet utan matematiken i stort. Dessutom finns ingen norm som definierar
-// en övre klass. Heter nu "God marginal", som säger vad bandet faktiskt är:
-// marginal ovanför golvet, valt av produkten och inte av normen.
-//
-// ── PROBLEM 2: k-tal och r-tal delade skala ────────────────────────────────
-// rLabel() i core/redundancy.js gav SAMMA fyra ord som k-skalan
-// (Starkt/Acceptabelt/Svagt/Otillräckligt) men till en ANNAN storhet med ett
-// ANNAT normgolv, och saknade band vid 0,35:
-//
-//   k (nätet)          golv 0,50   SIS-TS §6.2.2
-//   r-tal (per obs.)   golv 0,35   SIS-TS §6.2.2, samma paragraf
-//
-// En observation med r-tal 0,32 fick alltså etiketten "Acceptabelt" trots att
-// den underkänns av §6.2.2. De två skalorna har nu SAMMA ORDFÖRRÅD men EGNA
-// trösklar, hämtade ur respektive storhets norm. Att tvinga dem till samma
-// tröskelvärden vore matematiskt fel.
-//
-// ── DEN HARMONISERADE TRAPPAN ──────────────────────────────────────────────
-//   God marginal    väl över golvet (produktval, ej normstyrt)
-//   Uppfyller norm  vid eller över golvet
-//   Under norm      under golvet – underkänt
-//   Svagt           klart under golvet
-//   Otillräckligt   i praktiken okontrollerat
-//
-// r-talsskalan har fyra band i stället för fem: varje gräns motsvarar en
-// konstant som redan styr produktens logik (R_OBS_GOD, R_MIN_HARD via
-// SIS_TS_GENERAL_REQS.k_individual_min, R_OBS_GOLV). Den gamla gränsen 0,10 var
-// odokumenterad och saknade motsvarighet i både norm och kod – den är borta.
+// OPTIMERINGEN läser samma värden (core/optimizer-criteria.js): hårt krav
+// R_OBS_NORM, mjukt krav R_OBS_GOD. Valideringens felgräns är numera också
+// R_OBS_NORM, så ett optimerat nät kan få varningar men aldrig fel – samma
+// invariant som förut, men nu med normens tal i stället för produktens.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// SIS-TS §6.2.2:s golv för ENSKILD observation. Speglar
-// SIS_TS_GENERAL_REQS.k_individual_min i data/sis-ts-classes.js; värdet ligger
-// där, men skalan nedan behöver det utan att skapa ett importberoende från
-// core/ till data/.
+/** SIS-TS 21143:2016 §6.2.2 – golv för ENSKILD observation. */
 export const R_OBS_NORM = 0.35;
 
+/** HMK-Stommätning 2024 Bilaga F.6 – nivå för ingen anmärkning. */
+export const R_OBS_GOD  = 0.50;
+
 /**
- * Kontrollerbarhetstalet k = f/n för NÄTET. Golv 0,50 (SIS-TS §6.2.2).
+ * Kontrollerbarhetstalet k = f/n för NÄTET.
+ * Två utfall, eftersom normen bara definierar ett golv.
  * Returnerar { klass, cssKlass, farg, uppfyllerNorm }.
  */
 export function klassificeraKtal(k) {
-  if (k >= K_GOD_MARGINAL)
-    return { klass: "God marginal",   cssKlass: "val-purple",  farg: "#ce93d8", uppfyllerNorm: true  };
-  if (k >= K_NAT_GOLV)
-    return { klass: "Uppfyller norm", cssKlass: "val-good",    farg: "#00ff88", uppfyllerNorm: true  };
-  if (k >= K_BAND_UNDER_NORM)
-    return { klass: "Under norm",     cssKlass: "val-caution", farg: "#ffcc00", uppfyllerNorm: false };
-  if (k >= K_BAND_SVAGT)
-    return { klass: "Svagt",          cssKlass: "val-warn",    farg: "#ff9900", uppfyllerNorm: false };
-  return   { klass: "Otillräckligt",  cssKlass: "val-danger",  farg: "#ff5050", uppfyllerNorm: false };
+  return k >= K_NAT_GOLV
+    ? { klass: "Uppfyller norm", cssKlass: "val-good",   farg: "#00ff88", uppfyllerNorm: true  }
+    : { klass: "Under norm",     cssKlass: "val-danger", farg: "#ff5050", uppfyllerNorm: false };
 }
 
 /**
- * Redundanstalet r-tal för EN OBSERVATION. Golv 0,35 (SIS-TS §6.2.2);
- * 0,50 är HMK Bilaga F.6:s nivå för ingen anmärkning.
- * Returnerar samma form som klassificeraKtal().
+ * Redundanstalet r-tal för EN OBSERVATION.
+ * Tre utfall: två normgolv finns (SIS-TS och HMK), inget mer.
  */
 export function klassificeraRtal(r) {
   if (r >= R_OBS_GOD)
-    return { klass: "God marginal",   cssKlass: "val-good",    farg: "#00ff88", uppfyllerNorm: true  };
+    return { klass: "Ingen anmärkning", cssKlass: "val-good",    farg: "#00ff88", uppfyllerNorm: true  };
   if (r >= R_OBS_NORM)
-    return { klass: "Uppfyller norm", cssKlass: "val-caution", farg: "#ffcc00", uppfyllerNorm: true  };
-  if (r >= R_OBS_GOLV)
-    return { klass: "Under norm",     cssKlass: "val-warn",    farg: "#ff9900", uppfyllerNorm: false };
-  return   { klass: "Otillräckligt",  cssKlass: "val-danger",  farg: "#ff5050", uppfyllerNorm: false };
+    return { klass: "Uppfyller norm",   cssKlass: "val-caution", farg: "#ffcc00", uppfyllerNorm: true  };
+  return   { klass: "Under norm",       cssKlass: "val-danger",  farg: "#ff5050", uppfyllerNorm: false };
 }
 
-// Banden som datastruktur, för teckenförklaringen i kartan och för tester.
-// Ordningen är fallande, samma som klassificerarna prövar i.
+// Banden som datastruktur, för teckenförklaringen i kartan, bandförklaringen i
+// högerpanelen och tester. Fallande ordning, samma som klassificerarna prövar i.
+// `kalla` är normhänvisningen som visas för användaren.
 export const K_BAND = Object.freeze([
-  { min: K_GOD_MARGINAL,     klass: "God marginal"   },
-  { min: K_NAT_GOLV,         klass: "Uppfyller norm" },
-  { min: K_BAND_UNDER_NORM,  klass: "Under norm"     },
-  { min: K_BAND_SVAGT,       klass: "Svagt"          },
-  { min: 0,                  klass: "Otillräckligt"  },
+  { min: K_NAT_GOLV, klass: "Uppfyller norm", kalla: "SIS-TS 21143:2016 §6.2.2" },
+  { min: 0,          klass: "Under norm",     kalla: "under SIS-TS-golvet 0,50" },
 ]);
 
 export const R_BAND = Object.freeze([
-  { min: R_OBS_GOD,  klass: "God marginal"   },
-  { min: R_OBS_NORM, klass: "Uppfyller norm" },
-  { min: R_OBS_GOLV, klass: "Under norm"     },
-  { min: 0,          klass: "Otillräckligt"  },
+  { min: R_OBS_GOD,  klass: "Ingen anmärkning", kalla: "HMK Bilaga F.6" },
+  { min: R_OBS_NORM, klass: "Uppfyller norm",   kalla: "SIS-TS 21143:2016 §6.2.2" },
+  { min: 0,          klass: "Under norm",       kalla: "under SIS-TS-golvet 0,35" },
 ]);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PUNKTOSÄKERHET σ_pos – EGEN SKALA, EGEN STORHET
+// PUNKTOSÄKERHET σ_pos
 //
-// σ_pos mäts i mm och har inget normgolv i SIS-TS: kravet sätts per projekt
-// (state.sigReq, default 3 mm) eller per mätklass i optimeringen. Skalan nedan
-// är alltså ett produktval för FÄRGSÄTTNING, inte en normklassificering, och
-// delar medvetet inte ordförråd med k- och r-skalorna.
+// SIS-TS anger inget golv för σ_pos – kravet sätts per projekt (state.sigReq)
+// eller per mätklass i optimeringen. Produkten har därför ingenting att säga om
+// ett σ_pos-värde i sig. Färgsättningen mäter mot ANVÄNDARENS EGET krav när ett
+// sådant är satt, och är neutral annars.
 //
-// Omgång 3 harmoniserade en diskrepans: kvalitetspanelen färgade gult över
-// 5 mm och rött över 10 mm, medan de tre tabellerna blev röda först vid 20 mm.
-// Samma punkt kunde alltså vara gul i en vy och röd i en annan. 20 mm är valt
-// som gemensam gräns – det är den som de tre tabellerna använde och den som
-// låg i den ursprungliga koden.
+// Tidigare färgade koden mot 5 mm och 20 mm – tal utan källa, och dessutom
+// olika i kvalitetspanelen (10 mm) och tabellerna (20 mm).
 // ─────────────────────────────────────────────────────────────────────────────
-export const SIG_POS_BRA_MM  = 5;
-export const SIG_POS_DALIG_MM = 20;
 
-/** CSS-klass för en punktosäkerhet i mm. */
-export function sigPosKlass(mm) {
+/**
+ * CSS-klass för en punktosäkerhet i mm.
+ * @param {number} mm
+ * @param {number|null} krav  projektets σ_pos-krav i mm. Utelämnat ⇒ neutral.
+ */
+export function sigPosKlass(mm, krav = null) {
   if (!Number.isFinite(mm)) return "val-muted";
-  if (mm < SIG_POS_BRA_MM)   return "val-good";
-  if (mm < SIG_POS_DALIG_MM) return "val-caution";
-  return "val-danger";
+  if (!Number.isFinite(krav) || krav <= 0) return "val-value";
+  return mm <= krav ? "val-good" : "val-danger";
 }
-
-// Bakåtkompatibelt alias. Konstanten hette K_OVERBESTAMD_PRELIMINAR fram till
-// Omgång 3; namnet speglade etiketten "Överbestämt" som togs bort.
-export const K_OVERBESTAMD_PRELIMINAR = K_GOD_MARGINAL;

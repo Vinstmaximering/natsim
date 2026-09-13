@@ -752,15 +752,16 @@ describe('F7 – klassificering av k-talet', () => {
     }
   })
 
-  it('högsta klassen är nåbar för något k ≤ 1', () => {
-    // Kärnan i den gamla buggen: "k > 1,14" kunde aldrig uppfyllas.
-    const klasser = new Set()
-    for (let k = 0; k <= 1.0000001; k += 0.001) klasser.add(klassificeraKtal(k).klass)
-    const hogsta = klassificeraKtal(1.0).klass
-    expect(klasser.size).toBeGreaterThan(1)
-    // Högsta klassen vid k = 1 får inte vara samma som den vid normgolvet,
-    // annars finns ingen översta klass alls.
-    expect(hogsta).not.toBe(klassificeraKtal(K_NAT_GOLV).klass)
+  it('varje band i skalan är nåbart för något k ≤ 1', () => {
+    // Kärnan i den gamla buggen: "k > 1,14" kunde aldrig uppfyllas, så
+    // högsta klassen var en död gren. Testet låser att inget band är dött.
+    // 2026-09-13: skalan har bara normstödda gränser, så den har två band –
+    // därför prövas nåbarheten mot K_BAND i stället för mot ett antaget
+    // antal klasser.
+    const nadda = new Set()
+    for (let k = 0; k <= 1.0000001; k += 0.001) nadda.add(klassificeraKtal(k).klass)
+    expect(nadda.size).toBe(K_BAND.length)
+    for (const b of K_BAND) expect(nadda, b.klass).toContain(b.klass)
   })
 
   it('k ≥ 0,50 uppfyller normen, k < 0,50 gör det inte', () => {
