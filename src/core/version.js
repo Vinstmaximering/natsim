@@ -11,7 +11,7 @@ import { version } from '../../package.json';
 /** Versionen ur package.json. Höjs med `npm version`, aldrig för hand här. */
 export const APP_VERSION = version;
 
-/** Visningsform för UI, t.ex. "v0.4.0". */
+/** Visningsform för UI, t.ex. "v0.5.0". */
 export const APP_VERSION_LABEL = `v${version}`;
 
 /** Produktnamn. Hålls här så att titel, panelhuvud och onboarding delar källa. */

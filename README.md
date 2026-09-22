@@ -278,21 +278,30 @@ Från **50 mätningar** flyttas körningen till en Web Worker
 körs samma generator på huvudtråden i tidsskivor. Mindre nät körs direkt i
 webbläsaren. Progress visas i dialogen i båda fallen.
 
-## Visuellt lager
+## Visuella lager
 
-Punkter och linjer som ritas för hand enbart för dokumentation — vägkanter,
-ritningskontur, planerade objekt. De ligger i egna state-fält (`visualPts`,
-`visualLines`) helt skilda från `pts` och `meas`, och simuleringen läser dem
+Punkter och linjer enbart för dokumentation — vägkanter, ritningskontur,
+planerade objekt. De ligger i egna state-fält (`visualPts`, `visualLines`,
+`visualLayers`) helt skilda från `pts` och `meas`, och simuleringen läser dem
 aldrig. De ritas med ihåliga cirklar och streckade linjer så att de inte
-förväxlas med nätpunkter och mätningar, och kan döljas med **Visuella objekt**
-i VISA-listan.
+förväxlas med nätpunkter och mätningar.
+
+Varje visuellt objekt tillhör ett **namngivet lager** med egen färg och
+synlighet. Objektets egen färg vinner över lagrets; lagrets vinner över
+standardfärgen. Ett dolt lager varken ritas eller går att träffa på kartan.
+Lagren styrs i **LAGER**-sektionen i vänsterpanelen, som också visar raderna
+*Nät* och *Hinder* under rubriken BERÄKNING — ögat där döljer dem bara på
+kartan, beräkningen och siktlinjerna rör sig inte.
+
+Projektfiler sparade före lagren laddas som förut; objekt utan lager samlas i
+ett lager som heter **Handritat**.
 
 ### Rita
 
-Två knappar i verktygsfältet:
+Två knappar i LAGER-sektionen, som ritar i det aktiva lagret:
 
-- **○ Rita visuell punkt** — varje klick placerar en punkt.
-- **⤺ Rita visuell linje** — klick efter klick kedjar ihop linjesegment.
+- **○ Visuell punkt** — varje klick placerar en punkt.
+- **⤺ Visuell linje** — klick efter klick kedjar ihop linjesegment.
 
 Båda lägena står kvar tills du avslutar med **Escape** eller **högerklick**. I
 linjeläget bryter det första högerklicket kedjan, det andra lämnar läget.
@@ -320,6 +329,51 @@ hindret* i menyn bryter bandet och lämnar hindret fristående.
 
 PXY-export av visuella punkter är inte implementerad ännu — den väntar på en
 exempelfil från SBG Geo för att formatet ska bli rätt.
+
+## Import av ritningsunderlag
+
+Båda importerna når man från **Data**-menyn i toppraden, och båda kan ångras
+som en enda åtgärd.
+
+### Punkter och linjer (.geo)
+
+Läser SBG Object Text (Geo Professional). Utöver punktlistan läses nu även
+`LineList`, där varje linje bär sina egna hörnkoordinater. Filens
+koordinatsystem matchas mot alla tretton SWEREF 99-zonerna, och avviker det
+från projektets erbjuds ett byte i dialogen.
+
+I dialogen väljs:
+
+- **Punkterna** till ett nytt visuellt lager (förval) eller till nätet. Går de
+  till nätet väljs punkttyp uttryckligen, och vid ID-krock *Hoppa över*,
+  *Uppdatera koordinater* eller *Byt namn* med suffix `_2`.
+- **Linjerna**, oberoende av punktvalet: *Visuella linjer*, *Hinder* (väggar
+  som blockerar sikt) eller *Hoppa över*. Hörnen dedupliceras på koordinat, så
+  att en kontur blir en sammanhängande kedja i stället för lösa segment.
+
+Dubbletter av punkt-ID slås aldrig ihop tyst — båda punkterna returneras med en
+varning i dialogen.
+
+### DXF (.dxf)
+
+Endast ASCII-DXF; binär DXF avvisas med besked. Stödda objekt är `LINE`,
+`LWPOLYLINE`, `POLYLINE`/`VERTEX` och `POINT`. Övriga typer räknas per lager
+och hoppas över med varning. Bågsegment (bulge) ritas som raka linjer.
+
+En DXF bär ingen information om koordinatsystem, och ofta inte heller om enhet
+eller axelordning, så georefereringen är ett val i dialogen: enhet (ur
+`$INSUNITS` när den finns), axelordning *X → E* eller *X → N*, och projektets
+aktiva CRS. Dialogen räknar avståndet från ritningens utbredning till nätets
+tyngdpunkt för **båda** axelordningarna och varnar om den valda är orimlig men
+den andra rimlig. Av samma skäl blir en DXF alltid visuella lager, aldrig
+nätpunkter.
+
+## Toppmeny
+
+- **Data** — import (.geo, .dxf, Excel/CSV, byggnader från OSM), export av
+  nätpunkter (.geo), och projekthantering: Spara (Ctrl+S), Ladda, Excel-mall.
+- **Visa** — kartinnehåll och punkttyper i två kolumner, samt symbolstorlek och
+  felellipsskala.
 
 ## Struktur
 
