@@ -1,6 +1,7 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 3590–3613 + rad 3974 (SAVE_KEY).
 // Strukturella ändringar: läser/skriver via store istället för globaler.
 import { getState, setState } from './store.js';
+import { _sanitizeVisual, _migrateVisualLayers, _nextCounter, syncLinkedObstacles } from './visual.js';
 
 export const SAVE_KEY = "stomnät_autosave";   // rad 3974 exakt
 
@@ -11,13 +12,25 @@ export function saveAutosave() {
   clearTimeout(_asTimer);
   _asTimer = setTimeout(() => {
     try {
-      const { pts, meas, centerErr, nMid } = getState();
+      const { pts, meas, centerErr, nMid,
+              visualPts = [], visualLines = [], visualLayers = [],
+              activeVisualLayerId = null, nVid, nVlid, nVlyid } = getState();
       const snapshot = {
         ver: 2,
         pts:  JSON.parse(JSON.stringify(pts)),
         meas: JSON.parse(JSON.stringify(meas)),
         centerErr,
-        nMid: nMid ?? 1
+        nMid: nMid ?? 1,
+        // Etapp 1: det visuella lagret följer med autosparningen. Fälten är
+        // valfria – en autosparning gjord före Etapp 1 saknar dem och laddas
+        // precis som förut, med tomt visuellt lager.
+        visualPts:           JSON.parse(JSON.stringify(visualPts)),
+        visualLines:         JSON.parse(JSON.stringify(visualLines)),
+        visualLayers:        JSON.parse(JSON.stringify(visualLayers)),
+        activeVisualLayerId,
+        nVid:   nVid   ?? 1,
+        nVlid:  nVlid  ?? 1,
+        nVlyid: nVlyid ?? 1,
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
       if (typeof document !== 'undefined') {
@@ -41,12 +54,23 @@ export function loadAutosave() {
     if (!raw) return false;
     const s = JSON.parse(raw);
     if (!s || (s.ver !== 2 && s.ver !== 1)) return false;
+    // Samma migrering som vid laddning av projektfil: objekt utan layerId
+    // samlas i "Handritat".
+    const sanitized = _sanitizeVisual(s.visualPts, s.visualLines);
+    const { visualPts, visualLines, visualLayers, activeVisualLayerId, nVlyid } =
+      _migrateVisualLayers(sanitized.visualPts, sanitized.visualLines,
+                           s.visualLayers, s.activeVisualLayerId);
     setState({
       pts:       s.pts  || [],
       meas:      s.meas || [],
       centerErr: s.centerErr != null ? s.centerErr : 1.0,
       nMid:      s.nMid      ?? 1,
+      visualPts, visualLines, visualLayers, activeVisualLayerId,
+      nVid:   Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
+      nVlid:  Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
+      nVlyid: Math.max(s.nVlyid ?? 1, nVlyid),
     });
+    syncLinkedObstacles();
     return true;
   } catch (e) {
     return false;

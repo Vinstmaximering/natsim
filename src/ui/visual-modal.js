@@ -10,8 +10,8 @@ import { saveUndo }           from '../state/undo.js';
 import { draw }               from '../map/leaflet-setup.js';
 import { showToast }          from './toast.js';
 import {
-  VISUAL_COLORS, VISUAL_DEFAULT_COLOR,
-  findVisualPt, findVisualLine, visualLineCoords,
+  VISUAL_COLORS, visualObjColor,
+  findVisualPt, findVisualLine, visualLineCoords, findVisualLayer,
   updateVisualPt, updateVisualLine, removeVisualPt, removeVisualLine,
 } from '../state/visual.js';
 import { normalizeHexColor } from '../core/colors.js';
@@ -182,11 +182,11 @@ export function openEditVisual(id) {
   const epLabel = ep => ep.ref === 'net' ? `${ep.id} (nätpunkt)` : `${ep.id} (visuell)`;
 
   mi().innerHTML = `
-    <div style="font-size:14px;color:${obj.color || VISUAL_DEFAULT_COLOR};margin-bottom:4px;font-weight:bold;">
+    <div style="font-size:14px;color:${visualObjColor(obj)};margin-bottom:4px;font-weight:bold;">
       ${line ? '⤺' : '○'} Redigera ${line ? 'visuell linje' : 'visuell punkt'}
     </div>
     <div style="font-size:11px;color:#7090a8;margin-bottom:10px;">
-      ${esc(id)} · ingår inte i simuleringen
+      ${esc(id)}${obj.name ? ` · "${esc(obj.name)}"` : ''} · lager: ${esc(findVisualLayer(obj.layerId)?.name || '–')} · ingår inte i simuleringen
     </div>
     ${line ? `
       <div style="font-size:11px;color:#7090a8;background:#091424;padding:6px;border-radius:3px;margin-bottom:8px;line-height:1.6;">
@@ -198,7 +198,7 @@ export function openEditVisual(id) {
           <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">${l}</div>
           <input id="vis_${k}" type="number" step="0.001" value="${Number(v).toFixed(3)}"></div>`).join('')}`}
     <div style="margin-bottom:8px;">
-      <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">Färg — ✕ ger standardfärg</div>
+      <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">Färg — ✕ ger lagrets färg</div>
       <div id="visual-color-section">${renderPalette()}</div>
     </div>
     <div class="mbs">

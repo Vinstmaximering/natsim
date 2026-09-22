@@ -2,11 +2,13 @@
 // Stilen är medvetet skild från nätpunkter och mätningar: ihåliga cirklar och
 // streckade linjer, så att visuella objekt aldrig förväxlas med mätdata.
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
-import { VISUAL_DEFAULT_COLOR, visualLineCoords } from '../state/visual.js';
+import { visualLineCoords, visualObjColor, isVisualObjVisible, visualPtLabel }
+  from '../state/visual.js';
 
 const DASH = [7, 5];
 
-export const visualColor = obj => obj?.color || VISUAL_DEFAULT_COLOR;
+// Färgen kommer ur objektet, annars ur dess lager (Etapp 1).
+export const visualColor = (obj, state) => visualObjColor(obj, state);
 
 /**
  * @param {CanvasRenderingContext2D} ctx
@@ -17,8 +19,9 @@ export function drawVisualLayer(ctx, state, helpers) {
   const { map, ENtoLatLng, symSize = 10, showLabels = true } = helpers;
   if (!map) return;
 
-  const pts   = state.visualPts   || [];
-  const lines = state.visualLines || [];
+  // Dolda lager ritas inte alls – synlighet per lager ersatte kryssrutan #tgv.
+  const pts   = (state.visualPts   || []).filter(p => isVisualObjVisible(p, state));
+  const lines = (state.visualLines || []).filter(l => isVisualObjVisible(l, state));
   if (!pts.length && !lines.length) return;
 
   const sel = state.selVisualId;
@@ -42,7 +45,7 @@ export function drawVisualLayer(ctx, state, helpers) {
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.lineTo(b.x, b.y);
-    ctx.strokeStyle = visualColor(line);
+    ctx.strokeStyle = visualColor(line, state);
     ctx.lineWidth   = isSel ? 3 : 1.8;
     ctx.setLineDash(DASH);
     ctx.stroke();
@@ -53,7 +56,7 @@ export function drawVisualLayer(ctx, state, helpers) {
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = visualColor(line);
+      ctx.fillStyle = visualColor(line, state);
       ctx.fillText('▨', (a.x + b.x) / 2, (a.y + b.y) / 2);
     }
 
@@ -73,7 +76,7 @@ export function drawVisualLayer(ctx, state, helpers) {
   for (const p of pts) {
     const c = xy(p.E, p.N);
     const isSel = p.id === sel;
-    const col = visualColor(p);
+    const col = visualColor(p, state);
 
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
@@ -91,13 +94,17 @@ export function drawVisualLayer(ctx, state, helpers) {
       ctx.stroke();
     }
 
-    if (showLabels) {
+    // Hörn i importerade linjer får ingen etikett – en polygonkontur med ett
+    // hundratal "01"/"02" över sig är oläsbar. Etiketten visar originalnamnet
+    // ur importfilen när det finns, annars det interna id:t.
+    if (showLabels && p.role !== 'vertex') {
+      const label = visualPtLabel(p);
       ctx.font = '10px monospace';
       ctx.lineWidth   = 3;
       ctx.strokeStyle = 'rgba(7,13,24,0.7)';
-      ctx.strokeText(p.id, c.x + r + 3, c.y - r);
+      ctx.strokeText(label, c.x + r + 3, c.y - r);
       ctx.fillStyle = col;
-      ctx.fillText(p.id, c.x + r + 3, c.y - r);
+      ctx.fillText(label, c.x + r + 3, c.y - r);
     }
   }
 
@@ -109,8 +116,11 @@ export function drawVisualLayer(ctx, state, helpers) {
 const PT_HIT_PX   = 10;
 const LINE_HIT_PX = 8;
 
+// Objekt i dolda lager går inte att träffa: det som inte syns ska inte heller
+// gå att markera eller dra i.
 export function hitTestVisualPt(px, py, state, map, ENtoLatLng) {
   for (const p of state.visualPts || []) {
+    if (!isVisualObjVisible(p, state)) continue;
     const c = map.latLngToContainerPoint(ENtoLatLng(p.E, p.N));
     if (Math.hypot(c.x - px, c.y - py) <= PT_HIT_PX) return p;
   }
@@ -119,6 +129,7 @@ export function hitTestVisualPt(px, py, state, map, ENtoLatLng) {
 
 export function hitTestVisualLine(px, py, state, map, ENtoLatLng) {
   for (const line of state.visualLines || []) {
+    if (!isVisualObjVisible(line, state)) continue;
     const coords = visualLineCoords(line, state);
     if (!coords) continue;
     const a = map.latLngToContainerPoint(ENtoLatLng(coords[0][0], coords[0][1]));

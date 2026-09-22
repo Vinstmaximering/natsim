@@ -7,7 +7,7 @@
 // aldrig vid modul-initialisering.
 import { map, ENtoLatLng, latLngToEN } from './leaflet-setup.js';
 import { getState }                    from '../state/store.js';
-import { addVisualPt, addVisualLine, makeEndpoint } from '../state/visual.js';
+import { addVisualPt, addVisualLine, makeEndpoint, isVisualObjVisible } from '../state/visual.js';
 
 const SNAP_PX = 15;
 
@@ -46,6 +46,8 @@ function _findSnap(px, py) {
   const { pts = [], visualPts = [] } = getState();
 
   for (const p of visualPts) {
+    // Dolda lager snappar inte – annars fäster linjen i något osynligt.
+    if (!isVisualObjVisible(p)) continue;
     const c = map.latLngToContainerPoint(ENtoLatLng(p.E, p.N));
     if (Math.hypot(c.x - px, c.y - py) < SNAP_PX)
       return { ref: 'visual', id: p.id, E: p.E, N: p.N };

@@ -7,6 +7,7 @@
 //   maxSuggestDist (Etapp A): saknas → 500 m
 //   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
+//   visualLayers (Etapp 1): saknas → objekten samlas i lagret "Handritat"
 //   optimizerConfig (Etapp E): saknas → vikterna 50/50
 //   optimizerConfig.sigma_max_mm (Fas 2): saknas/null → mätklassens default
 //                                          (3 mm för G2)
@@ -16,7 +17,7 @@ import { CRS_DEFS } from '../core/constants.js';
 import { normalizeWeights } from '../core/optimizer.js';
 import { showToast } from '../ui/toast.js';
 import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
-import { _sanitizeVisual, _nextCounter, syncLinkedObstacles } from '../state/visual.js';
+import { _sanitizeVisual, _nextCounter, _migrateVisualLayers, syncLinkedObstacles } from '../state/visual.js';
 
 // ── Serialisera state till spara-objekt ──────────────────────────────────────
 // Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
@@ -30,6 +31,9 @@ export function _buildSnapshot() {
     // Etapp D: visuellt lager, helt skilt från pts/meas.
     visualPts:   JSON.parse(JSON.stringify(s.visualPts   || [])),
     visualLines: JSON.parse(JSON.stringify(s.visualLines || [])),
+    // Etapp 1: lagerlistan. Filer utan fältet laddas med allt i "Handritat".
+    visualLayers:        JSON.parse(JSON.stringify(s.visualLayers || [])),
+    activeVisualLayerId: s.activeVisualLayerId ?? null,
     activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
     centerErr:      s.centerErr      ?? 1.0,
@@ -44,6 +48,7 @@ export function _buildSnapshot() {
     nMid:           s.nMid           ?? 1,
     nVid:           s.nVid           ?? 1,
     nVlid:          s.nVlid          ?? 1,
+    nVlyid:         s.nVlyid         ?? 1,
     mapCenter: (() => {
       try {
         const m = document.getElementById("leaflet-map")?._leaflet_map;
@@ -103,7 +108,12 @@ export function _applySnapshot(s) {
   _syncObstacleCounter(obstacles);
 
   // Etapp D: fältet saknas i äldre filer → tomt visuellt lager.
-  const { visualPts, visualLines } = _sanitizeVisual(s.visualPts, s.visualLines);
+  const sanitized = _sanitizeVisual(s.visualPts, s.visualLines);
+  // Etapp 1: objekt utan giltigt layerId hamnar i "Handritat", så att en
+  // projektfil sparad före lagren laddas med allt innehåll i behåll.
+  const { visualPts, visualLines, visualLayers, activeVisualLayerId, nVlyid } =
+    _migrateVisualLayers(sanitized.visualPts, sanitized.visualLines,
+                         s.visualLayers, s.activeVisualLayerId);
 
   setState({
     pts,
@@ -124,6 +134,10 @@ export function _applySnapshot(s) {
     nMid:           s.nMid           ?? 1,
     visualPts,
     visualLines,
+    visualLayers,
+    activeVisualLayerId,
+    // Samma resonemang som för nVid/nVlid: räknaren härleds ur innehållet.
+    nVlyid:         Math.max(s.nVlyid ?? 1, nVlyid),
     // Räknarna härleds ur innehållet i stället för att lita på filens värden –
     // en handredigerad fil ska inte kunna ge id-kollisioner.
     nVid:           Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),

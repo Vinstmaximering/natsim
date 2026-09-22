@@ -129,6 +129,8 @@ export function clearAll() {
     setState({
       pts: [], meas: [], obstacles: [],
       visualPts: [], visualLines: [], selVisualId: null,
+      // Etapp 1: lagren följer sitt innehåll – ett tomt projekt har inga lager.
+      visualLayers: [], activeVisualLayerId: null,
       selId: null, selMId: null, selObsId: null,
       measFrom: null, simResult: null,
       suggestedMeas: [], blockedSuggestions: [],
@@ -144,7 +146,7 @@ export function clearAll() {
 // Se core/format.js och docs/troubleshooting/ui_inventering_20260910.md.
 
 export function initToolbar() {
-  ["tgc","tga","tgd","tgl","tge","tgs","tgb","tgv","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
+  ["tgc","tga","tgd","tgl","tge","tgs","tgb","sym-lock","tv_known","tv_station","tv_new","tv_detail","tv_simstation"]
     .forEach(id => document.getElementById(id)?.addEventListener("change", () => draw()));
 
   const symSlider = document.getElementById("sym-size");

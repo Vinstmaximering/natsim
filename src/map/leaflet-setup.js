@@ -430,12 +430,11 @@ export function draw() {
   drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10, dragSnapTarget: getDragSnapTarget() });
   drawPreview(ctx);
 
-  // ── Visuellt lager (under punkter, egen toggle tgv) ──
-  const showV = document.getElementById("tgv")?.checked ?? true;
-  if (showV) {
-    drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10, showLabels: showL });
-    drawVisualPreview(ctx);
-  }
+  // ── Visuellt lager (under punkter) ──
+  // Etapp 1: synligheten styrs per lager i lagerpanelen, inte längre av en
+  // global kryssruta (#tgv). drawVisualLayer filtrerar bort dolda lager.
+  drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10, showLabels: showL });
+  drawVisualPreview(ctx);
 
   // ── Punkter ──
   pts.forEach(pt => {

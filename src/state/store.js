@@ -17,6 +17,11 @@ let _state = {
 
   // ── Visuellt lager (Etapp D) ──
   // Enbart för visuell dokumentation – simuleringen läser aldrig dessa.
+  // Etapp 1: varje visuellt objekt tillhör ett namngivet lager. Synligheten
+  // per lager ersatte den globala kryssrutan #tgv.
+  visualLayers: [],
+  activeVisualLayerId: null,
+  nVlyid: 1,
   visualPts: [],
   visualLines: [],
   selVisualId: null,
