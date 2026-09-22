@@ -73,6 +73,7 @@ function move(pop, from, delta) {
 // vänsterpanelen eller i Hinder-fliken – inget nytt beteende införs här.
 const ACTIONS = {
   'import-geo': () => el('geo-fi')?.click(),
+  'import-dxf': () => el('dxf-fi')?.click(),
   'import-xl':  () => el('xl-fi')?.click(),
   'import-osm': () => import('../io/osm-import.js').then(m => m.importOSMForCurrentView()),
   'export-geo': () => import('../io/import-geo.js').then(m => m.exportGeoFile()),

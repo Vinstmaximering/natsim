@@ -175,6 +175,13 @@ export function initToolbar() {
     f.text().then(text => import('./geo-import-modal.js').then(m => m.openGeoImport(text, f.name)));
     e.target.value = "";
   });
+  // Etapp 6: DXF öppnar alltid importdialogen – georefereringen är ett val,
+  // inte något filen kan svara på.
+  document.getElementById("dxf-fi")?.addEventListener("change", e => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then(text => import('./dxf-import-modal.js').then(m => m.openDxfImport(text, f.name)));
+    e.target.value = "";
+  });
   document.getElementById("xl-fi")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
     const ext = f.name.split(".").pop().toLowerCase();

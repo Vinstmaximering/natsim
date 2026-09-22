@@ -15,54 +15,15 @@ import {
   makeEndpoint, findVisualLine, visualLineCoords,
 } from '../state/visual.js';
 import { geoPointTypeFromId } from './import-geo.js';
+import { VertexIndex, VERTEX_DEDUP_TOL_M } from './vertex-index.js';
 
-// Två hörn närmare varandra än så är samma hörn. Geo Professional skriver ut
-// hörnen per linje, så ett hörn som delas av två linjer förekommer två gånger
-// med identiska koordinater (exempel_tom_punktlista: Line 5 hörn 01 = Line 6 hörn 03).
-// Utan deduplicering blir konturen en samling lösa segment i stället för en
-// sammanhängande kedja.
-export const VERTEX_DEDUP_TOL_M = 0.0005;
+// Dedupliceringen delas med DXF-importen (Etapp 6) och bor i vertex-index.js.
+// Re-exporteras här eftersom .geo-importen var först med den.
+export { VERTEX_DEDUP_TOL_M };
 
 // Färg och etikett för hinder skapade ur importerade linjer. Samma värden som
 // kontextmenyns "Använd som vägg" i ui/visual-modal.js.
 const OBSTACLE_COLOR = '#8aa8c0';
-
-// ── Hörnindex ────────────────────────────────────────────────────────────────
-// Rutnät med cellstorlek = toleransen. Identiska koordinater hamnar alltid i
-// samma cell; grannceller genomsöks också så att ett par som råkar hamna på var
-// sin sida om en cellgräns ändå hittas.
-class VertexIndex {
-  constructor(tol = VERTEX_DEDUP_TOL_M) {
-    this.tol = tol;
-    this.cells = new Map();
-  }
-  _q(v) { return Math.round(v / this.tol); }
-  // H jämförs med: två hörn på samma plankoordinat men olika höjd är olika
-  // hörn. Saknad höjd (null) matchar bara saknad höjd.
-  _sameH(a, b) {
-    if (a === null || b === null) return a === b;
-    return Math.abs(a - b) <= this.tol;
-  }
-  find(E, N, H) {
-    const cx = this._q(E), cy = this._q(N);
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        const bucket = this.cells.get(`${cx + dx}|${cy + dy}`);
-        if (!bucket) continue;
-        for (const v of bucket) {
-          if (Math.abs(v.E - E) <= this.tol && Math.abs(v.N - N) <= this.tol && this._sameH(v.H, H))
-            return v.id;
-        }
-      }
-    }
-    return null;
-  }
-  add(E, N, H, id) {
-    const key = `${this._q(E)}|${this._q(N)}`;
-    if (!this.cells.has(key)) this.cells.set(key, []);
-    this.cells.get(key).push({ E, N, H, id });
-  }
-}
 
 // ── Val ──────────────────────────────────────────────────────────────────────
 

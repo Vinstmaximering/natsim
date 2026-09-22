@@ -40,6 +40,7 @@ const LÄSTA_ID = {
   'ell-val':       ['src/io/export-project.js', 'src/ui/toolbar.js'],
   'autosave-status': ['src/io/export-project.js', 'src/state/persistence.js'],
   'geo-fi':        ['src/main.js', 'src/ui/toolbar.js'],
+  'dxf-fi':        ['src/ui/topbar.js', 'src/ui/toolbar.js'],
   'xl-fi':         ['src/ui/toolbar.js'],
   'load-fi':       ['src/ui/toolbar.js'],
   'app-name':      ['src/main.js'],
@@ -202,12 +203,13 @@ describe('menyernas beteende', () => {
     expect(isTopbarMenuOpen()).toBeNull();
   });
 
-  it('en avstängd post gör ingenting och stänger inte menyn', () => {
+  // DXF-posten låg avstängd i Etapp 4 och aktiverades i Etapp 6, när parsern
+  // och dialogen fanns. Alla poster i Data-menyn är nu valbara.
+  it('alla poster i Data-menyn är valbara', () => {
     $('mnu-data-btn').click();
-    const dxf = $('mnu-data').querySelector('[data-act="import-dxf"]');
-    expect(dxf.disabled).toBe(true);
-    dxf.click();
-    expect($('mnu-data').hidden).toBe(false);
+    const poster = [...$('mnu-data').querySelectorAll('.tbar-item')];
+    expect(poster.length).toBeGreaterThan(0);
+    expect(poster.every(b => !b.disabled)).toBe(true);
   });
 
   it('Visa-menyn stängs INTE när en kryssruta bockas', () => {
@@ -270,8 +272,11 @@ describe('tangentbord', () => {
     expect($('mnu-data').hidden).toBe(true);
   });
 
-  it('den avstängda DXF-posten hoppas över i pilnavigeringen', () => {
+  it('pilnavigeringen följer menyns ordning', () => {
     key($('mnu-data-btn'), 'ArrowDown');
+    expect(document.activeElement.dataset.act).toBe('import-geo');
+    key(document.activeElement, 'ArrowDown');
+    expect(document.activeElement.dataset.act).toBe('import-dxf');
     key(document.activeElement, 'ArrowDown');
     expect(document.activeElement.dataset.act).toBe('import-xl');
   });
