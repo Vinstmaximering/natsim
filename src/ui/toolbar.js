@@ -165,9 +165,12 @@ export function initToolbar() {
   });
 
   // Importera filhantering – Fas 6 (fullständiga implementationer)
+  // Etapp 3: .geo-filen öppnar importdialogen i stället för att importeras
+  // rakt av. Dialogen flyttas till Data-menyn i etapp 4; knappen här är
+  // tillsvidare vägen in.
   document.getElementById("geo-fi")?.addEventListener("change", e => {
     const f = e.target.files[0]; if (!f) return;
-    f.text().then(text => import('../io/import-geo.js').then(m => m.importGeoFile(text, f.name)));
+    f.text().then(text => import('./geo-import-modal.js').then(m => m.openGeoImport(text, f.name)));
     e.target.value = "";
   });
   document.getElementById("xl-fi")?.addEventListener("change", e => {

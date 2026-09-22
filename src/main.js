@@ -32,6 +32,7 @@ import { setMapRef }                             from './reports/net-image.js';
 import { initImageBridge }                       from './main-image-bridge.js';
 import { renderObstaclePanel }                   from './ui/obstacle-panel.js';
 import { initVisualModal, openVisualMenu, openEditVisual } from './ui/visual-modal.js';
+import { initGeoImportModal }                    from './ui/geo-import-modal.js';
 
 // ── 1. AutoSim ──────────────────────────────────────────────────────────────
 setAutoSimHandler(autoSim);
@@ -43,6 +44,7 @@ setDrawCallbacks({ updatePtList, renderTab });
 setInteractionCallbacks({ openEditPt, openMM, buildTools, setTab, showToast,
   renderObsPanel: renderObstaclePanel, renderTab, openVisualMenu, openEditVisual });
 initVisualModal();
+initGeoImportModal();
 
 // ── 3b. Bugg 3-fix: undo-callbacks (draw + toast direkt efter Ctrl+Z) ───────
 setUndoCallbacks({ draw, updateQualityPanel, showToast });

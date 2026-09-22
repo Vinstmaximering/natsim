@@ -155,6 +155,19 @@ export function resetView() {
   } catch { map.setView([59.33, 18.07], 14); }
 }
 
+// Zoomar till en utbredning i projektkoordinater, {minE, maxE, minN, maxN}.
+// Etapp 3: importdialogen zoomar till det som just importerats i stället för
+// till hela nätet – resetView() ser bara pts och skulle hoppa fel när importen
+// bara innehåller visuella objekt.
+export function fitViewToENBounds(b) {
+  if (!map || !b || !Number.isFinite(b.minE)) return false;
+  try {
+    const lls = [ENtoLatLng(b.minE, b.minN), ENtoLatLng(b.maxE, b.maxN)];
+    map.fitBounds(L.latLngBounds(lls).pad(0.2));
+    return true;
+  } catch { return false; }
+}
+
 // Simuleringen som ska VISAS. I förslagsvyn (Etapp E) är det förslagets egen
 // simulering, annars statens. Delad av drawPt och draw() så att punktringar,
 // linjefärger och felellipser aldrig kan visa olika nät.
