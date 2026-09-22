@@ -1,3 +1,70 @@
+/* ── Toolbar överst (Etapp 4) ──────────────────────────────────────────────
+   Data- och Visa-menyerna. Färgerna kommer ur tokens.css; inga nya typsnitt –
+   body sätter monospace för hela appen. */
+#topbar {
+  display:flex;align-items:center;gap:4px;height:38px;flex-shrink:0;
+  padding:0 10px;background:linear-gradient(135deg,var(--bg-header),var(--bg-card));
+  border-bottom:1px solid var(--border-default);position:relative;z-index:60;
+}
+.tbar-brand   { display:flex;align-items:baseline;gap:6px;margin-right:10px;white-space:nowrap; }
+.tbar-brand #app-name { font-size:13px;font-weight:bold;color:var(--text-value);letter-spacing:0.5px; }
+.tbar-ver     { font-size:10px;color:var(--text-muted); }
+.tbar-menus   { display:flex;gap:2px; }
+.tbar-menu    { position:relative; }
+.tbar-spacer  { flex:1; }
+.tbar-status  { font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40vw; }
+
+.tbar-btn {
+  padding:5px 10px;font-size:13px;border:1px solid transparent;border-radius:3px;
+  background:transparent;color:var(--text-secondary);cursor:pointer;white-space:nowrap;
+}
+.tbar-btn:hover            { background:var(--bg-selected);color:var(--text-value); }
+.tbar-btn:focus-visible    { outline:2px solid var(--accent);outline-offset:-2px; }
+.tbar-btn[aria-expanded="true"] {
+  background:color-mix(in srgb,var(--accent) 15%,transparent);
+  border-color:var(--accent);color:var(--accent);
+}
+
+.tbar-pop {
+  position:absolute;top:calc(100% + 3px);left:0;min-width:260px;z-index:70;
+  padding:5px 0;background:var(--bg-panel);border:1px solid var(--border-strong);
+  border-radius:4px;box-shadow:var(--shadow-modal);
+}
+.tbar-pop[hidden]  { display:none; }
+.tbar-pop-wide     { min-width:440px;padding:8px 12px 10px; }
+.tbar-cols         { display:flex;gap:18px; }
+.tbar-cols > div   { flex:1;min-width:0; }
+
+.tbar-grp { font-size:10px;color:var(--accent);letter-spacing:1.5px;padding:5px 12px 3px; }
+.tbar-pop-wide .tbar-grp { padding:4px 0 3px; }
+.tbar-sep { height:1px;background:var(--border-default);margin:4px 0; }
+
+.tbar-item {
+  display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+  padding:6px 12px;font-size:12px;background:transparent;border:none;
+  color:var(--text-value);cursor:pointer;
+}
+.tbar-item:hover:not(:disabled)         { background:var(--bg-hover); }
+.tbar-item:focus-visible                { outline:2px solid var(--accent);outline-offset:-2px; }
+.tbar-item:disabled                     { color:var(--text-muted);cursor:not-allowed; }
+.tbar-key  { margin-left:auto;font-size:10px;color:var(--text-muted); }
+.tbar-soon { margin-left:auto;font-size:9px;color:var(--text-muted);border:1px solid var(--border-strong);border-radius:8px;padding:0 5px; }
+.tbar-num  { font-size:11px;width:34px;text-align:right;flex-shrink:0; }
+.tbar-pop-wide .tg { font-size:12px; }
+
+/* Phone: menyerna fyller bredden i stället för att hänga ut ur skärmen. */
+@media (max-width: 767px) {
+  #topbar { gap:2px;padding:0 6px; }
+  .tbar-brand { margin-right:4px; }
+  .tbar-brand #app-name { font-size:12px; }
+  .tbar-ver, .tbar-status { display:none; }
+  .tbar-pop, .tbar-pop-wide {
+    position:fixed;left:6px;right:6px;top:41px;min-width:0;width:auto;
+    max-height:calc(100dvh - 50px);overflow-y:auto;
+  }
+  .tbar-cols { flex-direction:column;gap:6px; }
+}
+
 /* Panel-komponenter */
 .ph  { padding:10px 12px;border-bottom:1px solid var(--border-default);background:linear-gradient(135deg,var(--bg-header),var(--bg-card)); }
 .sec { padding:6px 10px; }

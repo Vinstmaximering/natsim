@@ -14,13 +14,107 @@
 <body>
 <div id="app">
 
+<!-- TOOLBAR (Etapp 4) – appnamn, Data- och Visa-menyerna, autosave-status.
+     Kryssrutorna, reglagen och fil-inputarna flyttades hit från vänsterpanelen
+     med sina id:n i behåll, så att leaflet-setup.js och toolbar.js läser dem
+     precis som förut. -->
+<div id="topbar">
+  <div class="tbar-brand">
+    <span id="app-name">NätSim</span>
+    <!-- Versionen skrivs av main.js ur package.json. Stod tidigare hårdkodad
+         som "v4.0", vilket motsade både fönstertiteln och package.json. -->
+    <span id="app-version" class="tbar-ver"></span>
+  </div>
+
+  <nav class="tbar-menus" aria-label="Huvudmeny">
+    <!-- ── DATA ──────────────────────────────────────────────────────────── -->
+    <div class="tbar-menu">
+      <button type="button" class="tbar-btn" id="mnu-data-btn"
+              aria-haspopup="true" aria-expanded="false" aria-controls="mnu-data">Data <span aria-hidden="true">▾</span></button>
+      <div class="tbar-pop" id="mnu-data" role="menu" aria-label="Data" hidden>
+        <div class="tbar-grp">IMPORTERA</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="import-geo">Punkter och linjer (.geo)…</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="import-dxf" disabled
+                title="DXF-import är inte färdig ännu">DXF (.dxf)… <span class="tbar-soon">snart</span></button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="import-xl">Punkter (Excel/CSV)…</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="import-osm">Byggnader från OSM (aktuell vy)</button>
+        <div class="tbar-sep" role="separator"></div>
+        <div class="tbar-grp">EXPORTERA</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="export-geo">Nätpunkter (.geo)</button>
+        <div class="tbar-sep" role="separator"></div>
+        <div class="tbar-grp">PROJEKT</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="save">Spara projekt <span class="tbar-key">Ctrl+S</span></button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="load">Ladda projekt…</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="template">Visa Excel-mall</button>
+      </div>
+    </div>
+
+    <!-- ── VISA ──────────────────────────────────────────────────────────── -->
+    <div class="tbar-menu">
+      <button type="button" class="tbar-btn" id="mnu-visa-btn"
+              aria-haspopup="true" aria-expanded="false" aria-controls="mnu-visa">Visa <span aria-hidden="true">▾</span></button>
+      <div class="tbar-pop tbar-pop-wide" id="mnu-visa" role="group" aria-label="Visa" hidden>
+        <div class="tbar-cols">
+          <div>
+            <div class="tbar-grp">KARTINNEHÅLL</div>
+            <label class="tg"><input type="checkbox" id="tgg" checked> Rutnät</label>
+            <label class="tg"><input type="checkbox" id="tgc" checked> Mätningar</label>
+            <label class="tg"><input type="checkbox" id="tga" checked> Riktningar (gon)</label>
+            <label class="tg"><input type="checkbox" id="tgd" checked> Avstånd</label>
+            <label class="tg"><input type="checkbox" id="tgl" checked> Etiketter</label>
+            <label class="tg"><input type="checkbox" id="tge" checked> Felellipser</label>
+            <label class="tg"><input type="checkbox" id="tgs"> Föreslagna mätningar</label>
+            <label class="tg"><input type="checkbox" id="tgb"> Blockerade förslag</label>
+            <!-- Kryssrutan #tgv ("Visuella objekt") låg här. Borttagen i Etapp 1:
+                 synligheten styrs numera per visuellt lager i lagerpanelen. -->
+          </div>
+          <div>
+            <div class="tbar-grp">PUNKTTYPER</div>
+            <label class="tg"><input type="checkbox" id="tv_known"     checked> <span style="color:#00ff88;">▲</span> Kända punkter</label>
+            <label class="tg"><input type="checkbox" id="tv_station"   checked> <span style="color:#4fc3f7;">●</span> Stationer</label>
+            <label class="tg"><input type="checkbox" id="tv_new"       checked> <span style="color:#ce93d8;">■</span> Nypunkter</label>
+            <label class="tg"><input type="checkbox" id="tv_detail"    checked> <span style="color:#ffb74d;">✕</span> Detaljpunkter</label>
+            <label class="tg"><input type="checkbox" id="tv_simstation" checked> <span style="color:#ff6090;">●</span> Simulerade stationer</label>
+          </div>
+        </div>
+        <div class="tbar-sep"></div>
+        <div class="tbar-cols">
+          <div>
+            <div class="tbar-grp">SYMBOLSTORLEK</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="range" id="sym-size" min="4" max="24" step="1" value="10" style="flex:1;accent-color:var(--accent);">
+              <span id="sym-val" class="tbar-num val-info">10px</span>
+            </div>
+            <label class="tg" style="margin-top:3px;"><input type="checkbox" id="sym-lock"> <span>Lås storlek (ignorera zoom)</span></label>
+          </div>
+          <div>
+            <div class="tbar-grp">FELELLIPSSKALA</div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <input type="range" id="ell-scale" min="1" max="10000" step="1" value="50" style="flex:1;accent-color:#ce93d8;">
+              <span id="ell-val" class="tbar-num" style="color:#ce93d8;">50×</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="tbar-spacer"></div>
+  <div id="autosave-status" class="val-muted tbar-status"></div>
+
+  <!-- Fil-inputarna bor här eftersom Data-menyn klickar på dem. Lyssnarna
+       registreras i ui/toolbar.js på oförändrade id:n. -->
+  <input type="file" id="geo-fi"  accept=".geo"            style="display:none">
+  <input type="file" id="xl-fi"   accept=".xlsx,.xls,.csv" style="display:none">
+  <input type="file" id="load-fi" accept=".json"           style="display:none">
+</div>
+
+<div id="app-body">
+
 <!-- LEFT PANEL -->
 <div id="lp" style="position:relative;">
   <div class="ph" style="position:relative;">
-    <div style="font-size:13px;font-weight:bold;color:#e8f4fd;letter-spacing:0.5px;" id="app-name">NätSim</div>
-    <!-- Versionen skrivs av main.js ur package.json. Stod tidigare hårdkodad
-         som "v4.0", vilket motsade både fönstertiteln och package.json. -->
-    <div style="font-size:11px;color:#6a90b0;margin-top:3px;">Skandimech Industries – Planering &amp; Nätanalys <span id="app-version"></span></div>
+    <div style="font-size:11px;color:#6a90b0;">Skandimech Industries – Planering &amp; Nätanalys</div>
     <button class="panel-close" onclick="window.togglePanel('lp')" aria-label="Stäng vänsterpanel">×</button>
   </div>
   <div class="sec">
@@ -34,70 +128,30 @@
     <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Rita visuell punkt</button>
     <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">⤺ Rita visuell linje</button>
   </div>
-  <div class="dv"></div>
-  <div class="sec">
-    <div class="sl">SYMBOLSTORLEK</div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <input type="range" id="sym-size" min="4" max="24" step="1" value="10" style="flex:1;accent-color:#4fc3f7;">
-      <span id="sym-val" style="font-size:12px;color:#4fc3f7;width:28px;">10px</span>
-    </div>
-    <label class="tg" style="margin-top:3px;"><input type="checkbox" id="sym-lock"> <span>Lås storlek (ignorera zoom)</span></label>
-    <div class="sl" style="margin-top:8px;">FELELLIPSSKALA</div>
-    <div style="display:flex;align-items:center;gap:6px;">
-      <input type="range" id="ell-scale" min="1" max="10000" step="1" value="50" style="flex:1;accent-color:#ce93d8;">
-      <span id="ell-val" style="font-size:12px;color:#ce93d8;width:32px;">50×</span>
-    </div>
-  </div>
+  <!-- SYMBOLSTORLEK och FELELLIPSSKALA låg här. Flyttade till Visa-menyn i
+       toolbaren (Etapp 4) med id:n sym-size, sym-val, sym-lock, ell-scale och
+       ell-val i behåll. -->
   <div class="dv"></div>
   <div class="sec">
     <div class="sl">KOORDINATSYSTEM</div>
     <div id="crs-info" style="font-size:11px;color:#7090a8;line-height:1.7;background:#091424;padding:5px 7px;border-radius:3px;">Välj CRS i kartkontrollerna ovan.</div>
     <div style="font-size:11px;color:#7090a8;margin-top:5px;" id="cursor-en"></div>
   </div>
-  <div class="dv"></div>
-  <div class="sec">
-    <div class="sl">VISA</div>
-    <label class="tg"><input type="checkbox" id="tgg" checked> Rutnät</label>
-    <label class="tg"><input type="checkbox" id="tgc" checked> Mätningar</label>
-    <label class="tg"><input type="checkbox" id="tga" checked> Riktningar (gon)</label>
-    <label class="tg"><input type="checkbox" id="tgd" checked> Avstånd</label>
-    <label class="tg"><input type="checkbox" id="tgl" checked> Etiketter</label>
-    <label class="tg"><input type="checkbox" id="tge" checked> Felellipser</label>
-    <label class="tg"><input type="checkbox" id="tgs"> Föreslagna mätningar</label>
-    <label class="tg"><input type="checkbox" id="tgb"> Blockerade förslag</label>
-    <!-- Kryssrutan #tgv ("Visuella objekt") låg här. Borttagen i Etapp 1:
-         synligheten styrs numera per visuellt lager. -->
-    <div class="dv" style="margin:4px 0;"></div>
-    <div class="sl" style="margin-top:2px;">PUNKTTYPER</div>
-    <label class="tg"><input type="checkbox" id="tv_known"     checked> <span style="color:#00ff88;">▲</span> Kända punkter</label>
-    <label class="tg"><input type="checkbox" id="tv_station"   checked> <span style="color:#4fc3f7;">●</span> Stationer</label>
-    <label class="tg"><input type="checkbox" id="tv_new"       checked> <span style="color:#ce93d8;">■</span> Nypunkter</label>
-    <label class="tg"><input type="checkbox" id="tv_detail"    checked> <span style="color:#ffb74d;">✕</span> Detaljpunkter</label>
-    <label class="tg"><input type="checkbox" id="tv_simstation" checked> <span style="color:#ff6090;">●</span> Simulerade stationer</label>
-    <!-- Knappen #btn-au ("Vinkel: Gon (grad)" / "Vinkel: DMS") låg här. Borttagen
-         i UI-städning Omgång 2 (2026-09-11): alla vinklar visas nu i gon med fyra
-         decimaler, så växlaren hade inget att växla mellan. Den nådde dessutom
-         bara fyra av de åtta ytor som visade vinklar. Se core/format.js och
-         docs/troubleshooting/ui_inventering_20260910.md avsnitt A. -->
-  </div>
+  <!-- Sektionen VISA (kartinnehåll + punkttyper) låg här. Flyttad till
+       Visa-menyn i toolbaren (Etapp 4). Kryssrutornas id:n är oförändrade.
+       Knappen #btn-au ("Vinkel: Gon (grad)" / "Vinkel: DMS") låg också här.
+       Borttagen i UI-städning Omgång 2 (2026-09-11): alla vinklar visas nu i
+       gon med fyra decimaler, så växlaren hade inget att växla mellan. Se
+       core/format.js och docs/troubleshooting/ui_inventering_20260910.md. -->
   <div class="ptl" id="ptl">
     <div style="padding:6px 10px 3px;font-size:11px;color:#4fc3f7;letter-spacing:2px;" id="pth">PUNKTER (0)</div>
   </div>
   <div style="padding:8px;border-top:1px solid var(--border-default);">
     <button class="tb tb-danger" onclick="window.clearAll()">🗑 Rensa allt</button>
     <button id="btn-undo" class="tb tb-info" style="margin-top:3px;opacity:0.35;" onclick="window.undo()" disabled>↩ Ångra</button>
-    <button class="tb tb-success" style="margin-top:3px;" onclick="document.getElementById('xl-fi').click()">📥 Importera punkter (Excel/CSV)</button>
-    <input type="file" id="xl-fi" accept=".xlsx,.xls,.csv" style="display:none">
-    <button class="tb tb-success" style="margin-top:2px;" onclick="document.getElementById('geo-fi').click()">📥 Importera punkter (.geo)</button>
-    <input type="file" id="geo-fi" accept=".geo" style="display:none">
-    <button class="tb tb-success" style="margin-top:2px;" onclick="window.exportGeoFile()">📤 Exportera punkter (.geo)</button>
-    <button class="tb tb-info" style="margin-top:2px;" onclick="window.showExcelTemplate()">📋 Visa Excel-mall</button>
-    <div style="border-top:1px solid var(--border-default);margin-top:6px;padding-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:3px;">
-      <button class="tb tb-gold" onclick="window.saveProject()">💾 Spara projekt</button>
-      <button class="tb tb-gold" onclick="document.getElementById('load-fi').click()">📂 Ladda projekt</button>
-      <input type="file" id="load-fi" accept=".json" style="display:none">
-    </div>
-    <div id="autosave-status" class="val-muted" style="font-size:10px;text-align:center;margin-top:3px;"></div>
+    <!-- Import-, export- och projektknapparna låg här. Flyttade till
+         Data-menyn i toolbaren (Etapp 4); fil-inputarna geo-fi, xl-fi och
+         load-fi ligger nu i toolbaren med samma id:n. -->
   </div>
 </div>
 
@@ -216,7 +270,9 @@
   <div class="tabs" id="tabs"></div>
   <div class="tc"   id="tc"></div>
 </div>
-</div>
+
+</div><!-- /#app-body -->
+</div><!-- /#app -->
 
 <!-- MODAL -->
 <div class="ov" id="modal" style="display:none" onclick="if(event.target===this)window.closeModal()">

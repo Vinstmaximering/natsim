@@ -9,18 +9,23 @@
 body   { background: var(--bg-primary); color: var(--text-primary); font-family: monospace; overflow: hidden; height: 100vh; height: 100dvh; width: 100vw; }
 button, input, select { font-family: monospace; }
 
-/* App-layout */
-#app { display: flex; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
+/* App-layout
+   Etapp 4: #app är en kolumn med toolbaren överst och #app-body – raden med
+   panelerna, kartan och studio-overlayn – under. #app-body är position:relative
+   så att panelernas mobil-overlay (position:absolute, top:0) lägger sig under
+   toolbaren i stället för över den. */
+#app      { display: flex; flex-direction: column; height: 100vh; height: 100dvh; width: 100vw; overflow: hidden; }
+#app-body { display: flex; flex: 1; min-height: 0; width: 100%; position: relative; }
 
 /* Vänsterpanel */
-#lp        { width: 310px; background: var(--bg-panel); border-right: 1px solid var(--border-default); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100vh; max-height: 100dvh; flex-shrink: 0; transition: width .2s; }
+#lp        { width: 310px; background: var(--bg-panel); border-right: 1px solid var(--border-default); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100%; flex-shrink: 0; transition: width .2s; }
 #lp.hidden { width: 0; overflow: hidden; }
 
 /* Kartruta */
 #cw { flex: 1; position: relative; overflow: hidden; }
 
 /* Högerpanel */
-#rp        { width: 380px; background: var(--bg-panel); border-left: 1px solid var(--border-default); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100vh; max-height: 100dvh; flex-shrink: 0; transition: width .2s; }
+#rp        { width: 380px; background: var(--bg-panel); border-left: 1px solid var(--border-default); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; max-height: 100%; flex-shrink: 0; transition: width .2s; }
 #rp.hidden { width: 0; overflow: hidden; }
 
 /* Responsiv layout hanteras i responsive.css */

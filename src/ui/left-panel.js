@@ -32,9 +32,9 @@ export function updatePtList() {
 }
 
 export function initLeftPanel() {
-  // Exportera .geo
-  document.querySelector("button[onclick*='exportGeoFile']")?.addEventListener
-    ? null : null; // hanteras av IO-moduler i Fas 6
+  // Här låg ett uttryck som slog upp exportknappen i vänsterpanelen utan att
+  // göra något med den. Knappen flyttades till Data-menyn i Etapp 4 och
+  // uppslaget matchade inget längre.
 
   // Ctrl+Z – globalt
   document.addEventListener("keydown", e => {
