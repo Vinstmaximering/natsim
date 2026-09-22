@@ -125,8 +125,10 @@
     <button class="tb" id="btn-simstation" onclick="window.setTool('simstation')" style="--c:#ff6090;margin-top:2px;">🔴 Simulerad station</button>
     <button class="tb" id="btn-obs-polygon" onclick="window._setTool('obstacle-polygon')" style="--c:#ff9900;margin-top:2px;">🏢 Rita byggnad</button>
     <button class="tb" id="btn-obs-line"    onclick="window._setTool('obstacle-line')"    style="--c:#8aa8c0;margin-top:2px;">━ Rita vägg</button>
-    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Rita visuell punkt</button>
-    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">⤺ Rita visuell linje</button>
+    <!-- Knapparna #btn-visual-point och #btn-visual-line låg här. Flyttade till
+         LAGER-sektionen nedan (Etapp 5), eftersom de ritar i det aktiva
+         visuella lagret. Id:n oförändrade – buildTools() i ui/toolbar.js
+         markerar dem som aktiva verktyg. -->
   </div>
   <!-- SYMBOLSTORLEK och FELELLIPSSKALA låg här. Flyttade till Visa-menyn i
        toolbaren (Etapp 4) med id:n sym-size, sym-val, sym-lock, ell-scale och
@@ -136,6 +138,19 @@
     <div class="sl">KOORDINATSYSTEM</div>
     <div id="crs-info" style="font-size:11px;color:#7090a8;line-height:1.7;background:#091424;padding:5px 7px;border-radius:3px;">Välj CRS i kartkontrollerna ovan.</div>
     <div style="font-size:11px;color:#7090a8;margin-top:5px;" id="cursor-en"></div>
+  </div>
+  <div class="dv"></div>
+
+  <!-- LAGER (Etapp 5) – raderna renderas av ui/layer-panel.js. Ritknapparna
+       och raden om aktivt lager är statiska, så att buildTools() alltid hittar
+       sina id:n även mellan omritningar av listan. -->
+  <div class="sec">
+    <div class="sl">LAGER</div>
+    <button class="tb" id="btn-new-layer" style="--c:#cfd8dc;">+ Nytt visuellt lager</button>
+    <div id="layer-list"></div>
+    <div class="lyr-active">Ritas i aktivt lager: <span id="active-layer-name" class="val-value">–</span></div>
+    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Visuell punkt</button>
+    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">⤺ Visuell linje</button>
   </div>
   <!-- Sektionen VISA (kartinnehåll + punkttyper) låg här. Flyttad till
        Visa-menyn i toolbaren (Etapp 4). Kryssrutornas id:n är oförändrade.

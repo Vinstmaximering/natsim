@@ -38,7 +38,7 @@ export let map = null;
 let activeLayer = null;
 
 // ── UI-callbacks (registrerade av main.js i Fas 7) ──────────────────────────
-const drawCb = { updatePtList: null, renderTab: null };
+const drawCb = { updatePtList: null, renderTab: null, renderLayerPanel: null };
 export function setDrawCallbacks(cbs) { Object.assign(drawCb, cbs); }
 
 // ── Koordinatkonvertering ─────────────────────────────────────────────────────
@@ -272,7 +272,8 @@ export function draw() {
   const state = getState();
   const { pts, meas, suggestedMeas, selId, selMId, measFrom,
           ellScale, ellipsMode, obstacles = [], selObsId, symSize,
-          blockedSuggestions = [], optimizerProposal, netView } = state;
+          blockedSuggestions = [], optimizerProposal, netView,
+          netVisible = true, obstaclesVisible = true } = state;
 
   // ── Etapp E: förslagsvyn ──
   // "Behåll som förslag" ritar det optimerade nätet i stället för det aktiva,
@@ -285,11 +286,16 @@ export function draw() {
   const keptIds   = proposal ? new Set(proposal.meas.map(m => m.id)) : null;
   const removedMeas = proposal ? proposal.baseMeas.filter(m => !keptIds.has(m.id)) : [];
 
+  // Etapp 5: lagerpanelens rad "Nät" döljer allt som härleds ur pts/meas –
+  // mätningslinjer, förslag, felellipser och punkterna själva. Simuleringen
+  // rör det inte; nätet räknas som förut medan man tittar bort.
+  const showNet = netVisible !== false;
+
   const showA = document.getElementById("tga")?.checked ?? true;
   const showD = document.getElementById("tgd")?.checked ?? true;
-  const showC = document.getElementById("tgc")?.checked ?? true;
-  const showE = document.getElementById("tge")?.checked ?? true;
-  const showS = document.getElementById("tgs")?.checked ?? false;
+  const showC = showNet && (document.getElementById("tgc")?.checked ?? true);
+  const showE = showNet && (document.getElementById("tge")?.checked ?? true);
+  const showS = showNet && (document.getElementById("tgs")?.checked ?? false);
   const showL = document.getElementById("tgl")?.checked ?? true;
   const typeVisible = {
     known:     document.getElementById("tv_known")?.checked     !== false,
@@ -319,7 +325,7 @@ export function draw() {
   }
 
   // ── Blockerade förslag (röd streckad linje, toggle tgb) ──
-  const showB = document.getElementById("tgb")?.checked ?? false;
+  const showB = showNet && (document.getElementById("tgb")?.checked ?? false);
   if (showB) drawBlockedSuggestions(ctx, blockedSuggestions, pts, ptPixel);
 
   // ── Mätningslinjer ──
@@ -430,7 +436,7 @@ export function draw() {
   }
 
   // ── measFrom-cirkel ──
-  if (measFrom) {
+  if (showNet && measFrom) {
     const fp = pts.find(p => p.id === measFrom);
     if (fp) {
       const px = ptPixel(fp);
@@ -440,7 +446,12 @@ export function draw() {
   }
 
   // ── Hinder (under punkter) ──
-  drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10, dragSnapTarget: getDragSnapTarget() });
+  // Etapp 5: lagerpanelens rad "Hinder" styr bara ritningen. Hindren skymmer
+  // sikt i beräkningen även när de är dolda. Förhandsvisningen ritas alltid,
+  // annars ser man inget av det hinder man just håller på att rita.
+  if (obstaclesVisible !== false) {
+    drawObstacles(ctx, obstacles, selObsId, { map, ENtoLatLng, mppAtCenter, symSize: symSize ?? 10, dragSnapTarget: getDragSnapTarget() });
+  }
   drawPreview(ctx);
 
   // ── Visuellt lager (under punkter) ──
@@ -450,7 +461,7 @@ export function draw() {
   drawVisualPreview(ctx);
 
   // ── Punkter ──
-  pts.forEach(pt => {
+  if (showNet) pts.forEach(pt => {
     if (!typeVisible[pt.type]) return;
     drawPt(ctx, pt, pt.id === selId, showL, labelRects);
   });
@@ -470,8 +481,9 @@ export function draw() {
   ctx.font="15px monospace"; ctx.fillStyle="#888"; ctx.textAlign="center"; ctx.fillText(barLabel,16+barPx/2,H-33);
 
   // UI-callbacks (registreras av main.js i Fas 7)
-  if (drawCb.updatePtList) drawCb.updatePtList();
-  if (drawCb.renderTab)    drawCb.renderTab();
+  if (drawCb.updatePtList)     drawCb.updatePtList();
+  if (drawCb.renderTab)        drawCb.renderTab();
+  if (drawCb.renderLayerPanel) drawCb.renderLayerPanel();
 }
 
 // ── Kartinitalisering ─────────────────────────────────────────────────────────

@@ -143,6 +143,11 @@ export function _applySnapshot(s) {
     nVid:           Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
     nVlid:          Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
     selVisualId:    null,
+    // Etapp 5: ritsynligheten hör till sessionen och sparas inte. En laddad
+    // fil ska visa allt den innehåller – annars ser man en tom karta utan att
+    // förstå varför.
+    netVisible:       true,
+    obstaclesVisible: true,
     simResult:      null,
     selObsId:       null,
     blockedSuggestions: [],

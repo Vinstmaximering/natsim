@@ -131,6 +131,8 @@ export function clearAll() {
       visualPts: [], visualLines: [], selVisualId: null,
       // Etapp 1: lagren följer sitt innehåll – ett tomt projekt har inga lager.
       visualLayers: [], activeVisualLayerId: null,
+      // Etapp 5: ett tomt projekt ska inte ärva en bortgömd karta.
+      netVisible: true, obstaclesVisible: true,
       selId: null, selMId: null, selObsId: null,
       measFrom: null, simResult: null,
       suggestedMeas: [], blockedSuggestions: [],

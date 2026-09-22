@@ -42,6 +42,13 @@ let _state = {
   // ── Hinder-selektion ──
   selObsId: null,
 
+  // ── Ritsynlighet för beräkningslagren (Etapp 5) ──
+  // Styr ENBART vad som ritas på kartan. Nätet och hindren deltar i
+  // simulering och siktberäkning oavsett – att dölja dem är att titta bort,
+  // inte att ta bort. Hör därför till sessionen och sparas inte i projektfilen.
+  netVisible: true,
+  obstaclesVisible: true,
+
   // ── ID-räknare ──
   nMid: 1,
   nId: 1,

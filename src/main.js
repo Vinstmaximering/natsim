@@ -26,6 +26,7 @@ import { initMapLegend }                     from './ui/map-legend.js';
 import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer } from './ui/toolbar.js';
 import { initTopbar }                            from './ui/topbar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
+import { initLayerPanel, renderLayerPanel }     from './ui/layer-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
 import { initResize }                           from './ui/panel-resize.js';
 import { openEditPt, openMM, closeModal }       from './ui/modals.js';
@@ -39,7 +40,7 @@ import { initGeoImportModal }                    from './ui/geo-import-modal.js'
 setAutoSimHandler(autoSim);
 
 // ── 2. Draw callbacks ───────────────────────────────────────────────────────
-setDrawCallbacks({ updatePtList, renderTab });
+setDrawCallbacks({ updatePtList, renderTab, renderLayerPanel });
 
 // ── 3. Map interaction callbacks ────────────────────────────────────────────
 setInteractionCallbacks({ openEditPt, openMM, buildTools, setTab, showToast,
@@ -96,6 +97,7 @@ subscribe(() => {
 // ── 6. Initiera UI-paneler ─────────────────────────────────────────────────
 initToolbar();
 initTopbar();
+initLayerPanel();
 initLeftPanel();
 initQualityPanel();
 // Tryck-och-håll-tooltips för pekskärm. Desktop använder title-attributet.
