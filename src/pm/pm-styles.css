@@ -186,3 +186,37 @@ table.rm td:first-child { font-weight: 700; color: #555; width: 52mm; }
   h1.r { page-break-before: always; }
   h1.r:first-child { page-break-before: avoid; }
 }
+
+/* ── Etapp 3: normhänvisningar och tabeller i formuläret ──────────────────── */
+
+/* Varje rubrik, gränsvärde och kontroll ska bära sin källa. Källan står
+   dämpad intill etiketten så att den inte konkurrerar med fältet. */
+.kalla {
+  font-size: 9.5px;
+  color: #506070;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.sec .kalla { color: #3a5a70; }
+
+/* Hint som pekar på något användaren måste göra, inte bara upplyser. */
+.hint-warn { border-left: 2px solid #ffb74d; }
+
+/* Punkttabeller i steg 3 – en rad per punkt, fälten inline. */
+.ptab { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ptab th {
+  text-align: left; padding: 3px 5px; color: #4fc3f7;
+  font-weight: 600; border-bottom: 1px solid #2a4060; white-space: nowrap;
+}
+.ptab td { padding: 3px 5px; border-bottom: 1px solid #16243a; vertical-align: middle; }
+.ptab td.ptab-id { font-weight: 700; color: #c8d8e8; white-space: nowrap; }
+.ptab select, .ptab input {
+  width: 100%; min-width: 0; padding: 3px 4px; font-size: 11px;
+  background: #0d1520; color: #c8d8e8;
+  border: 1px solid #2a4060; border-radius: 3px;
+}
+.ptab-wrap { overflow-x: auto; }
+.ptab-tom { color: #506070; font-style: italic; padding: 8px 0; }

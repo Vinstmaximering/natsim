@@ -271,7 +271,7 @@ async function openPM() {
     );
     return;
   }
-  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr, obstacles, activeLayerKey } = getState();
+  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr, obstacles, activeLayerKey, sigReq } = getState();
   if (!simResult?.ok) { alert("Beräkna simuleringen först."); return; }
 
   const popup = window.open(
@@ -343,7 +343,10 @@ async function openPM() {
         aSemi:ss.aSemi, bSemi:ss.bSemi, theta:ss.theta,
       })),
     },
-    projnamn: "", projnr: "", kravSp: ""
+    projnamn: "", projnr: "",
+    // Etapp 3: projektets σ_pos-krav ur A PRIORI σ-fliken. Ersätter kravSp, som
+    // alltid skickades tomt och därför aldrig kunde förifylla kravfältet.
+    sigReq: sigReq ?? null,
   };
 
   pendingPayload = payload;

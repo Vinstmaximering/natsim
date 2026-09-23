@@ -4,7 +4,7 @@ import { buildReport } from '../report-generator.js';
 export function render(D, container, vals, imgs) {
   container.innerHTML = `
     <div class="np" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <button class="bo" id="btn-back5">← Ändra</button>
+      <button class="bo" id="btn-back6">← Ändra</button>
       <button class="bpr" id="btn-print">🖨️ Skriv ut / Spara PDF</button>
     </div>
     <div id="rpt"></div>`;

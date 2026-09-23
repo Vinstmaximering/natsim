@@ -46,7 +46,7 @@ export function render(D, container, vals, imgs) {
           <div class="gw" id="row-r312"></div>
         </div>
         <div class="br">
-          <button class="bo" id="btn-back4">← Tillbaka</button>
+          <button class="bo" id="btn-back5">← Tillbaka</button>
           <button class="bp" id="btn-gen">Generera rapport →</button>
         </div>
       </div>

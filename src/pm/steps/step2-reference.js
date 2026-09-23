@@ -1,6 +1,7 @@
 // Steg 2 – Referenssystem och utgångspunkter
 // 13 SWEREF-zoner i dropdown per krav.
 import { nf } from '../../core/format.js';
+import { kodsystemFor, arTrafikverket } from '../tdok-v6.js';
 
 export function render(D, container, vals) {
   const sweref = [
@@ -22,7 +23,7 @@ export function render(D, container, vals) {
 
   container.innerHTML = `
     <div class="card">
-      <div class="ch"><div class="ci">🗺️</div><div><div class="ct">Referenssystem och utgångspunkter</div><div class="cd">R1.2 + R1.3</div></div></div>
+      <div class="ch"><div class="ci">🗺️</div><div><div class="ct">Referenssystem och utgångspunkter</div><div class="cd">Koordinatsystem, höjdsystem, geoidmodell och kodning</div></div></div>
       <div class="cb">
         <div class="g2">
           <div>
@@ -53,18 +54,33 @@ export function render(D, container, vals) {
           </table>
         </div>
         <div><div class="lbl">Koordinatkälla (R3.4)</div><input id="v_kordkalla" placeholder="t.ex. Riksnätet, kommunens geodatatjänst"></div>
+        <hr class="hr">
+        <div class="sec">Kodning <span class="kalla">TDOK 2014:0571 v6.0 §1.6</span></div>
+        <div class="hint">
+          §1.6: kodning för järnväg enligt TDOK 2019:0215, för väg enligt BH 90 del 7 bilaga D.1.
+          Förvalet följer verksamheten som valdes i steg 1 och kan skrivas över.
+        </div>
+        <div><div class="lbl">Kodsystem</div><input id="v_kodsystem" placeholder="Kodsystem som tillämpas"></div>
         <div style="margin-top:8px"><div class="lbl">Bedömning koordinatkvalitet</div><textarea id="v_kordkval" rows="2"></textarea></div>
         <div class="br">
           <button class="bo" id="btn-back2">← Tillbaka</button>
-          <button class="bp" id="btn-next2">Nästa: Instrument →</button>
+          <button class="bp" id="btn-next2">Nästa: Punkter →</button>
         </div>
       </div>
     </div>`;
 
   Object.entries(vals).forEach(([k, v]) => {
     const el = document.getElementById("v_" + k);
-    if (el) el.value = v;
+    if (el && v !== undefined) el.value = v;
   });
+
+  // Kodsystemet förväljs ur verksamheten (§1.6) men bara när användaren inte
+  // redan skrivit något – ett eget val får aldrig skrivas över.
+  const kodEl = document.getElementById("v_kodsystem");
+  if (kodEl && !kodEl.value) kodEl.value = kodsystemFor(vals.verksamhet);
+  if (kodEl && !arTrafikverket(vals.verksamhet)) {
+    kodEl.placeholder = "Kodsystem som tillämpas (TDOK §1.6 gäller Trafikverket)";
+  }
 }
 
 export function collectFormValues() {

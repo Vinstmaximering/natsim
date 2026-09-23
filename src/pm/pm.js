@@ -6,26 +6,39 @@
 // Postar tillbaka:
 //   {type:'ready'}                → när sidan är laddad
 //   {type:'save-draft', payload}  → när utkast sparas (vid stegbyte eller spara-knapp)
-import { render as renderStep1 } from './steps/step1-project.js';
-import { render as renderStep2 } from './steps/step2-reference.js';
-import { render as renderStep3 } from './steps/step3-instruments.js';
-import { render as renderStep4, collectFormValues as collectStep4 } from './steps/step4-images.js';
-import { render as renderStep5 } from './steps/step5-report.js';
+//
+// Etapp 3: guiden har sex steg. Steg 3 (Punkter och markering) tillkom med
+// v6-kraven på markeringstyp (§2.4.1 K3), tillståndsbedömning (§2.1 K5) och
+// gemensamma markeringar (§2.11.2 K4). Filnamnen på de efterföljande stegen är
+// oförändrade – step3-instruments.js är alltså steg 4, step4-images.js steg 5
+// och step5-report.js steg 6. Numret i filnamnet säger inget om ordningen;
+// STEPS-tabellen nedan gör det.
+import { render as renderProject }  from './steps/step1-project.js';
+import { render as renderReference } from './steps/step2-reference.js';
+import { render as renderPoints, collectTables } from './steps/step3-points.js';
+import { render as renderInstr }    from './steps/step3-instruments.js';
+import { render as renderImages }   from './steps/step4-images.js';
+import { render as renderReport }   from './steps/step5-report.js';
+import { migreraUtkast }            from './tdok-v6.js';
 
 // ── PM-state ──────────────────────────────────────────────────────────────
 let D    = null;   // payload från huvudfönstret
 let imgs = {};     // bilddata (Data URLs)
 let vals = {};     // sparade formulärvärden
-let cur  = 1;      // aktuellt steg (1–5)
+let cur  = 1;      // aktuellt steg (1–6)
 
 const DRAFT_KEY = "pm_draft";
 const IMGS_KEY  = "pm_imgs";
-const STEP_LABELS = [
-  "Projekt &amp; Personal",
-  "Referenssystem",
-  "Instrument &amp; Metod",
-  "Bilder",
-  "Rapport (PDF)",
+
+// Ett steg = etikett + renderare + knapp-id:n som leder vidare och tillbaka.
+// Tabellen är enda stället ordningen står, så ett nytt steg läggs till här.
+const STEPS = [
+  { label: "Projekt &amp; Personal", render: renderProject,   next: "btn-next1" },
+  { label: "Referenssystem",         render: renderReference, back: "btn-back2", next: "btn-next2" },
+  { label: "Punkter &amp; Markering", render: renderPoints,   back: "btn-back3", next: "btn-next3" },
+  { label: "Instrument &amp; Metod", render: renderInstr,     back: "btn-back4", next: "btn-next4" },
+  { label: "Bilder",                 render: renderImages,    back: "btn-back5", gen: "btn-gen" },
+  { label: "Rapport (PDF)",          render: renderReport,    back: "btn-back6" },
 ];
 
 // ── Navigering ───────────────────────────────────────────────────────────
@@ -33,11 +46,11 @@ function buildNav() {
   const nav = document.getElementById("nav");
   if (!nav) return;
   nav.innerHTML = "";
-  STEP_LABELS.forEach((label, i) => {
+  STEPS.forEach((step, i) => {
     const n = i + 1;
     const btn = document.createElement("button");
     btn.className = "nb" + (n < cur ? " was" : n === cur ? " on" : "");
-    btn.innerHTML = `<span class="nc">${n}</span>${label}`;
+    btn.innerHTML = `<span class="nc">${n}</span>${step.label}`;
     btn.addEventListener("click", () => go(n));
     nav.appendChild(btn);
   });
@@ -47,11 +60,14 @@ function collectCurrentVals() {
   document.querySelectorAll("[id^='v_']").forEach(el => {
     vals[el.id.slice(2)] = el.value;
   });
+  // Steg 3:s tabeller är objekt nycklade på punkt-id och kan inte samlas in av
+  // svepningen ovan. De skrivs direkt i vals av sina lyssnare; anropet
+  // säkerställer bara att nycklarna finns även om steget aldrig öppnats.
+  collectTables(vals);
 }
 
 function saveDraft() {
   collectCurrentVals();
-  const draft = { vals, imgs };
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ vals }));
     // Bilder sparas separat (kan vara stora)
@@ -65,6 +81,10 @@ function saveDraft() {
 function loadDraft() {
   try { vals  = JSON.parse(localStorage.getItem(DRAFT_KEY) || "{}").vals || {}; } catch {}
   try { imgs  = JSON.parse(localStorage.getItem(IMGS_KEY)  || "{}"); } catch {}
+  // Etapp 3: ett utkast sparat före v6 har bara v_nats och ingen
+  // täckningsfaktor. migreraUtkast() är idempotent, så den kan köras på varje
+  // laddning utan att röra ett redan migrerat utkast.
+  vals = migreraUtkast(vals);
   window._pmImgs = imgs;
 }
 
@@ -81,19 +101,18 @@ function renderStep(n) {
   if (!container || !D) return;
   container.innerHTML = "";
 
-  if (n === 1) { renderStep1(D, container, vals); wireNavBtn("btn-next1", 2); }
-  else if (n === 2) { renderStep2(D, container, vals); wireNavBtn("btn-back2", 1); wireNavBtn("btn-next2", 3); }
-  else if (n === 3) { renderStep3(D, container, vals); wireNavBtn("btn-back3", 2); wireNavBtn("btn-next3", 4); }
-  else if (n === 4) {
-    renderStep4(D, container, vals, imgs);
-    wireNavBtn("btn-back4", 3);
-    document.getElementById("btn-gen")?.addEventListener("click", () => {
+  const step = STEPS[n - 1];
+  if (!step) return;
+
+  step.render(D, container, vals, imgs);
+
+  if (step.back) wireNavBtn(step.back, n - 1);
+  if (step.next) wireNavBtn(step.next, n + 1);
+  if (step.gen) {
+    document.getElementById(step.gen)?.addEventListener("click", () => {
       collectCurrentVals();
-      go(5);
+      go(n + 1);
     });
-  } else if (n === 5) {
-    renderStep5(D, container, vals, imgs);
-    wireNavBtn("btn-back5", 4);
   }
 }
 
