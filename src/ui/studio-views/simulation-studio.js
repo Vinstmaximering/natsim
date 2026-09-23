@@ -2,7 +2,7 @@
 import { getState, setState }     from '../../state/store.js';
 import { map, ENtoLatLng }        from '../../map/leaflet-setup.js';
 import { calcM }                  from '../../core/designmatrix.js';
-import { klassificeraKtal, sigPosKlass, R_OBS_NORM, PT, ptLabelShort } from '../../core/constants.js';
+import { klassificeraKtal, sigPosKlass, R_OBS_NORM, K_R_KALLA, PT, ptLabelShort } from '../../core/constants.js';
 import { rClass }                from '../../core/redundancy.js';
 import { nf }                    from '../../core/format.js';
 import { TIPS, tipAttr }         from '../tooltip.js';
@@ -134,7 +134,7 @@ function _sidebar(el, state) {
             const lagR   = r.rMean != null && r.rMean <= R_OBS_NORM;
             const storSp = Number.isFinite(kravMm) && r.sigPos_mm > kravMm;
             const reas = lagR && storSp ? 'r-tal under norm + över σ_pos-kravet'
-              : lagR                    ? `r-tal uppfyller inte kravet > ${nf(R_OBS_NORM, 2)} (TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS §6.2.2)`
+              : lagR                    ? `r-tal uppfyller inte kravet > ${nf(R_OBS_NORM, 2)} (${K_R_KALLA})`
               :                           `σ_pos över projektets krav ${nf(kravMm, 1)} mm`;
             const bcls = lagR ? 'val-danger' : 'val-warn';
             return `<div class="studio-filter-row sim-prob-row" data-prob-id="${r.id}"

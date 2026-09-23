@@ -12,6 +12,9 @@
 // så den jämförelsen är medvetet kvar som >= och prövas här som sådan.
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import {
   klassificeraKtal, klassificeraRtal, K_NAT_GOLV, R_OBS_NORM, R_OBS_GOD,
   K_BAND, R_BAND, K_R_KALLA, bandIntervall,
@@ -25,6 +28,9 @@ import { setState } from '../src/state/store.js';
 import { validateNetwork } from '../src/ui/validation.js';
 import { bandForklaring } from '../src/ui/right-panel.js';
 import { legendInnehall } from '../src/ui/map-legend.js';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const read = p => readFileSync(join(root, p), 'utf8');
 
 // ── Klassificerarna på och kring gränsen ────────────────────────────────────
 
@@ -104,9 +110,17 @@ describe('banden bär rätt exklusivitet och rätt källa', () => {
     expect(bandIntervall(R_BAND, 2)).toBe('≤ 0,35');
   });
 
-  it('varje k- och r-gräns som är v6-kravet bär TDOK-källan', () => {
-    expect(K_R_KALLA).toContain('TDOK 2014:0571 v6.0 §2.8 K3');
-    expect(K_R_KALLA).toContain('SIS-TS 21143:2016 §6.2.2');
+  // Huvudappen vet inte vilken projekttyp nätet tillhör. TDOK 2014:0571 v6.0
+  // §2.8 K3 gäller bruksnät i plan hos Trafikverket och får därför inte stå
+  // som källa för ett godtyckligt nät – SIS-TS är huvudkällan här, med TDOK
+  // som upplysning. PM:et, som vet verksamhet och nättyp, skriver ut den fulla
+  // TDOK-hänvisningen (Etapp 3–5).
+  it('SIS-TS är huvudkälla, TDOK står som tillägg', () => {
+    expect(K_R_KALLA).toBe(
+      'SIS-TS 21143:2016 §6.2.2 (samma krav i TDOK 2014:0571 v6.0 §2.8 K3 för bruksnät i plan)');
+    expect(K_R_KALLA.indexOf('SIS-TS')).toBeLessThan(K_R_KALLA.indexOf('TDOK'));
+    expect(K_R_KALLA).toMatch(/^SIS-TS/);
+    expect(K_R_KALLA).toContain('bruksnät i plan');
     for (const b of K_BAND) expect(b.kalla, b.klass).toBe(K_R_KALLA);
     expect(R_BAND.find(b => b.min === R_OBS_NORM).kalla).toBe(K_R_KALLA);
     // HMK-bandet är en rekommendation och får INTE bära TDOK-källan.
@@ -133,13 +147,28 @@ describe('UI-texterna säger "större än", inte "minst"', () => {
     expect(html).toContain(K_R_KALLA);
   });
 
-  it('optimeringens kriterietext skriver > och bär TDOK-källan', () => {
+  it('optimeringens kriterietext skriver > och bär källan', () => {
     const t = describeCriteria(criteriaForClass('G2')).join(' ');
     expect(t).toContain('r-tal > 0,35');
     expect(t).toContain('k > 0,50');
-    expect(t).toContain('TDOK 2014:0571 v6.0 §2.8 K3');
+    expect(t).toContain(K_R_KALLA);
     expect(t).not.toMatch(/k ≥ 0,50/);
     expect(t).not.toMatch(/r-tal ≥ 0,35/);
+  });
+
+  // Källan får bara stå på ett ställe. Skrivs den av för hand någonstans kan
+  // de två börja säga olika saker, vilket var hela skälet till K_R_KALLA.
+  it('ingen fil skriver TDOK-paragrafen för hand vid sidan av K_R_KALLA', () => {
+    const filer = [
+      'src/core/optimizer-criteria.js', 'src/ui/validation.js',
+      'src/ui/map-legend.js', 'src/ui/right-panel.js', 'src/ui/tooltip.js',
+      'src/ui/studio-views/simulation-studio.js',
+    ];
+    for (const f of filer) {
+      const src = read(f).replace(/^\s*\/\/.*$/gm, '');
+      expect(src, `${f} skriver TDOK-paragrafen för hand`)
+        .not.toMatch(/TDOK 2014:0571 v6\.0 §2\.8 K3/);
+    }
   });
 });
 
@@ -267,5 +296,47 @@ describe('ett verkligt nät på gränsen', () => {
     // Utfallet: före Etapp 2 hette detta nät "Uppfyller norm".
     expect(klassificeraKtal(sr.K_global).uppfyllerNorm).toBe(false);
     expect(sr.K_class).toBe('Under norm');
+  });
+
+  // k räknas ur heltalen n och u, inte ur Σr_i. Storheterna är matematiskt
+  // lika (Σr_i = f, HMK Formel F.6), men Σr_i är en flyttalssumma över alla
+  // observationer och landar i allmänhet inte exakt på f. Med en STRIKT gräns
+  // avgör den skillnaden utfallet: hamnar Σr_i/n strax över 0,5 blir nätet
+  // godkänt, strax under underkänt – på ren avrundning.
+  it('k kommer ur heltalen (n − u)/n, inte ur flyttalssumman Σr_i/n', () => {
+    const pts = [
+      { id: 'FP1', type: 'known', E: 0,   N: 0,   centerErr: 0 },
+      { id: 'FP2', type: 'known', E: 400, N: 0,   centerErr: 0 },
+      { id: 'FP3', type: 'known', E: 400, N: 400, centerErr: 0 },
+      { id: 'FP4', type: 'known', E: 0,   N: 400, centerErr: 0 },
+      { id: 'N1',  type: 'new',   E: 137, N: 211, centerErr: 0 },
+      { id: 'N2',  type: 'new',   E: 289, N: 97,  centerErr: 0 },
+      { id: 'N3',  type: 'new',   E: 311, N: 342, centerErr: 0 },
+      { id: 'N4',  type: 'new',   E: 96,  N: 318, centerErr: 0 },
+      { id: 'N5',  type: 'new',   E: 203, N: 187, centerErr: 0 },
+    ];
+    const par = [];
+    for (const ny of ['N1', 'N2', 'N3', 'N4', 'N5'])
+      for (const fp of ['FP1', 'FP2', 'FP3', 'FP4']) par.push([fp, ny]);
+    const meas = par.map(([f, t], i) => ({ id: 'M' + i, from: f, to: t, ...I }));
+    const sr = computeSimulation({ pts, meas, centerErr: 0 });
+
+    expect(sr.ok).toBe(true);
+    expect(sr.meas_n).toBe(20);
+    expect(sr.unkn_n).toBe(10);
+
+    // Heltalsvägen: exakt 0,5, utan flyttalsbrus.
+    expect(sr.K_global).toBe(0.5);
+    expect(Object.is(sr.K_global, 0.5)).toBe(true);
+
+    // Flyttalsvägen: Σr_i träffar inte f exakt. Att den avviker är själva
+    // skälet till att k inte får räknas den vägen.
+    const sumR = sr.redund.reduce((a, r) => a + r.ri, 0);
+    expect(sumR).toBeCloseTo(sr.redundancy, 9);
+    expect(sumR).not.toBe(sr.redundancy);
+    expect(sumR / sr.meas_n).not.toBe(0.5);
+
+    // Och utfallet avgörs av heltalsvägen, oavsett åt vilket håll Σr_i pekar.
+    expect(klassificeraKtal(sr.K_global).uppfyllerNorm).toBe(false);
   });
 });

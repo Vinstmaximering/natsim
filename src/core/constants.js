@@ -161,6 +161,12 @@ export const D = r => r * 180 / Math.PI;
 //
 // k ligger per definition i [0, 1]: k = (n − u)/n med u ≥ 1.
 //
+// k räknas ur HELTALEN n och u i simulation.js, inte som Σr_i / n. De två är
+// matematiskt lika (Σr_i = f, HMK Formel F.6) men Σr_i är en flyttalssumma
+// över alla observationer och landar i allmänhet inte exakt på f. Med en
+// strikt gräns skulle ett nät med k = 0,50 exakt annars kunna hamna på endera
+// sidan beroende på avrundning. Σr_i redovisas separat som redundTotal.
+//
 // Normens golv för nätet:
 //   TDOK 2014:0571 v6.0 §2.8 K3    – "Bruksnät i plan ska utformas så att k-tal
 //                                    för nätet är större än 0,5 och enskilda
@@ -188,7 +194,16 @@ export const K_NAT_GOLV = 0.50;
 
 // Källhänvisningen som följer med varje k- och r-gräns ut i UI, rapporter och
 // teckenförklaringar. Ett ställe, så att de inte kan börja säga olika saker.
-export const K_R_KALLA = 'TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2';
+//
+// SIS-TS står först eftersom huvudappen inte vet vilken projekttyp nätet
+// tillhör. TDOK 2014:0571 v6.0 §2.8 K3 gäller BRUKSNÄT I PLAN hos Trafikverket
+// och kan därför inte påstås vara källan för ett godtyckligt nät användaren
+// ritar. Kravet är dock detsamma i båda, vilket parentesen säger.
+//
+// PM:et vet vilken verksamhet och nättyp som gäller och skriver därför ut den
+// fulla TDOK-hänvisningen där (Etapp 3–5).
+export const K_R_KALLA =
+  'SIS-TS 21143:2016 §6.2.2 (samma krav i TDOK 2014:0571 v6.0 §2.8 K3 för bruksnät i plan)';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KVALITETSSKALOR – ENDAST NORMSTÖDDA GRÄNSER

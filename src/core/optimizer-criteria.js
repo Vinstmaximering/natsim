@@ -47,7 +47,7 @@
 // spärrar inte (enforceMufYt = false).
 // ─────────────────────────────────────────────────────────────────────────────
 import { SIS_TS_CLASSES, SIS_TS_GENERAL_REQS } from '../data/sis-ts-classes.js';
-import { R_OBS_GOD } from './constants.js';
+import { R_OBS_GOD, K_R_KALLA } from './constants.js';
 import { nf } from './format.js';
 
 // Hårt krav per observation – blockerar leverans. Kravet är r_i > detta värde.
@@ -97,9 +97,8 @@ export function criteriaForClass(klass, overrides = {}) {
     // Se blockkommentaren: MUF/YT motsvarar r ≥ 0,49 och skulle annars göra
     // det hårda kravet 0,35 verkningslöst.
     enforceMufYt: false,
-    source: 'TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2 ' +
-            '(k > 0,50 och r-tal > 0,35) + HMK-Stommätning 2024 Bilaga F.2; ' +
-            'σ_max är produktval',
+    source: `${K_R_KALLA} (k > 0,50 och r-tal > 0,35) ` +
+            '+ HMK-Stommätning 2024 Bilaga F.2; σ_max är produktval',
   };
 }
 
@@ -179,13 +178,12 @@ export function checkCriteria(metrics, criteria) {
 export function describeCriteria(criteria) {
   return [
     `Minsta r-tal per observation: r-tal > ${nf(criteria.rMin, 2)} (hårt krav, ` +
-      'TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2)',
+      `${K_R_KALLA})`,
     `Observationer med r-tal < ${nf(criteria.rSoft ?? R_MIN_SOFT, 2)} rapporteras men blockerar inte ` +
       '(HMK Bilaga F.2)',
     `Största punktosäkerhet: σ_pos ≤ ${nf(criteria.sigmaMaxMm, 1)} mm (1σ efter utjämning` +
       (criteria.sigmaMaxIsCustom ? ', projektets eget värde)' : ', produktval)'),
-    `Kontrollerbarhet: k > ${nf(criteria.kMin, 2)} ` +
-      '(TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2)',
+    `Kontrollerbarhet: k > ${nf(criteria.kMin, 2)} (${K_R_KALLA})`,
     `MUF ≤ ${criteria.mufFactorMax} × σ, YT ≤ ${criteria.ytFactorMax} × σ` +
       (criteria.enforceMufYt ? ' (följer av r-kravet)' : ' (redovisas, spärrar ej)'),
   ];

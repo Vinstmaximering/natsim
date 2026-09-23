@@ -62,7 +62,7 @@ export function showValidationDialog() {
   const v = validateNetwork();
   let msg = "";
   if (v.ok && v.warnings.length === 0) {
-    msg = "✓ Nätet uppfyller alla normkrav och har inga varningar.\n\nDu kan generera PM.";
+    msg = "✓ Nätet uppfyller kraven på k-tal och r-tal och har inga varningar.\n\nDu kan generera PM.";
   } else {
     if (v.issues.length)   msg += `✗ FEL (${v.issues.length}):\n• ${v.issues.join("\n• ")}\n\n`;
     if (v.warnings.length) msg += `⚠ VARNINGAR (${v.warnings.length}):\n• ${v.warnings.join("\n• ")}\n\n`;

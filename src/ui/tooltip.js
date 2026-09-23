@@ -25,13 +25,17 @@
 // initTooltips() anropas en gång från main.js.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { K_R_KALLA } from '../core/constants.js';
+
 const HALL_MS = 450;     // tryck-och-håll innan bubblan visas
 const VISA_MS = 6000;    // bubblan försvinner av sig själv
 
 // ── Texterna ────────────────────────────────────────────────────────────────
 // En mening per post. Konkret om vad storheten mäter, med normreferens där
 // sådan finns. Ligger samlade här så att samma förkortning inte kan förklaras
-// olika på olika ytor.
+// olika på olika ytor. Normgränsernas källa kommer ur K_R_KALLA i
+// core/constants.js, så att tooltipen inte kan säga något annat än
+// teckenförklaringen och valideringen.
 export const TIPS = Object.freeze({
   MUF: 'Minsta upptäckbara fel – det minsta grova felet som statistiskt kan upptäckas i observationen (κ = 2,80, HMK Formel F.16).',
 
@@ -43,9 +47,9 @@ export const TIPS = Object.freeze({
 
   SIG_0: 'Grundmedelfel a posteriori – viktsenhetens standardosäkerhet efter utjämning. I en simulering utan observationer är den 1 per konstruktion.',
 
-  R_TAL: 'Kontrollerbarhet per observation (1 minus leverage). Kravet är r-tal > 0,35 enligt TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2; 0,50 ger ingen anmärkning enligt HMK Bilaga F.2. HMK Stommätning 2024 Formel F.6 benämner storheten k_i.',
+  R_TAL: `Kontrollerbarhet per observation (1 minus leverage). Kravet är r-tal > 0,35 enligt ${K_R_KALLA}; 0,50 ger ingen anmärkning enligt HMK Bilaga F.2. HMK Stommätning 2024 Formel F.6 benämner storheten k_i.`,
 
-  K_TAL: 'Global kontrollerbarhet f/n. Kravet är k > 0,50 enligt TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2, gäller alla mätklasser.',
+  K_TAL: `Global kontrollerbarhet f/n = (n − u)/n. Kravet är k > 0,50 enligt ${K_R_KALLA}, gäller alla mätklasser.`,
 
   H_II: 'Leverage – observationens eget inflytande på den utjämnade lösningen. r-talet är 1 − h_ii.',
 
