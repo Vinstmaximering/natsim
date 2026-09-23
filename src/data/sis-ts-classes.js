@@ -1,4 +1,6 @@
 // Värden hämtade från SIS-TS 21143:2016 Tabell A.9 - verifierade mot dokument
+import { K_NAT_GOLV, R_OBS_NORM } from '../core/constants.js';
+
 export const SIS_TS_CLASSES = {
   G1: {
     name: 'G1',
@@ -47,9 +49,14 @@ export const SIS_TS_CLASSES = {
 };
 
 // Generella krav samma för alla klasser (SIS-TS sek 6.2.2 + HMK Stommätning 2024 sek 3.3.1)
+//
+// Etapp 2: talen är inte längre skrivna två gånger. De kommer ur
+// core/constants.js, som också äger jämförelsen – kravet är STÖRRE ÄN dessa
+// värden (TDOK 2014:0571 v6.0 §2.8 K3, SIS-TS §6.2.2), inte minst.
+// Suffixet _min är kvar eftersom fälten läses av optimizer-criteria.js.
 export const SIS_TS_GENERAL_REQS = {
-  k_global_min: 0.5,
-  k_individual_min: 0.35,
+  k_global_min: K_NAT_GOLV,
+  k_individual_min: R_OBS_NORM,
   muf_factor_max: 4,
   yt_factor_max: 2,
   _source: 'SIS-TS 21143:2016 sek 6.2.2, HMK Stommätning 2024 sek 3.3.1'

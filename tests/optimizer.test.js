@@ -973,7 +973,10 @@ describe('optimeringsdialogen', () => {
     expect(html).toContain('G2');
     expect(html).toContain('Minsta r-tal per observation');
     expect(html).toContain('σ_pos ≤ 3,0 mm');
-    expect(html).toContain('Kontrollerbarhet: k ≥ 0,50');
+    // Etapp 2 (TDOK v6): kravet är strikt, "k > 0,50". Dialogen HTML-maskerar
+    // sin kriterietext, så > blir &gt; här – ≥ passerade omaskerat.
+    expect(html).toContain('Kontrollerbarhet: k &gt; 0,50');
+    expect(describeCriteria(criteriaForClass('G2')).join(' ')).toContain('k > 0,50');
   });
 
   it('talar om att maxavståndet respekteras', () => {

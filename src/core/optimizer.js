@@ -16,8 +16,11 @@
 // Analytiska SOD-lösningar (vikttilldelning via pseudoinvers) ger negativa
 // vikter som saknar fysikalisk tolkning – en observation kan inte utföras
 // "minus en gång". Den giriga sökningen ger i stället alltid en utförbar
-// mätplan, är reproducerbar och kan motiveras rad för rad i beslutsloggen,
-// vilket är kravet vid granskning enligt TDOK 2014:0571.
+// mätplan och kan motiveras rad för rad i beslutsloggen.
+//
+// Att loggen är reproducerbar är ett PRODUKTVAL, inte ett normkrav. Här stod
+// tidigare att det var "kravet vid granskning enligt TDOK 2014:0571" – något
+// sådant krav finns inte i v6. Rättat i Etapp 2.
 //
 // Algoritmen är tvådelad:
 //   Fas 1 (additiv):    otillräckliga nät byggs upp tills kriterierna hålls.

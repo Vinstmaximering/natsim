@@ -57,12 +57,14 @@ describe('Fix 1 – kvalitetsetiketterna beskriver relationen till normen', () =
     expect(topp.uppfyllerNorm).toBe(true);
   });
 
-  it('varje klass som uppfyller normen ligger på eller över sitt golv', () => {
-    for (const k of [0, 0.1, 0.29, 0.3, 0.49, 0.5, 0.7, 1]) {
-      expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(k >= K_NAT_GOLV);
+  // Etapp 2 (TDOK v6): golven är STRIKTA – "större än", inte "minst".
+  // k = 0,50 och r = 0,35 exakt uppfyller alltså INTE kravet.
+  it('varje klass som uppfyller normen ligger ÖVER sitt golv', () => {
+    for (const k of [0, 0.1, 0.29, 0.3, 0.49, 0.5, 0.5001, 0.7, 1]) {
+      expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(k > K_NAT_GOLV);
     }
-    for (const r of [0, 0.1, 0.29, 0.3, 0.34, 0.35, 0.5, 1]) {
-      expect(klassificeraRtal(r).uppfyllerNorm, `r=${r}`).toBe(r >= R_OBS_NORM);
+    for (const r of [0, 0.1, 0.29, 0.3, 0.34, 0.35, 0.3501, 0.5, 1]) {
+      expect(klassificeraRtal(r).uppfyllerNorm, `r=${r}`).toBe(r > R_OBS_NORM);
     }
   });
 
@@ -103,8 +105,13 @@ describe('Fix 2 – k-tal och r-tal delar ordförråd men har egna trösklar', (
     // obemärkt, och bandförklaringen i UI:t hade då beskrivit fel skala.
     for (const [fn, band] of [[klassificeraKtal, K_BAND], [klassificeraRtal, R_BAND]]) {
       for (const b of band) {
-        // Precis på gränsen ska klassificeraren ge bandets egen klass.
-        expect(fn(b.min).klass, `vid ${b.min}`).toBe(b.klass);
+        // Etapp 2: bandets `exkl` säger om undre gränsen är strikt. Är den det
+        // (TDOK v6 §2.8 K3: "större än") tillhör exakt b.min bandet UNDER, och
+        // bandet börjar strax ovanför. Testet prövar båda fallen i stället för
+        // att anta att varje gräns är inklusiv.
+        const precisPa = b.exkl ? b.min + 1e-9 : b.min;
+        expect(fn(precisPa).klass, `vid ${precisPa}`).toBe(b.klass);
+        if (b.exkl) expect(fn(b.min).klass, `exakt på ${b.min}`).not.toBe(b.klass);
         // Strax under gränsen ska den ge ett annat (lägre) band.
         if (b.min > 0) expect(fn(b.min - 1e-9).klass, `strax under ${b.min}`).not.toBe(b.klass);
       }

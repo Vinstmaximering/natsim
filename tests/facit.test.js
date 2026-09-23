@@ -764,11 +764,14 @@ describe('F7 – klassificering av k-talet', () => {
     for (const b of K_BAND) expect(nadda, b.klass).toContain(b.klass)
   })
 
-  it('k ≥ 0,50 uppfyller normen, k < 0,50 gör det inte', () => {
-    for (const k of [0.50, 0.55, 0.70, 0.85, 1.00]) {
+  // Etapp 2 (TDOK v6): gränsen är STRIKT. TDOK 2014:0571 v6.0 §2.8 K3 och
+  // SIS-TS §6.2.2 säger "större än 0,5", inte "minst 0,5", så k = 0,50 exakt
+  // flyttades från den uppfyllande listan till den underkända.
+  it('k > 0,50 uppfyller normen, k ≤ 0,50 gör det inte', () => {
+    for (const k of [0.5001, 0.55, 0.70, 0.85, 1.00]) {
       expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(true)
     }
-    for (const k of [0, 0.05, 0.15, 0.30, 0.45, 0.4999]) {
+    for (const k of [0, 0.05, 0.15, 0.30, 0.45, 0.4999, 0.50]) {
       expect(klassificeraKtal(k).uppfyllerNorm, `k=${k}`).toBe(false)
     }
   })

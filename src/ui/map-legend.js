@@ -29,7 +29,7 @@
 // De har alla en egen på/av-ruta i vänsterpanelen och syns bara när användaren
 // själv slagit på dem.
 // ─────────────────────────────────────────────────────────────────────────────
-import { PT, R_BAND } from '../core/constants.js';
+import { PT, R_BAND, K_R_KALLA, bandIntervall } from '../core/constants.js';
 import { rColor } from '../core/redundancy.js';
 import { nf } from '../core/format.js';
 
@@ -92,13 +92,16 @@ const rad = (symbol, text) =>
 
 const rubrik = t => `<div class="ml-rubrik">${t}</div>`;
 
-/** Intervalltext för ett r-talsband, t.ex. "0,35–0,50". */
-function bandText(band, i) {
-  const ovre = i === 0 ? null : band[i - 1].min;
-  if (ovre == null) return `≥ ${nf(band[i].min, 2)}`;
-  if (band[i].min === 0) return `< ${nf(ovre, 2)}`;
-  return `${nf(band[i].min, 2)}–${nf(ovre, 2)}`;
-}
+// Etapp 2: intervalltexten kommer ur bandIntervall() i core/constants.js.
+// Här låg en handskriven variant som skrev "0,35–0,50" om intervallet
+// 0,35 < r < 0,50 och "≥ 0,50" om ett golv som lyder "större än".
+//
+// Texten går in i innerHTML och innehåller nu < och >, som annars börjar en
+// tagg och tyst äter resten av raden. Den gamla varianten skrev "&lt;" som
+// färdig entitet; formateraren i core/ är HTML-oberoende och maskeras här.
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const bandText = (band, i) => esc(bandIntervall(band, i, v => nf(v, 2)));
 
 export function legendInnehall() {
   const linjer = [
@@ -118,8 +121,10 @@ export function legendInnehall() {
     rad(punktSvg(t), PT[t].l)
   ).join('');
 
+  const kalla = `<div class="ml-rad"><span class="ml-txt ml-kalla">${K_R_KALLA}</span></div>`;
+
   return rubrik('Mätlinjer') + linjer
-       + rubrik('Linjefärg = r-tal') + farger
+       + rubrik('Linjefärg = r-tal') + farger + kalla
        + rubrik('Punkttyper') + punkter;
 }
 

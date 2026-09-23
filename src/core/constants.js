@@ -162,8 +162,17 @@ export const D = r => r * 180 / Math.PI;
 // k ligger per definition i [0, 1]: k = (n − u)/n med u ≥ 1.
 //
 // Normens golv för nätet:
-//   SIS-TS 21143:2016 §6.2.2       – k > 0,5 för nätet (k > 0,35 för enskild mätning)
+//   TDOK 2014:0571 v6.0 §2.8 K3    – "Bruksnät i plan ska utformas så att k-tal
+//                                    för nätet är större än 0,5 och enskilda
+//                                    mätningar större än 0,35."
+//   SIS-TS 21143:2016 §6.2.2       – samma tal, samma ordalydelse.
 //   HMK-Stommätning 2024 §3.2.2 b) – k ≥ 0,5 för triangel- och fackverksnät
+//
+// GRÄNSERNA ÄR STRIKTA (Etapp 2). Både TDOK v6 §2.8 K3 och SIS-TS §6.2.2 säger
+// "större än", inte "minst". Ett nät med k = 0,50 exakt uppfyller alltså INTE
+// kravet, och en observation med r = 0,35 exakt gör det inte heller.
+// Jämförelserna nedan är därför > och inte >=. HMK:s k ≥ 0,5 ovan gäller en
+// annan nättyp och skiljer sig bara i det enda värdet k = 0,50.
 //
 // HISTORIK: översta gränsen var tidigare hårdkodad till "k > 1,14" på sju
 // ställen. 1,14 är maxvärdet för VIKTSENHETENS standardosäkerhet u₀ vid f = 70
@@ -174,8 +183,12 @@ export const D = r => r * 180 / Math.PI;
 // nås och att nät systematiskt underklassificerades.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Normgolv – nätet underkänns under detta värde. Normstyrt, ändra inte.
+// Normgolv – nätet underkänns PÅ eller under detta värde. Normstyrt, ändra inte.
 export const K_NAT_GOLV = 0.50;
+
+// Källhänvisningen som följer med varje k- och r-gräns ut i UI, rapporter och
+// teckenförklaringar. Ett ställe, så att de inte kan börja säga olika saker.
+export const K_R_KALLA = 'TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KVALITETSSKALOR – ENDAST NORMSTÖDDA GRÄNSER
@@ -203,13 +216,16 @@ export const K_NAT_GOLV = 0.50;
 //               projektets EGET krav (state.sigReq), som användaren själv satt.
 //
 // ── GRÄNSERNA SOM FINNS KVAR, MED KÄLLA ────────────────────────────────────
-//   k ≥ 0,50     SIS-TS 21143:2016 §6.2.2, nätet. Även HMK-Stommätning 2024
-//                §3.2.2 b) för triangel- och fackverksnät.
-//   r-tal ≥ 0,35 SIS-TS 21143:2016 §6.2.2, enskild observation. Samma värde
-//                som SIS_TS_GENERAL_REQS.k_individual_min.
+//   k > 0,50     TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2,
+//                nätet. STRIKT – k = 0,50 exakt uppfyller inte kravet.
+//   r-tal > 0,35 TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2,
+//                enskild observation. STRIKT – r = 0,35 exakt uppfyller inte
+//                kravet. Samma värde som SIS_TS_GENERAL_REQS.k_individual_min.
 //   r-tal ≥ 0,50 HMK-Stommätning 2024 Bilaga F.2 "Kontrollerbarhet och k-tal"
 //                – rekommendation, nivån för ingen anmärkning. Samma tröskel
-//                återkommer i HMK §3.3.1 och Tabell 9.
+//                återkommer i HMK §3.3.1 och Tabell 9. Detta är INTE v6-kravet
+//                och jämförelsen är därför INTE strikt: HMK:s ordalydelse är
+//                inte verifierad, så >= står kvar (beställarens beslut).
 //
 // r_i säger hur stor del av ett grovfel i observationen som syns i
 // residualerna. Lågt r-tal = grovfelet slår rakt in i koordinaterna.
@@ -220,7 +236,8 @@ export const K_NAT_GOLV = 0.50;
 // invariant som förut, men nu med normens tal i stället för produktens.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** SIS-TS 21143:2016 §6.2.2 – golv för ENSKILD observation. */
+/** TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS 21143:2016 §6.2.2 – golv för ENSKILD
+ *  observation. Kravet är r-tal STÖRRE ÄN detta värde. */
 export const R_OBS_NORM = 0.35;
 
 /** HMK-Stommätning 2024 Bilaga F.2 "Kontrollerbarhet och k-tal" – rekommendation. */
@@ -232,7 +249,8 @@ export const R_OBS_GOD  = 0.50;
  * Returnerar { klass, cssKlass, farg, uppfyllerNorm }.
  */
 export function klassificeraKtal(k) {
-  return k >= K_NAT_GOLV
+  // Strikt >: TDOK v6 §2.8 K3 och SIS-TS §6.2.2 säger "större än 0,5".
+  return k > K_NAT_GOLV
     ? { klass: "Uppfyller norm", cssKlass: "val-good",   farg: "#00ff88", uppfyllerNorm: true  }
     : { klass: "Under norm",     cssKlass: "val-danger", farg: "#ff5050", uppfyllerNorm: false };
 }
@@ -244,7 +262,9 @@ export function klassificeraKtal(k) {
 export function klassificeraRtal(r) {
   if (r >= R_OBS_GOD)
     return { klass: "Ingen anmärkning", cssKlass: "val-good",    farg: "#00ff88", uppfyllerNorm: true  };
-  if (r >= R_OBS_NORM)
+  // Strikt >: TDOK v6 §2.8 K3 och SIS-TS §6.2.2 säger "större än 0,35".
+  // Raden ovan (R_OBS_GOD) är HMK:s rekommendation och behåller >=.
+  if (r > R_OBS_NORM)
     return { klass: "Uppfyller norm",   cssKlass: "val-caution", farg: "#ffcc00", uppfyllerNorm: true  };
   return   { klass: "Under norm",       cssKlass: "val-danger",  farg: "#ff5050", uppfyllerNorm: false };
 }
@@ -252,16 +272,46 @@ export function klassificeraRtal(r) {
 // Banden som datastruktur, för teckenförklaringen i kartan, bandförklaringen i
 // högerpanelen och tester. Fallande ordning, samma som klassificerarna prövar i.
 // `kalla` är normhänvisningen som visas för användaren.
+//
+// `exkl: true` betyder att bandets undre gräns är STRIKT – värdet måste vara
+// större än `min`, inte minst `min`. Etapp 2 införde flaggan eftersom TDOK v6
+// §2.8 K3 och SIS-TS §6.2.2 säger "större än" medan HMK:s rekommendation
+// (R_OBS_GOD) inte gör det. Utan flaggan kunde bandtexten i UI inte skilja
+// "> 0,50" från "≥ 0,50", och bandIntervall() nedan skulle formulera fel.
+// Flaggan MÅSTE spegla jämförelsen i klassificeraKtal/klassificeraRtal.
 export const K_BAND = Object.freeze([
-  { min: K_NAT_GOLV, klass: "Uppfyller norm", kalla: "SIS-TS 21143:2016 §6.2.2" },
-  { min: 0,          klass: "Under norm",     kalla: "under SIS-TS-golvet 0,50" },
+  { min: K_NAT_GOLV, exkl: true,  klass: "Uppfyller norm", kalla: K_R_KALLA },
+  { min: 0,          exkl: false, klass: "Under norm",     kalla: K_R_KALLA },
 ]);
 
 export const R_BAND = Object.freeze([
-  { min: R_OBS_GOD,  klass: "Ingen anmärkning", kalla: "HMK Bilaga F.2" },
-  { min: R_OBS_NORM, klass: "Uppfyller norm",   kalla: "SIS-TS 21143:2016 §6.2.2" },
-  { min: 0,          klass: "Under norm",       kalla: "under SIS-TS-golvet 0,35" },
+  { min: R_OBS_GOD,  exkl: false, klass: "Ingen anmärkning", kalla: "HMK – Stommätning 2024 Bilaga F.2 (rekommendation)" },
+  { min: R_OBS_NORM, exkl: true,  klass: "Uppfyller norm",   kalla: K_R_KALLA },
+  { min: 0,          exkl: false, klass: "Under norm",       kalla: K_R_KALLA },
 ]);
+
+/**
+ * Intervalltexten för band nr `i` i `band`, t.ex. "> 0,50", "≥ 0,50",
+ * "> 0,35 och < 0,50" eller "≤ 0,50".
+ *
+ * Bandet ovanför sätter den övre gränsen, och dess `exkl` avgör om den övre
+ * gränsen är öppen eller stängd: är bandet ovanför strikt (> m) så tillhör
+ * exakt m det här bandet, alltså "≤ m".
+ *
+ * Fanns tidigare i två handskrivna kopior – bandText() i ui/map-legend.js och
+ * bandForklaring() i ui/right-panel.js – som båda antog att alla gränser var
+ * inklusiva. Samlad här när gränserna blev strikta, så att de två inte kan
+ * beskriva samma skala olika.
+ */
+export function bandIntervall(band, i, fmt = v => v.toFixed(2).replace('.', ',')) {
+  const b     = band[i];
+  const nedre = b.exkl ? `> ${fmt(b.min)}` : `≥ ${fmt(b.min)}`;
+  if (i === 0) return nedre;                       // översta bandet: ingen övre gräns
+  const ovre  = band[i - 1];
+  const ovreT = ovre.exkl ? `≤ ${fmt(ovre.min)}` : `< ${fmt(ovre.min)}`;
+  if (b.min === 0) return ovreT;                   // understa bandet: ingen undre gräns
+  return `${nedre} och ${ovreT}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PUNKTOSÄKERHET σ_pos

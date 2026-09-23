@@ -55,6 +55,9 @@ canvas { display: block; touch-action: none; }
 .ml-rad { display:flex;align-items:center;gap:7px;padding:1.5px 0; }
 .ml-sym { flex:none;width:34px;display:flex;align-items:center;justify-content:center;line-height:0; }
 .ml-txt { font-size:11px;color:var(--text-secondary);line-height:1.35; }
+/* Etapp 2: normhänvisningen under r-talsbanden. Mindre och dämpad – den är
+   källa, inte ett band, och ska inte konkurrera med raderna ovanför. */
+.ml-kalla { font-size:9.5px;color:var(--text-muted); }
 
 /* På telefon tar kartan hela bredden – håll förklaringen smal och låg. */
 @media (max-width:480px) {

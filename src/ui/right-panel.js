@@ -3,7 +3,8 @@
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
 import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal, klassificeraRtal,
-         sigPosKlass, ptLabel, ptLabelShort, K_BAND } from '../core/constants.js';
+         sigPosKlass, ptLabel, ptLabelShort, K_BAND, K_R_KALLA,
+         bandIntervall } from '../core/constants.js';
 import { nf, gon, komma } from '../core/format.js';
 import { TIPS, tipAttr } from './tooltip.js';
 import { calcM, d2EN, brgEN, isStationPoint } from '../core/designmatrix.js';
@@ -264,15 +265,17 @@ export function suggestMeasurements() {
 // Bygger bandförklaringen under k-talet ur bandtabellen i core/constants.js,
 // så att text och klassificerare inte kan divergera. Omgång 1 rättade en
 // förklaring som saknade ett helt band; Omgång 3 tar bort möjligheten.
+// Etapp 2: intervalltexten kommer ur bandIntervall() i core/constants.js.
+// Här låg en handskriven variant som antog att varje undre gräns var inklusiv
+// och därför skrev "≥0,50" om ett krav som lyder "större än 0,5".
 export function bandForklaring(band) {
-  return band.map((b, i) => {
-    const ovre = i === 0 ? null : band[i - 1].min;
-    const intervall = ovre == null ? `≥${nf(b.min, 2)}`
-      : b.min === 0 ? `&lt;${nf(ovre, 2)}`
-      : `${nf(b.min, 2)}–${nf(ovre, 2)}`;
-    return `${intervall} ${b.klass}`;
-  }).join(' &nbsp;|&nbsp; ');
+  return band.map((b, i) =>
+    `${esc(bandIntervall(band, i, v => nf(v, 2)))} ${b.klass}`
+  ).join(' &nbsp;|&nbsp; ');
 }
+
+// bandIntervall() ger tecknen <, >, ≤, ≥ som text; < måste maskeras i HTML.
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const TABS = [
   { k:"net",    l:"NÄT" },
@@ -479,8 +482,10 @@ export function renderTab() {
       <!-- Banden måste spegla klassificeraKtal() i core/constants.js. Klassen
            "Överbestämt" (≥0,70) saknades här, så förklaringen motsade badgen
            bredvid för k ≥ 0,70. Rättat i UI-städning Omgång 1 (2026-09-11);
-           se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2. -->
+           se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2.
+           Etapp 2: gränsen är strikt (k > 0,50) och källan skrivs ut. -->
       <div class="val-muted" style="font-size:10px;line-height:1.7;">${bandForklaring(K_BAND)}</div>
+      <div class="val-muted" style="font-size:9px;line-height:1.6;">${K_R_KALLA}</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px;">
         ${TR(`<span ${tipAttr(TIPS.R_TAL)}>Medel r-tal</span>`, nf(sr.rMean, 3), rClass(sr.rMean))}
         ${sr.rMinDist != null ? TR("Minsta r-tal (avstånd)",  nf(sr.rMinDist, 3), rClass(sr.rMinDist)) : ""}

@@ -1,9 +1,12 @@
 // Steg 1 – Projekt och personal
 // Bygger form via innerHTML + addEventListener (inga inline onclick-strängar).
 import { nf } from '../../core/format.js';
+import { klassificeraKtal } from '../../core/constants.js';
 
 export function render(D, container, vals) {
-  const kOk = D.sr.K_global >= 0.5;
+  // Etapp 2: samma klassificerare som rapporten och huvudappen. Låg tidigare
+  // som en egen jämförelse >= 0.5 mot ett krav som lyder "större än 0,5".
+  const kOk = klassificeraKtal(D.sr.K_global).uppfyllerNorm;
   container.innerHTML = `
     <div class="card">
       <div class="ch"><div class="ci">📋</div><div><div class="ct">Projekt och personal</div><div class="cd">Grunduppgifter och R2 – Personal</div></div></div>

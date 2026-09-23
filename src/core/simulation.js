@@ -102,10 +102,13 @@ export function computeSimulation({ pts, meas, centerErr }) {
 
     // Längdosäkerhet enligt HMK-Stommätning 2024 Bilaga C.1.2:
     //   u(L) = √[(A + B·L)² + C²]
-    // Konstantledet A och det avståndsberoende ledet B·L adderas LINJÄRT –
-    // TDOK 2014:0571 §4.6.1.2 använder ordet "adderas". Först centreringen C
-    // kombineras kvadratiskt. Tidigare summerades allt kvadratiskt, vilket
-    // underskattade längdosäkerheten.
+    // Konstantledet A och det avståndsberoende ledet B·L adderas LINJÄRT.
+    // Först centreringen C kombineras kvadratiskt. Tidigare summerades allt
+    // kvadratiskt, vilket underskattade längdosäkerheten.
+    //
+    // Etapp 2: här stod tidigare att "TDOK 2014:0571 §4.6.1.2 använder ordet
+    // 'adderas'". Hänvisningen är borttagen – §4.6.1.2 är v5-numrering, och
+    // ordet finns varken i v5 eller v6. HMK Bilaga C.1.2 ovan bär formeln.
     const uD_lin = (sDmm / 1000) + (dist_m * sDppm * 1e-6);
     const sigD   = Math.hypot(uD_lin, e_c);
     const sigH_mgon_eff  = sHmg / Math.sqrt(nSat);

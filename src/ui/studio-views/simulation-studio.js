@@ -56,7 +56,7 @@ function _ptRows(state) {
       sigPos_mm,
       // "Problempunkt" = bryter mot en normgräns eller mot projektets krav.
       // Tidigare låg gränserna på 0,3 respektive 5 mm, båda utan normstöd.
-      isProb:     (rMean != null && rMean < R_OBS_NORM)
+      isProb:     (rMean != null && rMean <= R_OBS_NORM)
                   || (Number.isFinite(kravMm) && sigPos_mm > kravMm),
     };
   });
@@ -131,10 +131,10 @@ function _sidebar(el, state) {
             // 2026-09-13: motiveringen bygger på normgolvet och projektets
             // eget σ_pos-krav. Tidigare låg gränserna på 0,3 och 5 mm –
             // tal utan normstöd.
-            const lagR   = r.rMean != null && r.rMean < R_OBS_NORM;
+            const lagR   = r.rMean != null && r.rMean <= R_OBS_NORM;
             const storSp = Number.isFinite(kravMm) && r.sigPos_mm > kravMm;
             const reas = lagR && storSp ? 'r-tal under norm + över σ_pos-kravet'
-              : lagR                    ? `r-tal under ${nf(R_OBS_NORM, 2)} (SIS-TS §6.2.2)`
+              : lagR                    ? `r-tal uppfyller inte kravet > ${nf(R_OBS_NORM, 2)} (TDOK 2014:0571 v6.0 §2.8 K3 · SIS-TS §6.2.2)`
               :                           `σ_pos över projektets krav ${nf(kravMm, 1)} mm`;
             const bcls = lagR ? 'val-danger' : 'val-warn';
             return `<div class="studio-filter-row sim-prob-row" data-prob-id="${r.id}"
@@ -198,7 +198,7 @@ function _renderPts(el, state) {
     const rCls = r.rMean != null ? rClass(r.rMean) : 'val-muted';
     const sCls = sigClass(r.sigPos_mm, state.sigReq);
     const icon = !r.isProb ? '<span class="val-good">✓</span>'
-      : (r.rMean != null && r.rMean < R_OBS_NORM) ? '<span class="val-danger">✕</span>'
+      : (r.rMean != null && r.rMean <= R_OBS_NORM) ? '<span class="val-danger">✕</span>'
       : '<span class="val-warn">⚠</span>';
     return `<tr data-id="${r.id}" class="${sel}" style="border-bottom:1px solid var(--border-default);cursor:pointer${bg}">
       <td style="padding:8px 12px;color:${col};font-weight:bold">${r.id}</td>

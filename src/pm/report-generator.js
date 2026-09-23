@@ -23,7 +23,7 @@
 // Den interna variabeln kstd nedan behåller sitt namn; den är inte synlig.
 
 import { nf, komma } from '../core/format.js';
-import { ptLabel, klassificeraKtal } from '../core/constants.js';
+import { ptLabel, klassificeraKtal, K_R_KALLA } from '../core/constants.js';
 import { rLabel } from '../core/redundancy.js';
 
 export function buildReport(data) {
@@ -60,7 +60,9 @@ export function buildReport(data) {
   const kravStr   = v("krav");
   const kravSP    = parseFloat(kravStr) || 999;
 
-  const kOk   = sr.K_global >= 0.5;
+  // Etapp 2: samma klassificerare som allt annat, i stället för en egen
+  // hårdkodad jämförelse som dessutom använde >= mot ett krav som lyder >.
+  const kOk   = klassificeraKtal(sr.K_global).uppfyllerNorm;
   const spv   = ptRes.map(r => r.sigPos * 1000);
   const spMax = spv.length ? nf(Math.max(...spv), 2) : "–";
   const spMean = spv.length ? nf(spv.reduce((a,b)=>a+b,0)/spv.length, 2) : "–";
@@ -88,8 +90,8 @@ export function buildReport(data) {
   // omdömet "viss kontrollerbarhet" i stället för underkänt.
   const stabCls   = kKlass.uppfyllerNorm ? "bok" : "berr";
   const stabTxt   = kKlass.uppfyllerNorm
-    ? "Nätet uppfyller SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50)."
-    : "Nätet uppfyller inte SIS-TS 21143:2016 §6.2.2 (k ≥ 0,50).";
+    ? `Nätet uppfyller kravet k > 0,50 (${K_R_KALLA}).`
+    : `Nätet uppfyller inte kravet k > 0,50 (${K_R_KALLA}).`;
 
   const mufD = redund.filter(r=>r.type==="dist"&&r.mdb).map(r=>r.mdb.val*1000);
   const mufH = redund.filter(r=>r.type==="hz"&&r.mdb).map(r=>r.mdb.val);
@@ -301,7 +303,7 @@ export function buildReport(data) {
           <tr><th>Från → Till</th><th>Typ</th><th>r-tal</th><th>MUF</th><th>YT</th></tr>
           ${rdTab}
         </table>
-        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.2) · gul = 0,35–0,50, uppfyller SIS-TS 21143:2016 §6.2.2 · röd = under 0,35, uppfyller inte §6.2.2.</p>`;
+        <p style="font-size:8pt;color:#555;margin-top:1.5mm">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.2) · gul = r-tal > 0,35 och &lt; 0,50, uppfyller kravet · röd = r-tal ≤ 0,35, uppfyller inte kravet. Källa: ${K_R_KALLA}.</p>`;
   h += `<h2 class="r">7.3 Tillförlitlighet och homogenitet</h2>
         <div class="rbox ${stabCls}"><strong>Stabilitetsbedömning:</strong> ${stabTxt}</div>
         <div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> Det minsta grova fel som kan detekteras är
