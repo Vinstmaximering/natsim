@@ -11,9 +11,12 @@
 // pilarna vandrar i menyn, Home/End hoppar till ändarna, Escape stänger och
 // lämnar tillbaka fokus till knappen, vänster/höger byter meny.
 
+import { getState } from '../state/store.js';
+
 const MENUS = [
-  { btn: 'mnu-data-btn', pop: 'mnu-data' },
-  { btn: 'mnu-visa-btn', pop: 'mnu-visa' },
+  { btn: 'mnu-data-btn',    pop: 'mnu-data' },
+  { btn: 'mnu-visa-btn',    pop: 'mnu-visa' },
+  { btn: 'mnu-rapport-btn', pop: 'mnu-rapport' },
 ];
 
 let _open = null;   // id:t på den öppna popupen, eller null
@@ -46,6 +49,9 @@ export function openTopbarMenu(popId, focusFirst = false) {
   if (!m) return;
   const pop = el(popId), btn = el(m.btn);
   if (!pop || !btn) return;
+  // Rapport-menyns poster beror på nätets tillstånd – räknas om vid varje
+  // öppning, innan items() plockar de fokuserbara (disabled räknas inte).
+  if (popId === 'mnu-rapport') updateReportMenu();
   pop.hidden = false;
   btn.setAttribute('aria-expanded', 'true');
   _open = popId;
@@ -81,6 +87,58 @@ const ACTIONS = {
   'load':       () => el('load-fi')?.click(),
   'template':   () => import('../io/import-csv.js').then(m => m.showExcelTemplate()),
 };
+
+// ── Rapport-menyns poster ────────────────────────────────────────────────────
+// Etapp 1: flyttade hit från högerpanelens RAPPORT-flik. Funktionerna är
+// oförändrade – window._exportRep m.fl. sätts av main.js – och exporternas
+// innehåll är inte rört. Det enda som är nytt är att en post som ändå skulle
+// mötas av ett alert i stället visas inaktiv med skälet i title.
+const REPORT_ACTIONS = {
+  'pm':          () => window._openPM?.(),
+  'sim-pdf':     () => window._exportSimPDF?.(),
+  'sim-txt':     () => window._exportRep?.(),
+  'calc-txt':    () => window._exportCalcRep?.(),
+  'rep-studio':  () => window._openStudio?.('rep'),
+  'meas-book':   () => window._openMeasBook?.(),
+  'meas-scheme': () => window._exportMeasScheme?.(),
+};
+
+// Minsta fönsterbredd för PM-modulen. Samma tal som isMobilePhone() i main.js,
+// som annars möter användaren med en toast efter att popupen redan öppnats.
+export const PM_MIN_WIDTH = 768;
+
+const SIM_KRAVS  = 'Kör simuleringen först';
+const MEAS_KRAVS = 'Lägg till minst en mätning först';
+
+/**
+ * Skälet till att en rapportpost inte går att använda, eller null om den gör
+ * det. Ren funktion av tillståndet – testbar utan DOM.
+ */
+export function reportItemBlocker(act, { simOk, measCount, winWidth }) {
+  if (act === 'pm' && winWidth < PM_MIN_WIDTH)
+    return `Kräver bredare skärm (minst ${PM_MIN_WIDTH} px)`;
+  if (act === 'meas-book' || act === 'meas-scheme')
+    return measCount > 0 ? null : MEAS_KRAVS;
+  return simOk ? null : SIM_KRAVS;
+}
+
+/** Slår av/på Rapport-menyns poster och sätter title med skälet. */
+export function updateReportMenu() {
+  const pop = el('mnu-rapport');
+  if (!pop) return;
+  const { simResult, meas = [] } = getState();
+  const ctx = {
+    simOk:     !!simResult?.ok,
+    measCount: meas.length,
+    winWidth:  typeof window !== 'undefined' ? window.innerWidth : PM_MIN_WIDTH,
+  };
+  for (const b of pop.querySelectorAll('button[data-act]')) {
+    const skal = reportItemBlocker(b.dataset.act, ctx);
+    b.disabled = !!skal;
+    if (skal) b.title = skal;
+    else      b.removeAttribute('title');
+  }
+}
 
 export function initTopbar() {
   const bar = el('topbar');
@@ -131,6 +189,14 @@ export function initTopbar() {
     if (!b || b.disabled) return;
     closeTopbarMenus();
     ACTIONS[b.dataset.act]?.();
+  });
+
+  // Rapport-menyns poster: samma mönster som Data-menyn.
+  el('mnu-rapport')?.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b || b.disabled) return;
+    closeTopbarMenus();
+    REPORT_ACTIONS[b.dataset.act]?.();
   });
 
   // Visa-menyn stängs inte av att en kryssruta bockas – då går det inte att

@@ -96,6 +96,29 @@
         </div>
       </div>
     </div>
+
+    <!-- ── RAPPORT ───────────────────────────────────────────────────────── -->
+    <!-- Etapp 1: innehållet kommer från högerpanelens borttagna RAPPORT-flik.
+         Posterna anropar samma window-funktioner som knapparna gjorde; det är
+         ui/topbar.js som slår av dem när förutsättningen saknas. -->
+    <div class="tbar-menu">
+      <button type="button" class="tbar-btn" id="mnu-rapport-btn"
+              aria-haspopup="true" aria-expanded="false" aria-controls="mnu-rapport">Rapport <span aria-hidden="true">▾</span></button>
+      <div class="tbar-pop" id="mnu-rapport" role="menu" aria-label="Rapport" hidden>
+        <div class="tbar-grp">DOKUMENT</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="pm">Mätningstekniskt PM…</button>
+        <div class="tbar-sep" role="separator"></div>
+        <div class="tbar-grp">SIMULERING</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="sim-pdf">Simuleringsrapport (PDF)</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="sim-txt">Simuleringsrapport (.txt)</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="calc-txt">Beräkningsrapport (.txt)</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="rep-studio">Granska resultat i studioläge</button>
+        <div class="tbar-sep" role="separator"></div>
+        <div class="tbar-grp">FÄLTDOKUMENTATION</div>
+        <button type="button" role="menuitem" class="tbar-item" data-act="meas-book">Mätbok A4 (utskrift/PDF)</button>
+        <button type="button" role="menuitem" class="tbar-item" data-act="meas-scheme">Mätschema (.txt)</button>
+      </div>
+    </div>
   </nav>
 
   <div class="tbar-spacer"></div>
