@@ -15,7 +15,7 @@ import { APP_NAME, APP_VERSION_LABEL } from './core/version.js';
 import { ptLabel, ptLabelShort, PT } from './core/constants.js';
 // openPM definieras nedan (refererar till getState och map-imports)
 import { autoSim, undo, setUndoCallbacks, saveUndo } from './state/undo.js';
-import { loadAutosave, saveAutosave }           from './state/persistence.js';
+import { loadAutosave, saveAutosave, writeAutosaveNow } from './state/persistence.js';
 import { initMap, draw, setDrawCallbacks, resize, map as leafletMap } from './map/leaflet-setup.js';
 import { setInteractionCallbacks }              from './map/interactions.js';
 import { showToast }                            from './ui/toast.js';
@@ -157,7 +157,9 @@ if (getState().pts.length > 0) hideOnboarding();
 
 // ── 11. Globala events ─────────────────────────────────────────────────────
 window.addEventListener("resize", resize);
-window.addEventListener("beforeunload", saveAutosave);
+// saveAutosave() väntar 1,5 s – vid stängning hinner den aldrig köra, så
+// här skrivs direkt.
+window.addEventListener("beforeunload", writeAutosaveNow);
 
 // ── 12. Koordinatlista – toggle + render ────────────────────────────────────
 let _coordViewOpen = false;
