@@ -288,7 +288,8 @@ describe('åtgärdsraden', () => {
     const { P, L, A } = scen();
     setState({ visualSelection: [P, L, A] });
     expect(bar().hidden).toBe(false);
-    expect(bar().querySelector('.sb-count').textContent).toBe('3 objekt markerade · 1 pkt · 1 linj. · 1 ytor');
+    // Böjt efter STOPP 4: "1 yta", inte "1 ytor".
+    expect(bar().querySelector('.sb-count').textContent).toBe('3 objekt markerade · 1 pkt · 1 linj. · 1 yta');
     expect([...bar().querySelectorAll('[data-sb]')].map(b => b.textContent.trim()))
       .toEqual(['Flytta till lager ▾', 'Dölj namn', 'Zooma till', 'Ta bort', '× Avmarkera']);
     setState({ visualSelection: [] });
@@ -311,8 +312,8 @@ describe('åtgärdsraden', () => {
     const spy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     knapp('delete').click();
     expect(getState().visualAreas).toHaveLength(1);
-    expect(spy.mock.calls[0][0]).toContain('1 punkter, 1 linjer och 1 ytor');
-    expect(spy.mock.calls[0][0]).toContain('1 kopplade hinder försvinner');
+    expect(spy.mock.calls[0][0]).toContain('1 punkt, 1 linje och 1 yta');
+    expect(spy.mock.calls[0][0]).toContain('1 kopplat hinder försvinner');
     knapp('delete').click();
     expect(getState().visualAreas).toEqual([]);
     expect(getState().visualSelection).toEqual([]);
@@ -374,9 +375,13 @@ describe('åtgärdsraden', () => {
     } finally { window.matchMedia = orig; SA.setTouchSelectOp('replace'); }
   });
 
-  it('selectionText', () => {
-    expect(selectionText({ total: 2, pts: [1], lines: [], areas: [1] }))
-      .toBe('2 objekt markerade · 1 pkt · 0 linj. · 1 ytor');
+  it('selectionText böjer antal', () => {
+    expect(selectionText({ total: 1, pts: [], lines: [], areas: [1] }))
+      .toBe('1 objekt markerat · 0 pkt · 0 linj. · 1 yta');
+    expect(selectionText({ total: 3, pts: [1], lines: [], areas: [1, 2] }))
+      .toBe('3 objekt markerade · 1 pkt · 0 linj. · 2 ytor');
+    expect(selectionText({ total: 0, pts: [], lines: [], areas: [] }))
+      .toBe('0 objekt markerade · 0 pkt · 0 linj. · 0 ytor');
   });
 });
 

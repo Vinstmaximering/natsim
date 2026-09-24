@@ -21,6 +21,7 @@ import {
   beginSelectDrag, updateSelectDrag, endSelectDrag, cancelSelectDrag,
   isSelectDragging, selectDragMoved, clickSelect,
 } from './select-area.js';
+import { initPanGestures } from './pan-gestures.js';
 import {
   hitTestHandle, hitTestEdge, hitTestObstacle,
   startNodeDrag, updateNodeDrag, endNodeDrag, isDraggingNode,
@@ -87,6 +88,9 @@ export function initInteractions(map) {
   let selSuppressClick = false;
   let selSuppressUntil = 0;
   const selectTool = () => getState().tool === 'select-area';
+
+  // Mittenknappen och mellanslag + drag panorerar i alla verktyg.
+  initPanGestures(map);
 
   // Slå av Leaflet's dubbelklicks-zoom när ett hinder är markerat,
   // annars blockerar zoomen dblclick → kant-infogning. Samma sak under

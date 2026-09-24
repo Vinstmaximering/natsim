@@ -443,7 +443,8 @@ describe('radera lager', () => {
     expect($('modal').style.display).toBe('flex');
     expect($('mi').textContent).toContain('Radera lagret Med vägg');
     // Ändrat i Etapp 3: texten räknar även ytor.
-    expect($('mi').textContent).toContain('2 punkter, 1 linjer och 0 ytor');
+    // Böjt efter STOPP 4.
+    expect($('mi').textContent).toContain('2 punkter, 1 linje och 0 ytor');
     expect($('mi').textContent).toContain('1 kopplade hinder');
   });
 

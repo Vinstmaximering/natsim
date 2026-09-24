@@ -14,6 +14,7 @@ import { getState, setState, subscribe } from '../state/store.js';
 import { draw, fitViewToENBounds } from '../map/leaflet-setup.js';
 import { saveUndo } from '../state/undo.js';
 import { showToast } from './toast.js';
+import { antalPunkter, antalLinjer, antalYtor } from './antal.js';
 import { selectionSummary } from '../state/visual-selection.js';
 import { getTouchSelectOp, setTouchSelectOp } from '../map/select-area.js';
 import {
@@ -28,9 +29,14 @@ const coarse = () => typeof window !== 'undefined' && !!window.matchMedia?.('(po
 
 const OPS = [['replace', 'Ny'], ['add', 'Lägg till'], ['remove', 'Dra ifrån']];
 
-/** "3 objekt markerade · 1 pkt · 1 linj. · 1 ytor" */
+/**
+ * "3 objekt markerade · 1 pkt · 1 linj. · 1 yta". Förkortningarna pkt och
+ * linj. böjs inte; ytor och "markerat/markerade" gör det.
+ */
 export function selectionText(sum) {
-  return `${sum.total} objekt markerade · ${sum.pts.length} pkt · ${sum.lines.length} linj. · ${sum.areas.length} ytor`;
+  const n = sum.total;
+  return `${n} objekt ${n === 1 ? 'markerat' : 'markerade'} · ${sum.pts.length} pkt · ` +
+         `${sum.lines.length} linj. · ${antalYtor(sum.areas.length)}`;
 }
 
 // Utbredning, med minst 20 m sida så att en enda punkt inte zoomas till max.
@@ -132,16 +138,16 @@ function onClick(e) {
         && [l.from, l.to].some(ep => ep?.ref === 'visual' && ptSet.has(ep.id))).length;
       const rader = [
         `Ta bort ${sum.total} markerade objekt?`,
-        `${sum.pts.length} punkter, ${sum.lines.length} linjer och ${sum.areas.length} ytor.`,
-        ...(följer ? [`${följer} linjer som hänger i de markerade punkterna tas också bort.`] : []),
-        ...(hinder ? [`${hinder} kopplade hinder försvinner – siktberäkningen ändras.`] : []),
+        `${antalPunkter(sum.pts.length)}, ${antalLinjer(sum.lines.length)} och ${antalYtor(sum.areas.length)}.`,
+        ...(följer ? [`${antalLinjer(följer)} som hänger i de markerade punkterna tas också bort.`] : []),
+        ...(hinder ? [`${hinder} ${hinder === 1 ? 'kopplat hinder' : 'kopplade hinder'} försvinner – siktberäkningen ändras.`] : []),
         'Nätpunkter påverkas inte. Går att ångra.',
       ];
       if (!confirm(rader.join('\n'))) return;
       saveUndo(`Ta bort ${sum.total} objekt`);
       const n = removeVisualObjects(sum.ids);
       setState({ visualSelection: [] });
-      showToast(`🗑 ${n.pts} punkter, ${n.lines + n.extraLines} linjer, ${n.areas} ytor borttagna`, '#cfd8dc');
+      showToast(`🗑 ${antalPunkter(n.pts)}, ${antalLinjer(n.lines + n.extraLines)}, ${antalYtor(n.areas)} borttagna`, '#cfd8dc');
       draw();
       break;
     }
