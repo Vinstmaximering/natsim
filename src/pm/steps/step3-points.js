@@ -18,8 +18,15 @@
 // collectTables(), som pm.js anropar vid varje stegbyte.
 import {
   MARKERINGSTYPER, MARKERING_KALLA, TILLSTAND_KATEGORIER, TILLSTAND_KALLA,
-  SIKT_KALLA, migreraMarkering,
+  SIKT_KALLA, migreraMarkering, TABELLER, foraldralosaTabeller, harForaldralosa,
 } from '../tdok-v6.js';
+
+// Rubriker för de tre tabellerna, för listan över föräldralösa nycklar.
+const TABELL_NAMN = {
+  markering: 'Markeringstyp',
+  tillstand: 'Tillståndsbedömning',
+  gemensam:  'Gemensam markering',
+};
 
 // Modulens arbetskopia. Sätts av render(), läses av collectTables().
 let _vals = null;
@@ -58,6 +65,7 @@ export function render(D, container, vals) {
 
         <div id="tillstand-sek"></div>
         <div id="gemensam-sek"></div>
+        <div id="foraldralosa-sek"></div>
 
         <div class="br">
           <button class="bo" id="btn-back3">← Tillbaka</button>
@@ -69,6 +77,72 @@ export function render(D, container, vals) {
   byggMarkering(D, container.querySelector("#mark-wrap"), vals);
   if (arJvg)         byggTillstand(D, container.querySelector("#tillstand-sek"), vals);
   if (arBro && arJvg) byggGemensam(D, container.querySelector("#gemensam-sek"), vals);
+  byggForaldralosa(D, container.querySelector("#foraldralosa-sek"), vals);
+}
+
+// ── Föräldralösa nycklar ────────────────────────────────────────────────────
+// Värden för punkt-id som inte längre finns i nätet. De kommer aldrig med i
+// rapporten – den itererar över nätets punkter – men de ligger kvar i utkastet
+// och kan innehålla arbete användaren vill ha tillbaka genom att lägga in
+// punkten igen. Sektionen visar dem i stället för att tyst kasta dem, och
+// borttagningen är alltid användarens eget val.
+
+function byggForaldralosa(D, sek, vals) {
+  if (!sek) return;
+  const ptIds = D.allPts.map(p => p.id);
+  const rita = () => {
+    if (!harForaldralosa(vals, ptIds)) { sek.innerHTML = ""; return; }
+    const per = foraldralosaTabeller(vals, ptIds);
+    const rader = [];
+    for (const t of TABELLER) {
+      for (const id of per[t]) {
+        rader.push(`<tr>
+          <td class="ptab-id">${esc(id)}</td>
+          <td>${TABELL_NAMN[t]}</td>
+          <td>${esc(sammanfatta(t, vals[t][id]))}</td>
+          <td><button type="button" class="ifbtn-sm" data-fl-tab="${t}" data-fl-id="${esc(id)}"
+                      style="color:#ff6060">🗑 Ta bort</button></td>
+        </tr>`);
+      }
+    }
+    sek.innerHTML = `
+      <hr class="hr">
+      <div class="sec">Värden utan punkt i nätet</div>
+      <div class="hint hint-warn">
+        Punkterna nedan finns inte längre i nätet, men har kvar värden i det här PM:et.
+        <b>De tas inte med i rapporten.</b> Lägg tillbaka punkten i NätSim för att använda
+        värdet igen, eller ta bort det här. Borttagning går inte att ångra.
+      </div>
+      <div class="ptab-wrap">
+        <table class="ptab">
+          <thead><tr><th>Punkt</th><th>Tabell</th><th>Värde</th><th style="width:12%"></th></tr></thead>
+          <tbody>${rader.join("")}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:6px">
+        <button type="button" class="ifbtn-sm" id="fl-rensa-alla" style="color:#ff6060">🗑 Ta bort alla ${rader.length}</button>
+      </div>`;
+
+    sek.querySelectorAll("[data-fl-tab]").forEach(b => {
+      b.addEventListener("click", () => {
+        delete vals[b.dataset.flTab][b.dataset.flId];
+        rita();
+      });
+    });
+    sek.querySelector("#fl-rensa-alla")?.addEventListener("click", () => {
+      for (const t of TABELLER) for (const id of per[t]) delete vals[t][id];
+      rita();
+    });
+  };
+  rita();
+}
+
+// Kort beskrivning av ett värde, så att användaren kan avgöra om det är värt
+// att behålla innan det tas bort.
+function sammanfatta(tabell, v) {
+  if (tabell === 'gemensam') return v ? 'Markerad som gemensam' : '–';
+  if (tabell === 'markering') return [v?.typkod, v?.typ].filter(Boolean).join(' · ') || '–';
+  return [v?.kat, v?.sikt, v?.datum].filter(Boolean).join(' · ') || '–';
 }
 
 // ── Markeringstyp ───────────────────────────────────────────────────────────

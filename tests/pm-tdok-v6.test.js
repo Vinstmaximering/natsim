@@ -10,6 +10,8 @@ import {
   KODSYSTEM, TACKNINGSFAKTOR, TACKNINGSFAKTOR_FORVAL,
   arTrafikverket, nattyperFor, dokumenttyp, kodsystemFor,
   migreraNats, migreraMarkering, migreraUtkast,
+  TABELLER, foraldralosa, foraldralosaTabeller, harForaldralosa, rensaForaldralosa,
+  TACKNINGSFAKTOR_SIGREQ,
 } from '../src/pm/tdok-v6.js';
 
 // ── Verksamhet och nättyp ───────────────────────────────────────────────────
@@ -450,5 +452,61 @@ describe('steg 1 – kopplingen verksamhet → nättyp', () => {
   it('det gamla v_nats-fältet finns inte kvar', async () => {
     await rendera({ nats: 'Bruksnät i plan (§6.4)' });
     expect(document.getElementById('v_nats')).toBeNull();
+  });
+});
+
+// ── Föräldralösa tabellnycklar ──────────────────────────────────────────────
+
+describe('föräldralösa tabellnycklar', () => {
+  const PT_IDS = ['FP1', 'NY1'];
+  const bas = () => ({
+    markering: { FP1: { typkod: 'PP', typ: 'Dubb i berg' }, BORTA: { typkod: 'FIX', typ: 'Dubb i sten' } },
+    tillstand: { FP1: { kat: 'Misstänkt rubbad' }, ÄVEN_BORTA: { kat: 'Ej återfunnen' } },
+    gemensam:  { NY1: true, BORTA: true },
+  });
+
+  it('pekar ut nycklar utan punkt i nätet', () => {
+    expect(foraldralosa(bas().markering, PT_IDS)).toEqual(['BORTA']);
+    expect(foraldralosa(bas().tillstand, PT_IDS)).toEqual(['ÄVEN_BORTA']);
+    expect(foraldralosa(bas().gemensam, PT_IDS)).toEqual(['BORTA']);
+  });
+
+  it('tål saknade och tomma tabeller', () => {
+    expect(foraldralosa(undefined, PT_IDS)).toEqual([]);
+    expect(foraldralosa({}, PT_IDS)).toEqual([]);
+    expect(foraldralosa({ A: 1 }, [])).toEqual(['A']);
+    expect(foraldralosa({ A: 1 }, undefined)).toEqual(['A']);
+  });
+
+  it('samlar alla tre tabellerna', () => {
+    expect(foraldralosaTabeller(bas(), PT_IDS)).toEqual({
+      markering: ['BORTA'], tillstand: ['ÄVEN_BORTA'], gemensam: ['BORTA'],
+    });
+  });
+
+  it('harForaldralosa är sann bara när något faktiskt saknas', () => {
+    expect(harForaldralosa(bas(), PT_IDS)).toBe(true);
+    expect(harForaldralosa(bas(), ['FP1', 'NY1', 'BORTA', 'ÄVEN_BORTA'])).toBe(false);
+    expect(harForaldralosa({}, PT_IDS)).toBe(false);
+    expect(harForaldralosa()).toBe(false);
+  });
+
+  it('rensning tar bort exakt de föräldralösa och rör inte övriga', () => {
+    const v = bas();
+    expect(rensaForaldralosa(v, PT_IDS)).toBe(3);
+    expect(v.markering).toEqual({ FP1: { typkod: 'PP', typ: 'Dubb i berg' } });
+    expect(v.tillstand).toEqual({ FP1: { kat: 'Misstänkt rubbad' } });
+    expect(v.gemensam).toEqual({ NY1: true });
+    expect(harForaldralosa(v, PT_IDS)).toBe(false);
+  });
+
+  it('rensning på ett rent vals gör ingenting', () => {
+    const v = { markering: { FP1: {} }, tillstand: {}, gemensam: {} };
+    expect(rensaForaldralosa(v, PT_IDS)).toBe(0);
+    expect(v.markering.FP1).toBeDefined();
+  });
+
+  it('TABELLER täcker de tre tabellerna och inget mer', () => {
+    expect([...TABELLER]).toEqual(['markering', 'tillstand', 'gemensam']);
   });
 });

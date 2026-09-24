@@ -229,3 +229,79 @@ describe('robusthet', () => {
     expect(vals.gemensam).toBeTypeOf('object');
   });
 });
+
+// ── Föräldralösa värden i steg 3 ────────────────────────────────────────────
+
+describe('värden utan punkt i nätet', () => {
+  const medBorta = () => ({
+    verksamhet: 'jarnvag', nattyp: 'bro',
+    markering: { FP1: { typkod: '', typ: 'Dubb i berg' },
+                 GAMMAL: { typkod: 'FIX', typ: 'Järn i foderrör' } },
+    tillstand: { UTGATT: { kat: 'Ej återfunnen', sikt: 'Skymd', datum: '2026-01-01' } },
+    gemensam:  { FP1: true, RIVEN: true },
+  });
+
+  it('sektionen visas bara när något saknas', () => {
+    rendera({});
+    expect(c.querySelector('#foraldralosa-sek').innerHTML).toBe('');
+
+    rendera(medBorta());
+    expect(c.querySelector('#foraldralosa-sek').textContent).toContain('Värden utan punkt i nätet');
+  });
+
+  it('listar varje föräldralös nyckel med tabell och värde', () => {
+    rendera(medBorta());
+    const txt = c.querySelector('#foraldralosa-sek').textContent;
+    for (const id of ['GAMMAL', 'UTGATT', 'RIVEN']) expect(txt, id).toContain(id);
+    expect(txt).toContain('Markeringstyp');
+    expect(txt).toContain('Tillståndsbedömning');
+    expect(txt).toContain('Gemensam markering');
+    // Värdet sammanfattas så att det går att bedöma innan det tas bort.
+    expect(txt).toContain('FIX · Järn i foderrör');
+    expect(txt).toContain('Ej återfunnen');
+  });
+
+  it('listar inte punkter som finns i nätet', () => {
+    rendera(medBorta());
+    const rader = [...c.querySelectorAll('#foraldralosa-sek [data-fl-id]')]
+      .map(b => b.dataset.flId);
+    expect(rader.sort()).toEqual(['GAMMAL', 'RIVEN', 'UTGATT']);
+    expect(rader).not.toContain('FP1');
+  });
+
+  it('säger uttryckligen att värdena inte kommer med i rapporten', () => {
+    rendera(medBorta());
+    expect(c.querySelector('#foraldralosa-sek').textContent)
+      .toContain('De tas inte med i rapporten');
+  });
+
+  it('en enskild post går att ta bort', () => {
+    const vals = rendera(medBorta());
+    c.querySelector('[data-fl-id="GAMMAL"]').click();
+    expect(vals.markering.GAMMAL).toBeUndefined();
+    expect(vals.markering.FP1).toBeDefined();
+    // Listan ritas om och visar de kvarvarande.
+    expect(c.querySelector('#foraldralosa-sek').textContent).not.toContain('GAMMAL');
+    expect(c.querySelector('#foraldralosa-sek').textContent).toContain('UTGATT');
+  });
+
+  it('alla går att ta bort på en gång, och sektionen försvinner', () => {
+    const vals = rendera(medBorta());
+    c.querySelector('#fl-rensa-alla').click();
+    // Kvar ska vara exakt nätets punkter. FP2 och NY1 finns här trots att de
+    // inte stod i utkastet – de fick sin markering av migreringen vid render.
+    expect(Object.keys(vals.markering).sort()).toEqual(['FP1', 'FP2', 'NY1']);
+    expect(vals.tillstand).toEqual({});
+    expect(vals.gemensam).toEqual({ FP1: true });
+    expect(c.querySelector('#foraldralosa-sek').innerHTML).toBe('');
+  });
+
+  // Borttagning går inte att ångra, så den sker aldrig av sig själv.
+  it('rendering ensam tar inte bort något', () => {
+    const vals = medBorta();
+    rendera(vals);
+    expect(vals.markering.GAMMAL).toBeDefined();
+    expect(vals.tillstand.UTGATT).toBeDefined();
+    expect(vals.gemensam.RIVEN).toBe(true);
+  });
+});

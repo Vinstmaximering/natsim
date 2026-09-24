@@ -119,6 +119,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #00c87a
 /* Bilduppladdning */
 .ifup   { display: none; }
 .ifbtn  { padding: 4px 10px; font-size: 11px; background: #091424; border: 1px solid #1e3850; color: #7090a8; border-radius: 3px; cursor: pointer; }
+/* Kompaktvariant. Användes av bildradernas badge i step4-images.js och av
+   listan över föräldralösa värden i step3-points.js, men saknade regel helt –
+   knapparna ärvde webbläsarens standardutseende. Tillagd i Etapp 3. */
+.ifbtn-sm { padding: 2px 7px; font-size: 10px; background: #091424; border: 1px solid #1e3850; color: #7090a8; border-radius: 3px; cursor: pointer; }
+.ifbtn:hover, .ifbtn-sm:hover { border-color: #2a4060; color: #c8d8e8; }
 .irow   { display: flex; align-items: center; gap: 7px; margin-top: 3px; flex-wrap: wrap; }
 .iprev  { max-height: 50px; max-width: 160px; border: 1px solid #1e3050; border-radius: 3px; margin-top: 3px; display: block; }
 

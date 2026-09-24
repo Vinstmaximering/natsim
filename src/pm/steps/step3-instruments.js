@@ -1,8 +1,21 @@
 // Steg 3 – Instrument och mätmetod
-import { nf } from '../../core/format.js';
-import { TACKNINGSFAKTOR, TACKNINGSFAKTOR_FORVAL, TACKNINGSFAKTOR_KALLA } from '../tdok-v6.js';
+import { nf, komma } from '../../core/format.js';
+import { TACKNINGSFAKTOR, TACKNINGSFAKTOR_FORVAL, TACKNINGSFAKTOR_SIGREQ,
+         TACKNINGSFAKTOR_KALLA } from '../tdok-v6.js';
 
 export function render(D, container, vals) {
+  // Kravet kan komma från två håll, och de har olika täckningsfaktor:
+  //
+  //   • NätSims A PRIORI σ-flik (D.sigReq) är ett krav på σ_pos, alltså
+  //     STANDARDOSÄKERHET – täckningsfaktor 1. Simuleringen räknar 1σ.
+  //   • Ett krav användaren själv skriver in har okänd täckningsfaktor, och då
+  //     gäller §1 K2: täckningsfaktor 2 om inget annat anges.
+  //
+  // Förvalet följer därför ursprunget. Fältet förifylls bara när användaren
+  // inte redan har ett eget värde – ett sparat utkast vinner alltid.
+  const harEgetKrav = vals.krav !== undefined && String(vals.krav).trim() !== '';
+  const franSigReq  = !harEgetKrav && D.sigReq != null && D.sigReq !== '';
+
   container.innerHTML = `
     <div class="card">
       <div class="ch"><div class="ci">📡</div><div><div class="ct">Instrument och mätmetod</div><div class="cd">Instrument, utrustning, metod och toleranskrav</div></div></div>
@@ -41,11 +54,12 @@ export function render(D, container, vals) {
         <hr class="hr"><div class="sec">Toleranskrav <span class="kalla">SIS-TS 21143:2016 Bilaga B R3.9</span></div>
         <div class="hint">
           ${TACKNINGSFAKTOR_KALLA}: "Om inget anges kopplat till uttrycket osäkerhet är det
-          täckningsfaktor 2 som avses." Förvalet är därför utökad osäkerhet. Valet styr vilken
-          storhet rapporten jämför kravet mot – u (1σ) eller U = 2·u.
+          täckningsfaktor 2 som avses." Valet styr vilken storhet rapporten jämför kravet
+          mot – u (1σ) eller U = 2·u.
         </div>
+        <div class="hint" id="krav-ursprung"></div>
         <div class="g2">
-          <div><div class="lbl">Krav σ_pos (mm)</div><input id="v_krav" type="number" placeholder="ex. 5" value="${D.sigReq ?? ''}"></div>
+          <div><div class="lbl">Krav σ_pos (mm)</div><input id="v_krav" type="number" placeholder="ex. 5" value="${franSigReq ? D.sigReq : ''}"></div>
           <div><div class="lbl">Kravet avser <span class="kalla">§1 K2</span></div>
             <select id="v_kravk">
               ${TACKNINGSFAKTOR.map(t => `<option value="${t.v}">${t.l}</option>`).join("")}
@@ -71,10 +85,29 @@ export function render(D, container, vals) {
     if (el && v !== undefined) el.value = v;
   });
 
-  // §1 K2: täckningsfaktor 2 gäller när inget annat anges. Ett utkast utan
-  // uppgift – och ett nytt PM – får därför utökad osäkerhet.
+  // Återställningsslingan ovan skriver tillbaka ett sparat men TOMT krav
+  // ("", "   ") över förifyllningen från sigReq. Ett blankt värde är inget
+  // eget val, så förifyllningen sätts tillbaka här.
+  const kravEl = document.getElementById("v_krav");
+  if (kravEl && franSigReq) kravEl.value = D.sigReq;
+
+  // Täckningsfaktorns förval följer kravets ursprung – se blocket överst.
+  // Ett sparat val skrivs aldrig över.
   const kEl = document.getElementById("v_kravk");
-  if (kEl && !vals.kravk) kEl.value = TACKNINGSFAKTOR_FORVAL;
+  if (kEl && !vals.kravk) {
+    kEl.value = franSigReq ? TACKNINGSFAKTOR_SIGREQ : TACKNINGSFAKTOR_FORVAL;
+  }
+
+  // Skriv ut varifrån kravet kom, så att förvalet går att förstå och ifrågasätta.
+  const uEl = document.getElementById("krav-ursprung");
+  if (uEl) {
+    uEl.innerHTML = franSigReq
+      ? `<b>Kravet är hämtat från NätSim</b> (A priori σ-fliken, σ_pos ≤ ${komma(D.sigReq)} mm).
+         Det är ett krav på standardosäkerheten, så täckningsfaktor 1 är förvald.
+         Ändra om beställarens krav avser utökad osäkerhet.`
+      : `<b>Kravet anges här.</b> Täckningsfaktor 2 är förvald enligt
+         ${TACKNINGSFAKTOR_KALLA} – den gäller när inget annat sägs om osäkerheten.`;
+  }
 }
 
 export function collectFormValues() {

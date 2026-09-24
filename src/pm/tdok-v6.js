@@ -149,6 +149,14 @@ export const TACKNINGSFAKTOR = Object.freeze([
 ]);
 
 export const TACKNINGSFAKTOR_FORVAL = '2';
+
+// Förvalet när kravet hämtas från NätSims A PRIORI σ-flik. state.sigReq är ett
+// krav på σ_pos, och σ_pos är en standardosäkerhet (1σ) – simuleringen räknar
+// inget annat. Täckningsfaktor 1 är därför inte ett antagande utan vad talet
+// faktiskt betyder. §1 K2:s förval 2 gäller när täckningsfaktorn är OKÄND,
+// alltså när användaren skriver in kravet själv.
+export const TACKNINGSFAKTOR_SIGREQ = '1';
+
 export const TACKNINGSFAKTOR_KALLA  = 'TDOK 2014:0571 v6.0 §1 K2';
 
 // ── Migrering av gamla utkast ───────────────────────────────────────────────
@@ -202,6 +210,58 @@ export function migreraMarkering(text) {
   if (iPP)  return { typkod: 'PP',  typ: t, annan: false };
   if (iFIX) return { typkod: 'FIX', typ: t, annan: false };
   return { typkod: '', typ: `Annan: ${t}`, annan: true };
+}
+
+// ── Föräldralösa tabellnycklar ──────────────────────────────────────────────
+// vals.markering, vals.tillstand och vals.gemensam är nycklade på punkt-id.
+// Tas en punkt bort ur nätet efter att den fått ett värde blir nyckeln kvar.
+// Den får inte tyst följa med till rapporten – då redovisas en markeringstyp
+// eller en tillståndsbedömning för en punkt som inte finns. Steg 3 visar dem i
+// stället som "punkt saknas i nätet" med möjlighet att ta bort, och rapporten
+// itererar över nätets punkter så att de aldrig kommer med.
+
+export const TABELLER = Object.freeze(['markering', 'tillstand', 'gemensam']);
+
+/**
+ * Nycklar i en tabell som inte motsvarar någon punkt i nätet.
+ * @param {object} tabell  t.ex. vals.markering
+ * @param {string[]} ptIds punkt-id som finns i nätet
+ * @returns {string[]} de föräldralösa nycklarna, i tabellens ordning
+ */
+export function foraldralosa(tabell, ptIds) {
+  if (!tabell) return [];
+  const finns = new Set(ptIds || []);
+  return Object.keys(tabell).filter(id => !finns.has(id));
+}
+
+/**
+ * Alla föräldralösa nycklar i ett vals, per tabell.
+ * @returns {{markering:string[], tillstand:string[], gemensam:string[]}}
+ */
+export function foraldralosaTabeller(vals = {}, ptIds = []) {
+  const ut = {};
+  for (const t of TABELLER) ut[t] = foraldralosa(vals[t], ptIds);
+  return ut;
+}
+
+/** Sant om någon tabell har en nyckel utan punkt i nätet. */
+export function harForaldralosa(vals = {}, ptIds = []) {
+  return TABELLER.some(t => foraldralosa(vals[t], ptIds).length > 0);
+}
+
+/**
+ * Tar bort alla föräldralösa nycklar. Muterar vals – anropas när användaren
+ * uttryckligen ber om det i steg 3, aldrig automatiskt: ett borttaget värde
+ * går inte att få tillbaka, och punkten kan ha tagits bort av misstag.
+ * @returns {number} antal borttagna nycklar
+ */
+export function rensaForaldralosa(vals = {}, ptIds = []) {
+  let n = 0;
+  for (const t of TABELLER) {
+    if (!vals[t]) continue;
+    for (const id of foraldralosa(vals[t], ptIds)) { delete vals[t][id]; n++; }
+  }
+  return n;
 }
 
 /**
