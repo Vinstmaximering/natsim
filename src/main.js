@@ -34,6 +34,7 @@ import { setMapRef }                             from './reports/net-image.js';
 import { initImageBridge }                       from './main-image-bridge.js';
 import { renderObstaclePanel }                   from './ui/obstacle-panel.js';
 import { initVisualModal, openVisualMenu, openEditVisual } from './ui/visual-modal.js';
+import { visualLayerPositions }                  from './state/visual.js';
 
 // ── 1. AutoSim ──────────────────────────────────────────────────────────────
 setAutoSimHandler(autoSim);
@@ -272,7 +273,7 @@ async function openPM() {
     return;
   }
   const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr,
-          obstacles, activeLayerKey, sigReq, visualLayers, visualPts, visualLines } = getState();
+          obstacles, activeLayerKey, sigReq, visualLayers } = getState();
   if (!simResult?.ok) { alert("Beräkna simuleringen först."); return; }
 
   const popup = window.open(
@@ -351,17 +352,9 @@ async function openPM() {
     // Etapp 5: de visuella lagren, för §2.11.2 K2 – pekar användaren ut ett
     // lager som byggnadsverk kan rapporten pröva om nätpunkterna omsluter det.
     // Bara id, namn och punktlägen behövs; linjer tas med som sina ändpunkter
-    // eftersom kontrollen är rent geometrisk.
+    // eftersom kontrollen är rent geometrisk. Se visualLayerPositions().
     visuellaLager: (visualLayers || []).map(l => {
-      const pts_ = (visualPts || []).filter(p => p.layerId === l.id)
-        .map(p => ({ E: p.E, N: p.N }));
-      const lin = (visualLines || []).filter(x => x.layerId === l.id);
-      for (const ln of lin) {
-        for (const ref of [ln.from, ln.to]) {
-          const vp = (visualPts || []).find(p => p.id === ref);
-          if (vp) pts_.push({ E: vp.E, N: vp.N });
-        }
-      }
+      const pts_ = visualLayerPositions(l.id);
       return { id: l.id, namn: l.name, antal: pts_.length, punkter: pts_ };
     }),
   };

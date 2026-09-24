@@ -167,6 +167,31 @@ export function visualLayerCounts(layerId, state = getState()) {
   };
 }
 
+// Alla lägen som tillsammans beskriver lagrets geometri: fria punkter plus
+// ändpunkterna på lagrets linjer, också när ändpunkten är en nätpunkt eller en
+// punkt i ett annat lager. Varje punkt räknas en gång – ett hörn som både ligger
+// i lagret och är ändpunkt på två linjer är ett läge, inte tre.
+// Används av PM:ets §2.11.2 K2 (omsluter nätet byggnadsverket?). Tidigare
+// jämfördes endpoint-objektet med ett punkt-id, så linjernas ändpunkter kom
+// aldrig med och ett byggnadsverk ritat som linjer prövades inte.
+export function visualLayerPositions(layerId, state = getState()) {
+  const seen = new Set();
+  const out  = [];
+  const add = (key, pos) => {
+    if (!pos || seen.has(key)) return;
+    seen.add(key);
+    out.push({ E: pos.E, N: pos.N });
+  };
+  for (const p of state.visualPts || [])
+    if (p.layerId === layerId) add(`visual:${p.id}`, p);
+  for (const l of state.visualLines || []) {
+    if (l.layerId !== layerId) continue;
+    for (const ep of [l.from, l.to])
+      if (ep?.id) add(`${ep.ref === 'net' ? 'net' : 'visual'}:${ep.id}`, resolveEndpoint(ep, state));
+  }
+  return out;
+}
+
 // ── Endpoints ────────────────────────────────────────────────────────────────
 
 export function makeEndpoint(ref, id) {
