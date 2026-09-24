@@ -288,50 +288,171 @@ webbläsaren. Progress visas i dialogen i båda fallen.
 
 ## Visuella lager
 
-Punkter och linjer enbart för dokumentation — vägkanter, ritningskontur,
-planerade objekt. De ligger i egna state-fält (`visualPts`, `visualLines`,
-`visualLayers`) helt skilda från `pts` och `meas`, och simuleringen läser dem
-aldrig. De ritas med ihåliga cirklar och streckade linjer så att de inte
+Punkter, linjer och ytor enbart för dokumentation: vägkanter, ritningskontur,
+planerade objekt, byggnadsverk. De ligger i egna state-fält (`visualPts`,
+`visualLines`, `visualAreas`, `visualLayers`) helt skilda från `pts` och
+`meas`, och simuleringen läser dem aldrig. Den enda vägen in i beräkningen är
+ett hinder som projiceras ur en linje eller yta (se *Koppling till hinder*).
+Visuella objekt ritas med ihåliga cirklar och streckade linjer så att de inte
 förväxlas med nätpunkter och mätningar.
 
 Varje visuellt objekt tillhör ett **namngivet lager** med egen färg och
 synlighet. Objektets egen färg vinner över lagrets; lagrets vinner över
-standardfärgen. Ett dolt lager varken ritas eller går att träffa på kartan.
-Lagren styrs i **LAGER**-sektionen i vänsterpanelen, som också visar raderna
-*Nät* och *Hinder* under rubriken BERÄKNING — ögat där döljer dem bara på
-kartan, beräkningen och siktlinjerna rör sig inte.
+standardfärgen. Ett dolt lager varken ritas, går att träffa, snappar eller
+markeras.
 
 Projektfiler sparade före lagren laddas som förut; objekt utan lager samlas i
 ett lager som heter **Handritat**.
 
-### Rita
+### Lager-menyn
 
-Två knappar i LAGER-sektionen, som ritar i det aktiva lagret:
+**Lager ▾** i toppraden (efter Rapport) ersatte vänsterpanelens LAGER-sektion.
 
-- **○ Visuell punkt** — varje klick placerar en punkt.
-- **⤺ Visuell linje** — klick efter klick kedjar ihop linjesegment.
+- **BERÄKNING**: *Nät* och *Hinder*, med öga och grön bock. Ögat döljer dem bara
+  på kartan; beräkningen och siktlinjerna rör sig inte.
+- **VISUELLA · INGÅR EJ I BERÄKNING**: en rad per lager med öga, färgruta, namn,
+  antal (punkter · linjer · ytor; hörn räknas inte som punkter), knappen **Aa**
+  och ⋮-menyn (byt namn, byt färg, *Namn på punkter och ytor*, gör aktivt,
+  zooma till, radera). Klick på raden gör lagret aktivt.
+- **+ Nytt visuellt lager** och **Importera till lager…** (öppnar .geo- eller
+  .dxf-dialogen efter filändelse).
 
-Båda lägena står kvar tills du avslutar med **Escape** eller **högerklick**. I
-linjeläget bryter det första högerklicket kedjan, det andra lämnar läget.
+**Nålen** i menyhuvudet låser menyn öppen. En låst meny har en accentfärgad kant
+och stängs inte av klick utanför eller Escape. Andra menyer går att öppna
+bredvid den. Nålen igen gör den till en vanlig öppen meny; **×** stänger den och
+släpper låset. Låset sparas per användare i webbläsaren, inte i projektet, och
+används inte på telefon (under 768 px).
 
-Ritningen snappar mot både befintliga visuella punkter och vanliga NätSim-punkter
-(grön ring). Snappar en ändpunkt mot en nätpunkt fästs linjen i den: flyttas
-nätpunkten följer linjen med. Dubbelklick på ett visuellt objekt öppnar
-redigeringsdialogen med färgval, och för punkter även E/N/H.
+**Etiketten för aktivt lager** står direkt till höger om menyknappen
+("aktivt · Utsättning_bro" med lagrets färg, eller "inget aktivt lager") och
+öppnar menyn. På telefon visar den bara färgrutan.
 
-### Kontextmeny och koppling till hinder
+**Punktnamn per lager.** *Aa* på lagerraden tänder namnen på hörn i linjer och
+ytor (`vertexLabels`, förval av – en importerad kontur med hundratals "01"/"02"
+är oläsbar). ⋮ → *Namn på punkter och ytor* styr fria punkters namn och ytornas
+namn och area (`labels`, förval på). Båda sparas i projektet; äldre lager laddas
+med `labels = true`, `vertexLabels = false`, alltså som de ritades förut.
+**Visa → Etiketter (nätpunkter)** gäller bara nätets punkter och är oberoende av
+lagrens val.
 
-Högerklick på ett visuellt objekt ger en meny med *Redigera* och *Ta bort*. För
-linjer tillkommer **Använd som vägg** och **Använd som blockeringslinje**, som
-skapar ett riktigt hinder i hinder-systemet — det blockerar alltså sikt i
-mätförslag och validering på samma sätt som en handritad vägg. De två skiljer
-sig bara i namn och färg; siktlinjeberäkningen behandlar dem lika.
+### Verktygsraden på kartan
 
-Hindret är en **projektion** av den visuella linjen, inte en kopia: dess
-koordinater räknas om ur linjen vid varje ändring via `syncLinkedObstacles()`.
-Ändrar du linjen följer väggen med. Tas linjen bort försvinner väggen med den,
-och raderas hindret separat nollställs linjens koppling. *Koppla loss från
-hindret* i menyn bryter bandet och lämnar hindret fristående.
+Uppe till höger i kartytan, bara symboler; varje knapp har `title` och
+`aria-label` med kortkommandot.
+
+| Knapp | Tangent | |
+|---|---|---|
+| Markera område | **M** | se *Markera område* |
+| Visuell punkt | **P** | varje klick placerar en punkt |
+| Visuell linje | **L** | klick efter klick kedjar ihop linjesegment |
+| Yta | **Y** | se *Ytor* |
+| Snappning av/på | **S** | se *Snappning* |
+
+Valt verktyg markeras. Samma verktyg igen, med knapp eller tangent, återgår till
+Panorera. Tangenterna gäller utan Ctrl/Alt/Cmd/Skift och inte i fält, dialoger,
+studioläget eller koordinatlistan. Hjälptexten för aktivt verktyg står direkt
+under raden. Kartans överkant är en flexrad: kartkontrollerna (CRS, kartlager,
+Hem, Koordinatlista) står till vänster och bryter rad när kartan är smal; zoom-
+etiketten och nordpilen har egen plats längst till höger.
+
+Punkt- och linjeläget står kvar tills du avslutar med **Escape** eller
+**högerklick**; i linjeläget bryter det första högerklicket kedjan. Allt ritas i
+det aktiva lagret. Dubbelklick på ett visuellt objekt öppnar dess dialog (för
+ytor egenskapskortet).
+
+På telefon döljs raden och verktygen ligger sist i den mobila verktygsraden, som
+rullar i sidled.
+
+### Panorering i alla verktyg
+
+**Mittenknappen + drag** panorerar alltid. **Mellanslag + drag** panorerar
+tillfälligt, till exempel när Markera område är valt och ett vänsterdrag annars
+ritar en rektangel. Mellanslag gäller inte när fokus är i ett fält, en lista
+eller en vanlig knapp. På pekskärm panorerar och zoomar två fingrar.
+
+### Ytor
+
+Ritas med **Y**: klicka hörn; **dubbelklick** eller klick på **första hörnet**
+sluter ytan (minst tre hörn; med finger är träffytan 22 px). **Backspace** tar
+bort senaste hörnet, **Escape** eller högerklick kastar en påbörjad yta. En yta
+sparas först när den sluts, som ett ångra-steg.
+
+Hörnen följer samma modell som linjernas ändpunkter: `{ref:'visual'|'net', id}`.
+Ett hörn som snappar mot en nätpunkt fäster i den och följer med när punkten
+flyttas eller byter namn.
+
+**Area och omkrets räknas i plan**, i koordinatsystemets projektionsplan, med
+skosnöresformeln – "1 214 m² (plan)", "142,35 m (plan)". En **självkorsande**
+yta varnas för och visar ingen area.
+
+**Egenskapskortet** visas när en yta är markerad (klick i Panorera): lager,
+namn, area, omkrets, antal hörn, fyllnadsfärg och opacitet, mönster (inget,
+snedstreck, rutnät) och **Blockerar sikt (hinder)**. Varje ändring är ett
+ångra-steg. Namn och area visas i ytans tyngdpunkt när lagrets *Namn på punkter
+och ytor* är på.
+
+Tas en nätpunkt bort som är hörn i en yta tappar ytan hörnet; har den färre än
+tre kvar tas den bort. Bekräftelsen säger vilka ytor och linjer som påverkas
+och vilka som försvinner helt.
+
+### Markera område
+
+**M**, sedan dra en rektangel:
+
+- **vänster → höger** markerar det som ligger **helt inuti** (streckad i
+  accentfärg),
+- **höger → vänster** markerar det som ligger **inuti eller korsas** (tätt
+  streckad i grönt).
+
+Klick utan drag markerar ett objekt (klick på ett hörn markerar dess linje eller
+yta). **Skift** lägger till, **Ctrl/Cmd** tar bort, **Escape** avmarkerar.
+Markerbart är visuella punkter, linjer och ytor i tända lager; hörn markeras med
+sin linje eller yta, och nätpunkter, mätningar och hinder markeras inte.
+
+**Åtgärdsraden** nere på kartan: "3 objekt markerade · 1 pkt · 1 linj. · 1 yta",
+**Flytta till lager ▾** (objektens egna hörn följer med), **Dölj namn / Visa
+namn**, **Zooma till**, **Ta bort** (med bekräftelse) och **× Avmarkera**. Varje
+åtgärd är ett ångra-steg. Linjehörn som är nätpunkter tas aldrig bort.
+
+På pekskärm ritar **ett finger** rektangeln och **två fingrar** zoomar och
+flyttar kartan; ett tryck markerar ett objekt. I stället för Skift och Ctrl
+finns växlaren **Ny / Lägg till / Dra ifrån** i åtgärdsraden.
+
+### Snappning
+
+Gäller när du ritar visuell punkt, linje och yta – inte när du drar i något.
+
+- **Mål**: nätpunkter, visuella punkter, hörn i linjer och ytor, och därefter
+  närmaste punkt på en linje eller ytkant. En punkt vinner alltid över en linje;
+  bland punkter vinner den närmaste, och ligger en nätpunkt och en visuell punkt
+  inom 1 px från varandra vinner nätpunkten.
+- **Radien** är i skärmpixlar – 10 px med mus, 22 px med finger – så att den
+  känns likadan på alla zoomnivåer.
+- Snapp mot en **nätpunkt ger `ref:'net'`**: linjen eller ytan fäster i nätet.
+  Snapp mot en linje lägger den nya punkten exakt på linjen.
+- **Markören** är en grön ring (punkt) eller romb (linje/kant) med en kort text,
+  t.ex. "hörn U101", "nätpunkt FP1", "på linje VL3". På pekskärm, där det inte
+  finns någon hovring, visas målet en kort stund efter trycket.
+- **S** eller knappen slår av och på (förval på, sparas per användare). **Alt**
+  nedtryckt stänger av tillfälligt; medan ett ritverktyg är valt stoppas Alt så
+  att webbläsarens meny inte tar fokus.
+
+### Koppling till hinder
+
+Högerklick på en visuell linje ger **Använd som vägg** och **Använd som
+blockeringslinje**; för en yta finns **Blockerar sikt (hinder)** i kortet och i
+högerklicksmenyn. Alla skapar ett riktigt hinder i hinder-systemet – en linje
+blir en vägg, en yta ett byggnadshinder (polygon). Ett byggnadshinder blockerar
+även sikter **från punkter inuti ytan**, vilket en vägg längs kanterna inte gör.
+
+Hindret är en **projektion**, inte en kopia: dess koordinater räknas om ur
+linjen eller ytan vid varje ändring via `syncLinkedObstacles()`. Tas källan bort
+försvinner hindret med den, och raderas hindret separat nollställs kopplingen
+(för en yta slocknar *Blockerar sikt*). Ett klick på en ytas hinder markerar
+ytan. Ingenting av detta rör `src/core/`.
+
+Autosparningen tar med hindren, så att kopplingarna överlever en omladdning.
+Blir webbläsarens lagring full meddelas det i statusfältet.
 
 ### Export
 
@@ -358,6 +479,10 @@ I dialogen väljs:
 - **Linjerna**, oberoende av punktvalet: *Visuella linjer*, *Hinder* (väggar
   som blockerar sikt) eller *Hoppa över*. Hörnen dedupliceras på koordinat, så
   att en kontur blir en sammanhängande kedja i stället för lösa segment.
+- **Slutna linjer som linjer / ytor** (visas när filen har slutna linjer –
+  flagga 1 eller första hörnet upprepat sist). Förval *linjer*, som förut. Med
+  *ytor* blir de visuella ytor med area; tillsammans med *Hinder* blir de
+  byggnadshinder i stället för väggar längs kanterna.
 
 Dubbletter av punkt-ID slås aldrig ihop tyst — båda punkterna returneras med en
 varning i dialogen.
@@ -376,6 +501,9 @@ tyngdpunkt för **båda** axelordningarna och varnar om den valda är orimlig me
 den andra rimlig. Av samma skäl blir en DXF alltid visuella lager, aldrig
 nätpunkter.
 
+Slutna `LWPOLYLINE`/`POLYLINE` kan importeras som ytor: *Slutna polylinjer som
+linjer / ytor*, förval *linjer*.
+
 ## Toppmeny
 
 - **Data** — import (.geo, .dxf, Excel/CSV, byggnader från OSM), export av
@@ -393,6 +521,8 @@ nätpunkter.
   mätning först" eller "Kräver bredare skärm (minst 768 px)" – i stället för att
   möta användaren med en dialogruta efter klicket. Rapportstudion nås via
   *Granska resultat i studioläge*.
+- **Lager** — lagren, med nål för att låsa menyn öppen och etiketten för aktivt
+  lager bredvid knappen. Se *Visuella lager*.
 
 ## Mätningstekniskt PM
 
