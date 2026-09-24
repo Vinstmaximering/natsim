@@ -152,6 +152,7 @@ export function _applySnapshot(s) {
     nVlid:          Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
     nVaid:          Math.max(s.nVaid ?? 1, _nextCounter(visualAreas, 'VA')),
     selVisualId:    null,
+    visualSelection: [],
     // Etapp 5: ritsynligheten hör till sessionen och sparas inte. En laddad
     // fil ska visa allt den innehåller – annars ser man en tom karta utan att
     // förstå varför.

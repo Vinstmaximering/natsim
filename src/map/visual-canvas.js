@@ -31,6 +31,9 @@ export function drawVisualLayer(ctx, state, helpers) {
   if (!pts.length && !lines.length && !areas.length) return;
 
   const sel = state.selVisualId;
+  // Markering med Markera område (Etapp 4): accentfärgad gloria runt objektet.
+  const marked = new Set(state.visualSelection || []);
+  const HALO = 'rgba(79,195,247,0.55)';
   const layerById = new Map((state.visualLayers || []).map(l => [l.id, l]));
   const xy  = (E, N) => {
     const p = map.latLngToContainerPoint(ENtoLatLng(E, N));
@@ -64,17 +67,17 @@ export function drawVisualLayer(ctx, state, helpers) {
     ctx.strokeStyle = col;
     ctx.lineWidth = isSel ? 3 : 1.6;
     ctx.stroke();
-    if (isSel) {
+    if (isSel || marked.has(area.id)) {
       path();
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.strokeStyle = marked.has(area.id) ? HALO : 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 6;
       ctx.stroke();
     }
 
-    // Namn och area i tyngdpunkten, när lagrets namn är tända. En
-    // självkorsande yta har ingen area – där står en varning i stället.
+    // Namn och area i tyngdpunkten, när lagrets namn är tända och ytans namn
+    // inte dolts. En självkorsande yta har ingen area – där står en varning.
     const layer = layerById.get(area.layerId);
-    if (layer?.labels !== false) {
+    if (layer?.labels !== false && area.hideLabel !== true) {
       const st = areaStats(coords);
       const c  = polygonCentroid(coords);
       const p  = xy(c[0], c[1]);
@@ -120,11 +123,11 @@ export function drawVisualLayer(ctx, state, helpers) {
       ctx.fillText('▨', (a.x + b.x) / 2, (a.y + b.y) / 2);
     }
 
-    if (isSel) {
+    if (isSel || marked.has(line.id)) {
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.strokeStyle = marked.has(line.id) ? HALO : 'rgba(255,255,255,0.35)';
       ctx.lineWidth   = 6;
       ctx.stroke();
     }
@@ -146,11 +149,11 @@ export function drawVisualLayer(ctx, state, helpers) {
     ctx.lineWidth   = isSel ? 3 : 2;
     ctx.stroke();
 
-    if (isSel) {
+    if (isSel || marked.has(p.id)) {
       ctx.beginPath();
       ctx.arc(c.x, c.y, r + 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-      ctx.lineWidth   = 1.5;
+      ctx.strokeStyle = marked.has(p.id) ? HALO : 'rgba(255,255,255,0.5)';
+      ctx.lineWidth   = marked.has(p.id) ? 3 : 1.5;
       ctx.stroke();
     }
 

@@ -10,8 +10,10 @@ export { toggleMapLayer };
 
 // Verktygsraden på kartan (index.html #map-tools). tool = state.tool när
 // verktyget är valt; mobile = knapptext i den mobila verktygsraden (#mtb) för
-// verktyg som finns. Markera område (etapp 4) läggs till här när det finns.
+// verktyg som finns.
 export const MAP_TOOLS = [
+  { btn: 'btn-select-area', tool: 'select-area', key: 'm', mobile: '⬚ Markera',
+    title: 'Markera område – dra en rektangel' },
   { btn: 'btn-visual-point', tool: 'visual-point', key: 'p', mobile: '○ Pkt',
     title: 'Visuell punkt – ritas i aktivt lager' },
   { btn: 'btn-visual-line',  tool: 'visual-line',  key: 'l', mobile: '⤺ Linje',
@@ -91,11 +93,15 @@ export function buildTools() {
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
     'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Högerklick: bryt kedjan · Esc: avsluta",
-    'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt" };
+    'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
+    'select-area':      "⬚ Dra → helt inuti · Dra ← inuti eller korsade · Klick: ett objekt · Skift: lägg till · Ctrl: ta bort · Esc: avmarkera" };
   // Pekskärm: inget tangentbord och ingen högerklick – ytan sluts genom att
   // trycka på första hörnet, och verktygsknappen igen avbryter.
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
-  if (touch) hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
+  if (touch) {
+    hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
+    hints['select-area'] = "⬚ Ett finger: dra rektangel (→ helt inuti, ← korsade) · Två fingrar: flytta och zooma · Tryck: ett objekt";
+  }
   const hint = document.getElementById("hint");
   if (hint) hint.textContent = hints[tool] || "";
 
@@ -121,8 +127,14 @@ export function setTool(t) {
   else if (t === 'visual-line')  startVisualLineDraw();
   else if (t === 'visual-area')  startVisualAreaDraw();
 
+  // Markera område: ett drag med musen eller ett finger ritar rektangeln, så
+  // kartans panorering med ett drag är av så länge verktyget är valt. Två
+  // fingrar panorerar och zoomar fortfarande (Leaflets touchZoom).
   import('../map/leaflet-setup.js').then(({ map: m }) => {
-    if (m) { m.dragging.enable(); m.getContainer().style.cursor = t === "pan" ? "grab" : "crosshair"; }
+    if (m) {
+      if (t === 'select-area') m.dragging.disable(); else m.dragging.enable();
+      m.getContainer().style.cursor = t === "pan" ? "grab" : "crosshair";
+    }
   });
   buildTools();
   draw();
@@ -152,7 +164,7 @@ export function clearAll() {
   if (confirm("Rensa alla punkter, mätningar, hinder och visuella objekt?")) {
     setState({
       pts: [], meas: [], obstacles: [],
-      visualPts: [], visualLines: [], visualAreas: [], selVisualId: null,
+      visualPts: [], visualLines: [], visualAreas: [], selVisualId: null, visualSelection: [],
       // Etapp 1: lagren följer sitt innehåll – ett tomt projekt har inga lager.
       visualLayers: [], activeVisualLayerId: null,
       // Etapp 5: ett tomt projekt ska inte ärva en bortgömd karta.

@@ -194,6 +194,8 @@ export const visualPtLabel = p => p?.name ?? p?.id ?? '';
 // av labels. Ett objekt utan känt lager ritas som förut: namn på fria punkter,
 // inte på hörn.
 export function visualPtShowsLabel(p, layer) {
+  // Dolt per objekt med åtgärdsraden "Dölj namn" (Lager-verktyg Etapp 4).
+  if (p?.hideLabel === true) return false;
   if (p?.role === 'vertex') return layer?.vertexLabels === true;
   return layer ? layer.labels !== false : true;
 }
@@ -474,6 +476,121 @@ function _dropVertexFromAreas(ref, id) {
   return { changed, removed };
 }
 
+// ── Åtgärder på en markering (Lager-verktyg Etapp 4) ─────────────────────────
+// Varje funktion tar en lista med id:n (punkter, linjer och ytor blandat) och
+// går genom samma mutationer som enskilda objekt, så att kopplade hinder
+// städas och syncLinkedObstacles körs. Ångra-steget sparar anroparen, en gång
+// för hela markeringen.
+
+// Hörnpunkter (role 'vertex', ref 'visual') som linjerna och ytorna använder.
+function _vertexPtIdsOf(lines, areas, state = getState()) {
+  const vertex = new Set((state.visualPts || []).filter(p => p.role === 'vertex').map(p => p.id));
+  const ids = new Set();
+  for (const l of lines) for (const ep of [l.from, l.to]) if (ep?.ref === 'visual' && vertex.has(ep.id)) ids.add(ep.id);
+  for (const a of areas) for (const ep of a.vertices || []) if (ep?.ref === 'visual' && vertex.has(ep.id)) ids.add(ep.id);
+  return [...ids];
+}
+
+/**
+ * Tar bort markerade punkter, linjer och ytor. Linjernas och ytornas egna
+ * hörnpunkter tas bort när inget annat använder dem; nätpunkter aldrig.
+ * En markerad fri punkt tar med sig linjer som hänger i den (som när en punkt
+ * tas bort ensam) – de räknas i extraLines.
+ */
+export function removeVisualObjects(ids) {
+  const set = new Set(ids || []);
+  const st = getState();
+  const areas = (st.visualAreas || []).filter(a => set.has(a.id));
+  const lines = (st.visualLines || []).filter(l => set.has(l.id));
+  const pts   = (st.visualPts   || []).filter(p => set.has(p.id) && p.role !== 'vertex');
+  const ptSet = new Set(pts.map(p => p.id));
+  const extraLines = (st.visualLines || []).filter(l => !set.has(l.id)
+    && [l.from, l.to].some(ep => ep?.ref === 'visual' && ptSet.has(ep.id))).length;
+  const hörn = _vertexPtIdsOf(lines, [], st);
+
+  areas.forEach(a => removeVisualArea(a.id));
+  lines.forEach(l => removeVisualLine(l.id));
+  pts.forEach(p => removeVisualPt(p.id));
+
+  const finns = new Set((getState().visualPts || []).map(p => p.id));
+  const bort = new Set(_unusedVisualPtIds(hörn.filter(id => finns.has(id))));
+  if (bort.size) _commit({ visualPts: getState().visualPts.filter(p => !bort.has(p.id)) });
+  return { pts: pts.length, lines: lines.length, areas: areas.length, extraLines };
+}
+
+/**
+ * Flyttar markerade objekt till lagret layerId. Linjernas och ytornas
+ * hörnpunkter följer med när alla objekt som använder hörnet flyttas – ett
+ * delat hörn stannar hos det som inte flyttas.
+ */
+export function moveVisualToLayer(ids, layerId) {
+  if (!findVisualLayer(layerId)) return 0;
+  const set = new Set(ids || []);
+  const st = getState();
+  const lines = (st.visualLines || []).filter(l => set.has(l.id));
+  const areas = (st.visualAreas || []).filter(a => set.has(a.id));
+  const moved = new Set([...lines, ...areas].map(o => o.id));
+  const användare = new Map();   // hörn-id → objekt som använder det
+  const noter = (o, eps) => eps.forEach(ep => {
+    if (ep?.ref !== 'visual') return;
+    if (!användare.has(ep.id)) användare.set(ep.id, []);
+    användare.get(ep.id).push(o.id);
+  });
+  for (const l of st.visualLines || []) noter(l, [l.from, l.to]);
+  for (const a of st.visualAreas || []) noter(a, a.vertices || []);
+  const följer = new Set(_vertexPtIdsOf(lines, areas, st)
+    .filter(id => (användare.get(id) || []).every(o => moved.has(o))));
+
+  let n = 0;
+  const flytta = o => { n++; return { ...o, layerId }; };
+  _commit({
+    visualPts: (st.visualPts || []).map(p =>
+      (set.has(p.id) && p.role !== 'vertex') ? flytta(p) : följer.has(p.id) ? { ...p, layerId } : p),
+    visualLines: (st.visualLines || []).map(l => set.has(l.id) ? flytta(l) : l),
+    visualAreas: (st.visualAreas || []).map(a => set.has(a.id) ? flytta(a) : a),
+  });
+  return n;
+}
+
+/**
+ * Döljer (true) eller visar (false) namnen på markerade objekt: fria
+ * punkters namn, ytors namn och area, och hörnnamnen i markerade linjer och
+ * ytor. Lagrets inställningar gäller fortfarande – ett dolt lager eller ett
+ * lager med namnen släckta visar inget, oavsett objektets flagga.
+ */
+export function setVisualLabelsHidden(ids, hidden) {
+  const set = new Set(ids || []);
+  const st = getState();
+  const lines = (st.visualLines || []).filter(l => set.has(l.id));
+  const areas = (st.visualAreas || []).filter(a => set.has(a.id));
+  const pts = new Set([
+    ...(st.visualPts || []).filter(p => set.has(p.id) && p.role !== 'vertex').map(p => p.id),
+    ..._vertexPtIdsOf(lines, areas, st),
+  ]);
+  const sätt = o => {
+    const n = { ...o };
+    if (hidden) n.hideLabel = true; else delete n.hideLabel;
+    return n;
+  };
+  _commit({
+    visualPts:   (st.visualPts   || []).map(p => pts.has(p.id) ? sätt(p) : p),
+    visualAreas: (st.visualAreas || []).map(a => set.has(a.id) ? sätt(a) : a),
+  });
+}
+
+/** Har någon av de markerade något namn som syns i dag? För knapptexten. */
+export function anyVisualLabelShown(ids, state = getState()) {
+  const set = new Set(ids || []);
+  const lines = (state.visualLines || []).filter(l => set.has(l.id));
+  const areas = (state.visualAreas || []).filter(a => set.has(a.id));
+  const pts = new Set([
+    ...(state.visualPts || []).filter(p => set.has(p.id) && p.role !== 'vertex').map(p => p.id),
+    ..._vertexPtIdsOf(lines, areas, state),
+  ]);
+  return (state.visualPts || []).some(p => pts.has(p.id) && p.hideLabel !== true)
+      || areas.some(a => a.hideLabel !== true);
+}
+
 // ── Nätpunkter som linjer och ytor hänger i ──────────────────────────────────
 // Anropas av punktdialogen (ui/modals.js) när en nätpunkt byter namn eller tas
 // bort, så att visuella linjer och ytor följer med.
@@ -649,6 +766,7 @@ export function _sanitizeVisual(visualPts, visualLines) {
       if (typeof p.name === 'string' && p.name !== '')    out.name  = p.name;
       if (p.attrs && typeof p.attrs === 'object')         out.attrs = p.attrs;
       if (p.role === 'vertex' || p.role === 'point')      out.role  = p.role;
+      if (p.hideLabel === true)                           out.hideLabel = true;
       return out;
     });
 
@@ -689,6 +807,7 @@ export function _sanitizeVisualAreas(visualAreas) {
         linkedObsId,
       };
       if (typeof a.name === 'string' && a.name.trim()) out.name = a.name.trim();
+      if (a.hideLabel === true) out.hideLabel = true;
       return out;
     })
     .filter(a => a.vertices.length >= 3);

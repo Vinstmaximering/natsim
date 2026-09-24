@@ -18,6 +18,10 @@ import {
 import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
 import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
 import {
+  beginSelectDrag, updateSelectDrag, endSelectDrag, cancelSelectDrag,
+  isSelectDragging, selectDragMoved, clickSelect,
+} from './select-area.js';
+import {
   hitTestHandle, hitTestEdge, hitTestObstacle,
   startNodeDrag, updateNodeDrag, endNodeDrag, isDraggingNode,
   insertNode, deleteNode,
@@ -77,6 +81,12 @@ export function initInteractions(map) {
   let dragPt        = null;
   let dragMoved     = false;
   let nodeDragActive = false;  // true när ett hörn-handtag dras
+  // Markera område: klicket som följer på en dragning ska inte också tolkas
+  // som ett klick på ett objekt. Efter en fingerdragning kommer webbläsarens
+  // efterhärmade mushändelser – de spärras en kort stund.
+  let selSuppressClick = false;
+  let selSuppressUntil = 0;
+  const selectTool = () => getState().tool === 'select-area';
 
   // Slå av Leaflet's dubbelklicks-zoom när ett hinder är markerat,
   // annars blockerar zoomen dblclick → kant-infogning. Samma sak under
@@ -90,6 +100,16 @@ export function initInteractions(map) {
   // ── Drag – rad 1254–1290 ──
   map.on("mousedown", e => {
     if (isDrawing() || isDrawingVisual()) return; // hindra drag under ritläge
+
+    // Markera område: vänsterknappen börjar en rektangel. Kartans panorering
+    // är redan avslagen av setTool() medan verktyget är valt.
+    if (selectTool()) {
+      if ((e.originalEvent?.button ?? 0) !== 0 || Date.now() < selSuppressUntil) return;
+      const px = map.latLngToContainerPoint(e.latlng);
+      beginSelectDrag(px.x, px.y);
+      L.DomEvent.stopPropagation(e);
+      return;
+    }
 
     // Prioritet 1: hörn-drag på markerat hinder
     const { selObsId } = getState();
@@ -122,6 +142,13 @@ export function initInteractions(map) {
   });
 
   map.on("mousemove", e => {
+    if (isSelectDragging()) {
+      const px = map.latLngToContainerPoint(e.latlng);
+      updateSelectDrag(px.x, px.y);
+      draw();
+      return;
+    }
+
     // Uppdatera förhandsvisning under hinder-ritning
     if (isDrawing()) {
       const px = map.latLngToContainerPoint(e.latlng);
@@ -184,6 +211,16 @@ export function initInteractions(map) {
     }
   });
 
+  // Markera område: släppt musknapp avslutar rektangeln. Släpps den utanför
+  // kartan når händelsen bara dokumentet – därav båda lyssnarna.
+  const endSelect = ev => {
+    if (!isSelectDragging()) return;
+    if (endSelectDrag(ev)) selSuppressClick = true;
+    draw();
+  };
+  map.on("mouseup", e => endSelect(e.originalEvent));
+  document.addEventListener('mouseup', endSelect);
+
   map.on("mouseup", () => {
     // Avsluta hörn-drag
     if (nodeDragActive) {
@@ -211,6 +248,15 @@ export function initInteractions(map) {
     // användaren avslutar med Esc eller högerklick.
     if (isDrawingVisual()) {
       _areaDone(handleVisualMapClick(e.latlng));
+      draw();
+      return;
+    }
+
+    // Markera område: klick utan drag markerar ett enskilt objekt.
+    if (selectTool()) {
+      if (selSuppressClick || Date.now() < selSuppressUntil) { selSuppressClick = false; return; }
+      const cp = map.latLngToContainerPoint(e.latlng);
+      clickSelect(cp.x, cp.y, e.originalEvent);
       draw();
       return;
     }
@@ -267,7 +313,7 @@ export function initInteractions(map) {
       .find(a => a.linkedObsId === hitObs.id && isVisualObjVisible(a));
     if (ägare) {
       if (selObsId) { clearObstacleSelection(); if (cb.renderObsPanel) cb.renderObsPanel(); }
-      setState({ selVisualId: ägare.id });
+      setState({ selVisualId: ägare.id, visualSelection: [] });
       draw();
       return;
     }
@@ -298,7 +344,8 @@ export function initInteractions(map) {
               || hitTestVisualLine(px.x, px.y, stateNow, map, ENtoLatLng)
               || (tool === 'pan' ? hitTestVisualArea(px.x, px.y, stateNow, map, ENtoLatLng) : null);
     if (hitV) {
-      setState({ selVisualId: stateNow.selVisualId === hitV.id ? null : hitV.id });
+      // Ett enskilt val ersätter en markering från Markera område.
+      setState({ selVisualId: stateNow.selVisualId === hitV.id ? null : hitV.id, visualSelection: [] });
       draw();
       return;
     }
@@ -452,7 +499,10 @@ export function initInteractions(map) {
     }
     if (e.key === 'Escape') {
       // En påbörjad yta kastas först; nästa Escape lämnar ytläget.
-      if (hasPendingArea()) {
+      if (isSelectDragging()) {
+        cancelSelectDrag();
+        draw();
+      } else if (hasPendingArea()) {
         discardPendingArea();
         draw();
       } else if (isDrawingVisual()) {
@@ -464,6 +514,10 @@ export function initInteractions(map) {
         cancelDraw();
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();
+        draw();
+      } else if ((getState().visualSelection || []).length) {
+        // Esc avmarkerar det som Markera område valt.
+        setState({ visualSelection: [] });
         draw();
       } else if (getState().selVisualId) {
         setState({ selVisualId: null });
@@ -483,6 +537,41 @@ export function initInteractions(map) {
       draw();
     }
   });
+
+  // ── Markera område med finger ────────────────────────────────────────────
+  // Ett finger ritar rektangeln (kartans enfingerpanorering är av medan
+  // verktyget är valt); två fingrar avbryter den och lämnas åt Leaflets
+  // touchZoom, som både zoomar och flyttar kartan. Ett tryck utan drag blir
+  // webbläsarens vanliga klick och markerar ett enskilt objekt.
+  {
+    const cont = map.getContainer();
+    const at = t => { const r = cont.getBoundingClientRect(); return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+    cont.addEventListener('touchstart', e => {
+      if (!selectTool()) return;
+      if (e.touches.length === 1) { const p = at(e.touches[0]); beginSelectDrag(p.x, p.y); }
+      else { cancelSelectDrag(); draw(); }
+    }, { passive: true });
+    cont.addEventListener('touchmove', e => {
+      if (!isSelectDragging() || e.touches.length !== 1) return;
+      const p = at(e.touches[0]);
+      updateSelectDrag(p.x, p.y);
+      if (e.cancelable) e.preventDefault();
+      draw();
+    }, { passive: false });
+    const touchEnd = e => {
+      if (!isSelectDragging()) return;
+      if (selectDragMoved()) {
+        endSelectDrag({});
+        selSuppressUntil = Date.now() + 700;
+        if (e.cancelable) e.preventDefault();
+      } else {
+        cancelSelectDrag();   // ett tryck – klicket som följer markerar
+      }
+      draw();
+    };
+    cont.addEventListener('touchend', touchEnd, { passive: false });
+    cont.addEventListener('touchcancel', () => { cancelSelectDrag(); draw(); });
+  }
 
   // ── Touch-gester: double-tap → openEditPt, long-press → openEditPt ──────────
   if (isTouch) {

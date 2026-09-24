@@ -27,6 +27,9 @@ let _state = {
   // Lager-verktyg Etapp 3: ytor. Samma separation som punkter och linjer.
   visualAreas: [],
   selVisualId: null,
+  // Lager-verktyg Etapp 4: markering med Markera område. Sessionen, inte
+  // projektet – sparas inte och ångras inte.
+  visualSelection: [],
   nVid: 1,
   nVlid: 1,
   nVaid: 1,

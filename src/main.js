@@ -27,6 +27,7 @@ import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer
 import { initTopbar }                            from './ui/topbar.js';
 import { initMapTools }                          from './ui/map-tools.js';
 import { initAreaCard }                          from './ui/area-card.js';
+import { initSelectBar }                         from './ui/select-bar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { initLayerPanel, renderLayerPanel }     from './ui/layer-panel.js';
 import { buildTabs, setTab, renderTab, initRightPanel, applyMatklass } from './ui/right-panel.js';
@@ -100,6 +101,7 @@ initToolbar();
 initTopbar();
 initMapTools();
 initAreaCard();
+initSelectBar();
 initLayerPanel();
 initLeftPanel();
 initQualityPanel();

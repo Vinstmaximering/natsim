@@ -3,7 +3,7 @@
 //   title/aria-label som anger kortkommandot
 // – valt verktyg markeras; samma verktyg igen återgår till Panorera
 // – kortkommandon P/L, och när de inte ska slå till
-// – verktyg som ännu inte finns (M, S) är inaktiva och reagerar inte
+// – verktyg som ännu inte finns (S) är inaktiva och reagerar inte
 // – telefon: de visuella verktygen finns i den mobila raden (#mtb)
 // – hjälptexten står under verktygsraden
 
@@ -86,10 +86,11 @@ describe('markup', () => {
     }
   });
 
-  // Ändrat i Etapp 3: Yta finns nu.
+  // Ändrat i Etapp 3 och 4: Yta och Markera område finns nu.
   it('verktyg som kommer i senare etapper är inaktiva', () => {
-    for (const id of ['btn-select-area', 'btn-snap']) expect($(id).disabled).toBe(true);
-    for (const id of ['btn-visual-point', 'btn-visual-line', 'btn-visual-area']) expect($(id).disabled).toBe(false);
+    for (const id of ['btn-snap']) expect($(id).disabled).toBe(true);
+    for (const id of ['btn-select-area', 'btn-visual-point', 'btn-visual-line', 'btn-visual-area'])
+      expect($(id).disabled).toBe(false);
   });
 
   it('hjälptexten står direkt under verktygsraden, i samma högerkolumn', () => {
@@ -135,7 +136,6 @@ describe('val av verktyg', () => {
 
   it('inaktiva knappar gör ingenting', () => {
     $('btn-snap').click();
-    $('btn-select-area').click();
     expect(getState().tool).toBe('pan');
   });
 });
@@ -150,9 +150,17 @@ describe('kortkommandon', () => {
     expect(getState().tool).toBe('pan');
   });
 
-  // Ändrat i Etapp 3: Y väljer Yta.
-  it('M och S gör ingenting så länge verktygen saknas', () => {
-    for (const k of ['m', 's']) key(k);
+  // Ändrat i Etapp 3 och 4: Y väljer Yta, M väljer Markera område.
+  it('S gör ingenting så länge snappningsknappen saknas', () => {
+    key('s');
+    expect(getState().tool).toBe('pan');
+  });
+
+  it('M väljer Markera område', () => {
+    key('m');
+    expect(getState().tool).toBe('select-area');
+    expect($('btn-select-area').getAttribute('aria-pressed')).toBe('true');
+    key('m');
     expect(getState().tool).toBe('pan');
   });
 

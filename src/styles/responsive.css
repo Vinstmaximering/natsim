@@ -200,8 +200,13 @@
   /* Kartans verktygsrad döljs; de visuella verktygen ligger i .mtb. */
   .map-tools { display: none; }
 
+  /* Åtgärdsraden: ovanför FAB-knapparna och till vänster om zoomknapparna
+     (right: 60px); knapparna 44 px höga. */
+  .select-bar { left: 8px; right: 60px; transform: none; max-width: none; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+  .sb-btn, .sb-op { min-height: 44px; }
+
   /* Ytans egenskapskort: hela bredden, ovanför FAB-knapparna. */
-  .area-card { left: 8px; right: 8px; width: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); max-height: 55dvh; }
+  .area-card { left: 8px; right: 60px; width: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); max-height: 55dvh; }
   .zb   { top: 92px !important; right: 8px; font-size: 12px; }
 
   /* ── Kvalitetspanel: kompakt, uppe till höger ── */
