@@ -178,6 +178,31 @@ table.rm td:first-child { font-weight: 700; color: #555; width: 52mm; }
 .rerr { color: #cc0000; font-weight: 700; }
 .rwrn { color: #884400; font-weight: 700; }
 
+/* Etapp 4: källhänvisning i rubriker, normnoter, produktval och tomma fält.
+   Varje rubrik, gränsvärde och kontroll ska bära sin källa; källan står dämpad
+   efter rubriktexten så att den inte konkurrerar med den. */
+.rkalla {
+  font-size: 7.5pt; font-weight: 400; color: #667;
+  text-transform: none; letter-spacing: 0; white-space: nowrap;
+}
+h1.r .rkalla { color: #7089a8; }
+
+/* Not under en tabell eller ett avsnitt: vad normen kräver, med paragraf. */
+.rnot { font-size: 8pt; color: #555; line-height: 1.5; margin: 1.5mm 0 2.5mm; }
+
+/* Produktval – NätSims eget upplägg, inte ett normkrav. Ska inte kunna
+   förväxlas med ett krav, därav egen ram och uttryckligt "Information". */
+.rprodukt {
+  font-size: 8.5pt; color: #444; line-height: 1.5;
+  background: #f7f7f2; border: 1px dashed #bbb; border-radius: 2px;
+  padding: 2mm 3mm; margin: 2mm 0;
+}
+.rprodukt strong { color: #775500; }
+
+/* Fält som användaren inte fyllt i. Dämpat och kursivt – innehållet saknas,
+   och det ska synas utan att se ut som ett värde. */
+.rtom { color: #999; font-style: italic; }
+
 /* Bilder */
 .fig { text-align: center; margin: 3mm 0; }
 .fig img { max-width: 100%; border: 1px solid #ccc; }

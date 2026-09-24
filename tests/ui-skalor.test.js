@@ -253,7 +253,11 @@ describe('Produkten uttalar sig bara där normen ger täckning', () => {
 
   it('PM-rapporten graderar inte spridningen i r-talen', () => {
     // "Homogent"/"Inhomogent" med gränserna 0,08 och 0,15 saknade källa.
-    const src = read('src/pm/report-generator.js').replace(/^\s*\/\/.*$/gm, '');
+    // ETAPP 4: simuleringsavsnittet ligger i report/blocks.js sedan rapporten
+    // delades i fyra mallar. report-generator.js är numera bara dispatcher.
+    const src = ['src/pm/report-generator.js', 'src/pm/report/blocks.js',
+                 'src/pm/report/mallar.js']
+      .map(f => read(f)).join('\n').replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/Inhomogent|Homogent/);
     expect(src).toMatch(/σ\(r-tal\)/);
   });

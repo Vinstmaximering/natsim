@@ -1,9 +1,19 @@
-// Steg 4 – Bilder (R3.2, R3.3, R3.4, R3.12)
+// Steg 5 – Bilder
 // Lokala presets + postMessage-bro till huvudfönstret för satellit/karta-bakgrund.
 // Vit och rutnät genereras lokalt (snabbt). Satellit/karta skickar request till opener.
+//
+// ETAPP 4: etiketterna är neutrala och beskriver vad bilden föreställer.
+// SIS-TS-koderna (R3.2, R3.3 …) satt tidigare i etiketterna här, men de gäller
+// bara mall D (Ej Trafikverket) – i mall A–C följer rapporten TDOK och då säger
+// en R-kod ingenting. Mall D sätter sina koder själv när den placerar bilden.
+// Slot-id:na (r32, r33, r34, r312) och v_-fälten är oförändrade, så sparade
+// utkast och bilder följer med.
+//
+// Filnamnet säger fortfarande "step4" – steget är nummer 5 sedan Punkter och
+// markering tillkom i Etapp 3. Ordningen står i STEPS i pm.js.
 import { generateNetImage } from '../../reports/net-image.js';
 import { setState }          from '../../state/store.js';
-import { IMAGE_PRESETS }     from '../image-presets.js';
+import { IMAGE_PRESETS, SLOT_PRESET, SLOTS, SLOT_LABEL } from '../image-presets.js';
 
 // I-session metadata: källa och preset per bildslot.
 // Inte persistent – auto-bilder regenereras via "⟲ Återskapa" vid behov.
@@ -29,21 +39,10 @@ export function render(D, container, vals, imgs) {
           </select>
         </div>
         <div class="g2">
-          <div class="gw"><div class="sec">R3.2 Översiktskarta</div></div>
-          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r32txt" rows="2"></textarea></div>
-          <div class="gw" id="row-r32"></div>
-
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.3 Kända anslutningspunkter</div></div>
-          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r33txt" rows="2"></textarea></div>
-          <div class="gw" id="row-r33"></div>
-
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.4 Mätgeometri</div></div>
-          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r34txt" rows="2"></textarea></div>
-          <div class="gw" id="row-r34"></div>
-
-          <div class="gw"><div class="sec" style="margin-top:6px">R3.12 Lägesosäkerheter</div></div>
-          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_r312txt" rows="2"></textarea></div>
-          <div class="gw" id="row-r312"></div>
+          ${SLOTS.map((slot, i) => `
+          <div class="gw"><div class="sec"${i ? ' style="margin-top:6px"' : ''}>${SLOT_LABEL[slot]}</div></div>
+          <div class="gw"><div class="lbl">Kompletterande text</div><textarea id="v_${slot}txt" rows="2"></textarea></div>
+          <div class="gw" id="row-${slot}"></div>`).join("")}
         </div>
         <div class="br">
           <button class="bo" id="btn-back5">← Tillbaka</button>
@@ -56,23 +55,13 @@ export function render(D, container, vals, imgs) {
   const sel = document.getElementById('sel-bg');
   if (sel) sel.value = _defaultBg(D.activeLayerKey);
 
-  const PRESET_MAP = { r32: 'R3.2', r33: 'R3.3', r34: 'R3.4', r312: 'R3.12' };
   // Etiketterna MÅSTE beskriva den bild sloten faktiskt producerar, dvs. samma
-  // sak som IMAGE_PRESETS[...].options.title och som rubriken på den sektion i
-  // PM-rapporten där bilden hamnar (report-generator.js 5.2–5.6). r33, r34 och
-  // r312 hette tidigare "Nätkarta", "Anslutningspunkter" respektive
-  // "Punktbeskrivningar" och beskrev därmed fel bild. Rättat i UI-städning
-  // Omgång 1 (2026-09-11); se docs/troubleshooting/ui_inventering_20260910.md
-  // avsnitt B, punkt 6.
-  const labels = {
-    r32:  'R3.2 Översiktskarta',
-    r33:  'R3.3 Kända anslutningspunkter',
-    r34:  'R3.4 Mätgeometri',
-    r312: 'R3.12 Lägesosäkerheter',
-  };
-
-  ['r32', 'r33', 'r34', 'r312'].forEach(key => {
-    buildImgRow(key, labels[key], container.querySelector('#row-' + key), imgs, PRESET_MAP[key], D);
+  // sak som IMAGE_PRESETS[...].options.title och som rubriken på den plats i
+  // rapporten där bilden hamnar. Både etikett och preset kommer ur
+  // image-presets.js, så de tre kan inte längre säga olika saker.
+  SLOTS.forEach(slot => {
+    buildImgRow(slot, SLOT_LABEL[slot], container.querySelector('#row-' + slot),
+                imgs, SLOT_PRESET[slot], D);
   });
 
   Object.entries(vals).forEach(([k, v]) => {

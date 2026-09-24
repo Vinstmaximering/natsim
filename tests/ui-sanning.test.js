@@ -15,7 +15,7 @@ import { klassificeraKtal, K_NAT_GOLV, K_BAND } from '../src/core/constants.js';
 import { bandForklaring } from '../src/ui/right-panel.js';
 import { renderClassInfo } from '../src/ui/sis-ts-info.js';
 import { buildReport } from '../src/pm/report-generator.js';
-import { IMAGE_PRESETS } from '../src/pm/image-presets.js';
+import { IMAGE_PRESETS, SLOT_PRESET, SLOT_LABEL } from '../src/pm/image-presets.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = p => readFileSync(join(root, p), 'utf8');
@@ -120,10 +120,12 @@ describe('Fix 2 – PM-rapporten kallar observationsvis redundans r-tal', () => 
     expect(html).not.toContain('Mätningars k_i');
   });
 
-  it('använder r-tal i 7.1, 7.2 och tabellrubriken', () => {
+  // ETAPP 4: rubriknumren kommer ur den mall dokumentet följer, så "7.2" är
+  // inte längre en fast plats. Rubriktexten och etiketterna prövas i stället.
+  it('använder r-tal i nätstatistiken och tabellrubriken', () => {
     expect(html).toContain('Minsta r-tal (avst.)');
     expect(html).toContain('Minsta r-tal (riktning)');
-    expect(html).toContain('7.2 Mätningars r-tal');
+    expect(html).toContain('Mätningars r-tal, MUF och YT');
     expect(html).toContain('<th>r-tal</th>');
   });
 
@@ -164,7 +166,9 @@ describe('Fix 4 – σN står före σE i alla utdataformat', () => {
     ['src/ui/studio-views/report-studio.js', /σN mm[\s\S]{0,200}?σE mm/],
     ['src/reports/sim-report.js',            /σN mm[\s\S]{0,200}?σE mm/],
     ['src/io/export-pdf.js',                 /σN mm[\s\S]{0,200}?σE mm/],
-    ['src/pm/report-generator.js',           /σ_N mm[\s\S]{0,200}?σ_E mm/],
+    // ETAPP 4: punkttabellen ligger i report/blocks.js sedan rapporten delades
+    // i fyra mallar. Kolumnrubrikerna heter "σ_N (mm)" och "σ_E (mm)".
+    ['src/pm/report/blocks.js',               /σ_N \(mm\)[\s\S]{0,200}?σ_E \(mm\)/],
   ];
 
   for (const [fil, ordning] of ytor) {
@@ -225,32 +229,48 @@ describe('Fix 6 – inga utvecklingsplatshållare i användarsynlig text', () =>
 
 // ── Fix 6 (följd): bildetiketterna beskriver rätt bild ───────────────────────
 describe('PM-guidens bildetiketter matchar bilden som genereras', () => {
-  const src = read('src/pm/steps/step4-images.js');
+  // ETAPP 4: etiketterna och kopplingen slot → preset bor i image-presets.js,
+  // inte längre i step4-images.js, och presetnycklarna är neutrala i stället
+  // för SIS-TS-koder. Koderna var dessutom omkastade: den gamla nyckeln 'R3.3'
+  // gav en bild med bara kända punkter, vilket är Bilaga B:s R3.4.
+  const src = read('src/pm/image-presets.js');
 
-  // Slot → preset-nyckel, enligt PRESET_MAP i step4-images.js.
-  const kopplingar = [['r32', 'R3.2'], ['r33', 'R3.3'], ['r34', 'R3.4'], ['r312', 'R3.12']];
+  const kopplingar = Object.entries(SLOT_PRESET);
 
   for (const [slot, presetKey] of kopplingar) {
     it(`${slot} har en etikett som speglar presetens titel`, () => {
       const preset = IMAGE_PRESETS[presetKey];
       expect(preset).toBeDefined();
 
-      const rad = src.split('\n').find(l => l.trim().startsWith(`${slot}:`));
-      expect(rad, `etikettrad för ${slot} saknas`).toBeDefined();
+      const rad = SLOT_LABEL[slot];
+      expect(rad, `etikett för ${slot} saknas`).toBeDefined();
 
       // Etiketten ska dela minst ett betydelsebärande ord med presetens titel.
       const ord = preset.options.title.toLowerCase().match(/[a-zåäö]{6,}/g) || [];
       expect(ord.length).toBeGreaterThan(0);
       expect(
         ord.some(o => rad.toLowerCase().includes(o.slice(0, 6))),
-        `"${rad.trim()}" beskriver inte bilden "${preset.options.title}"`
+        `"${rad}" beskriver inte bilden "${preset.options.title}"`
       ).toBe(true);
     });
   }
 
   it('de tidigare felaktiga etiketterna är borta', () => {
-    expect(src).not.toContain('R3.3 Nätkarta');
-    expect(src).not.toContain('R3.4 Anslutningspunkter');
-    expect(src).not.toContain('R3.12 Punktbeskrivningar');
+    for (const label of Object.values(SLOT_LABEL)) {
+      expect(label).not.toMatch(/^R3\./);
+    }
+    expect(read('src/pm/steps/step4-images.js')).not.toContain('R3.3 Nätkarta');
+    expect(read('src/pm/steps/step4-images.js')).not.toContain('R3.4 Anslutningspunkter');
+    expect(read('src/pm/steps/step4-images.js')).not.toContain('R3.12 Punktbeskrivningar');
+  });
+
+  // ETAPP 4: kopplingen slot → preset speglar vad sloten FAKTISKT innehöll.
+  // r33 var "R3.3" men visade bara kända punkter (= Bilaga B R3.4), och r34
+  // var "R3.4" men visade mätningarna (= R3.3). Rättat i image-presets.js.
+  it('slot → preset speglar bildens innehåll, inte de gamla koderna', () => {
+    expect(IMAGE_PRESETS[SLOT_PRESET.r33].options.showMeasurements).toBeFalsy();
+    expect(IMAGE_PRESETS[SLOT_PRESET.r33].options.showNew).toBe(false);
+    expect(IMAGE_PRESETS[SLOT_PRESET.r34].options.showMeasurements).toBe(true);
+    expect(IMAGE_PRESETS[SLOT_PRESET.r312].options.showEllipses).toBe(true);
   });
 });

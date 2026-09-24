@@ -9,7 +9,11 @@ const testData = {
     best:     "Trafikverket",
     utf:      "KO Mätteknik AB",
     ans:      "Anna Testsson",
-    nats:     "Bruksnät i plan (§6.4)",
+    // Etapp 4: verksamhet + nättyp väljer mall. Testdatat är väg/bruksnät,
+    // alltså mall A (Redovisning av planerat stomnät, §2.5 K2).
+    verksamhet: "vag",
+    nattyp:     "bruksnat",
+    nats:       "Bruksnät i plan (§6.4)",
     rapdat:   "2026-06-01",
     sek:      "Öppen",
     plansys:  "SWEREF 99 TM",
@@ -90,11 +94,17 @@ describe('buildReport – rapport-generator', () => {
     expect(html.length).toBeGreaterThan(500);
   });
 
-  it('innehåller alla 10 numrerade sektioner', () => {
+  // ETAPP 4: rapporten har inte längre EN struktur med tio fasta sektioner,
+  // utan fyra mallar vars rubriker och numrering kommer ur den paragraf som
+  // kräver dokumentet. Testdatat är väg + bruksnät, alltså mall A med §2.5 K2:s
+  // åtta rubriker. Att varje mall har alla sina normrubriker prövas uttömmande
+  // i tests/pm-mallar.test.js; här låses bara att mall A väljs och numreras.
+  it('mall A:s åtta numrerade rubriker finns', () => {
     const html = buildReport(testData);
-    for (let i = 1; i <= 10; i++) {
-      expect(html, `Sektion ${i} saknas`).toContain(`>${i}.`);
+    for (let i = 1; i <= 8; i++) {
+      expect(html, `Rubrik ${i} saknas`).toContain(`>${i}.`);
     }
+    expect(html).toContain('Redovisning av planerat stomnät');
   });
 
   it('innehåller projektnamn', () => {
@@ -132,9 +142,11 @@ describe('buildReport – rapport-generator', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('Sektion 7 innehåller k-tal och redundanstabell', () => {
+  // ETAPP 4: simuleringsavsnittet är rubrik 7 i mall A, men rubriknumret är
+  // mallberoende. Testet prövar innehållet, inte numret.
+  it('simuleringsavsnittet innehåller k-tal och redundanstabell', () => {
     const html = buildReport(testData);
-    expect(html).toContain('>7.');
+    expect(html).toContain('Simulering och kvalitetsbedömning');
     expect(html).toContain('Kontrollerbarhet k');
     expect(html).toContain('FP1');
   });
@@ -144,21 +156,26 @@ describe('buildReport – rapport-generator', () => {
     expect(() => buildReport(minData)).not.toThrow();
   });
 
-  it('imgs.r34 visas i sektion 5.4 Mätgeometri', () => {
+  // ETAPP 4: bildsloten har neutrala namn. r34 är nätkartan med de planerade
+  // observationerna och hamnar i mall A under Stommätningsplan (§2.5 K2).
+  // Rubriken "5.4 Mätgeometri" fanns bara i den gamla fasta strukturen.
+  it('imgs.r34 visas som stommätningsplan', () => {
     const html = buildReport({ ...testData, imgs: { r34: 'data:image/png;base64,AAAA' } });
-    expect(html).toContain('5.4 Mätgeometri');
+    expect(html).toContain('Stommätningsplan');
     expect(html).toContain('data:image/png;base64,AAAA');
   });
 
-  it('imgs.r312 visas alltid i 5.6, oavsett om pbTab är tom', () => {
-    // allPts utan markering/prisma → pbTab är tom → R3.12 ska ändå visas
+  // ETAPP 4: lägesosäkerhetsbilden hette tidigare "R3.12", vilket är
+  // Punktbeskrivningar i SIS-TS Bilaga B. Den ligger nu under en egen rubrik i
+  // varje mall och visas oavsett om punkterna har markering eller prisma.
+  it('imgs.r312 visas även när punkterna saknar markering och prisma', () => {
     const noPbData = {
       ...testData,
       allPts: testData.allPts.map(p => ({ ...p, markering: '', prisma: '' })),
       imgs: { r312: 'data:image/png;base64,BBBB' },
     };
     const html = buildReport(noPbData);
-    expect(html).toContain('5.6 Lägesosäkerheter');
+    expect(html).toContain('Lägesosäkerheter');
     expect(html).toContain('data:image/png;base64,BBBB');
   });
 
