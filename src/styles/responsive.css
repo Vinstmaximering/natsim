@@ -199,7 +199,7 @@
 
   /* Kartans verktygsrad döljs; de visuella verktygen ligger i .mtb. */
   .map-tools { display: none; }
-  .zb   { top: 58px !important; right: 8px; font-size: 12px; }
+  .zb   { top: 92px !important; right: 8px; font-size: 12px; }
 
   /* ── Kvalitetspanel: kompakt, uppe till höger ── */
   #qPanel {

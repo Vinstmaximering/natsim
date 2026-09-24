@@ -47,7 +47,10 @@ canvas { display: block; touch-action: none; }
   background:color-mix(in srgb,var(--accent) 16%,transparent);
 }
 .mt-sep { width:1px;height:20px;margin:0 3px;background:var(--border-strong); }
-.zb   { position:absolute;top:8px;right:8px;background:color-mix(in srgb,var(--bg-panel) 60%,transparent);padding:4px 9px;border-radius:3px;font-size:13px;color:var(--accent);border:1px solid var(--border-default);pointer-events:none; }
+/* z-index: utan den låg etiketten under #leaflet-map (z-index 1) och #cv
+   (z-index 2) och syntes aldrig. top:92px: under nordpilen, som ritas på
+   canvasen kring x = W−44, y 17–83 – synlig hade etiketten täckt pilens N. */
+.zb   { position:absolute;top:92px;right:8px;z-index:10;background:color-mix(in srgb,var(--bg-panel) 60%,transparent);padding:4px 9px;border-radius:3px;font-size:13px;color:var(--accent);border:1px solid var(--border-default);pointer-events:none; }
 .tpb  { position:absolute;bottom:12px;right:12px;display:flex;gap:4px;z-index:10; }
 .tpb button { padding:8px 13px;font-size:15px;background:color-mix(in srgb,var(--bg-panel) 80%,transparent);border:1px solid var(--border-default);color:var(--accent);border-radius:4px;cursor:pointer; }
 .mfb  { position:absolute;bottom:55px;left:50%;transform:translateX(-50%);background:color-mix(in srgb,var(--color-measure) 13%,transparent);border:1px solid var(--color-measure);color:var(--color-measure);padding:7px 18px;border-radius:20px;font-size:13px;pointer-events:none;z-index:5;white-space:nowrap; }
