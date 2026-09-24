@@ -340,3 +340,60 @@ describe('ett verkligt nät på gränsen', () => {
     expect(klassificeraKtal(sr.K_global).uppfyllerNorm).toBe(false);
   });
 });
+
+// ── Följdändringar som hör ihop med gränsvärdena ────────────────────────────
+
+describe('valideringens godkännandetext', () => {
+  it('påstår inte att hela normen är uppfylld', () => {
+    // validateNetwork() prövar k-talet, r-talen, antalet kända punkter och
+    // siktlinjer – inte normen i stort. Texten sa tidigare "alla SIS-TS-krav",
+    // därefter "alla normkrav"; båda lovade mer än som prövas.
+    const src = read('src/ui/validation.js');
+    expect(src).toContain('Nätet uppfyller kraven på k-tal och r-tal');
+    expect(src).not.toContain('uppfyller alla SIS-TS-krav');
+    expect(src).not.toContain('uppfyller alla normkrav');
+  });
+
+  it('dialogen skriver ut texten för ett nät utan anmärkningar', async () => {
+    const { showValidationDialog } = await import('../src/ui/validation.js');
+    const rop = [];
+    const gammal = globalThis.alert;
+    globalThis.alert = m => rop.push(m);
+    try {
+      setState({
+        pts: [{ id: 'FP1', type: 'known', E: 0, N: 0 },
+              { id: 'FP2', type: 'known', E: 100, N: 0 },
+              { id: 'FP3', type: 'known', E: 50, N: 90 }],
+        meas: [], obstacles: [], optimizerProposal: null, netView: 'original',
+        simResult: { ok: true, K_global: 0.8,
+          redund: [{ ri: 0.7, fromId: 'a', toId: 'b', type: 'dist' }] },
+      });
+      showValidationDialog();
+      expect(rop[0]).toContain('Nätet uppfyller kraven på k-tal och r-tal');
+    } finally {
+      globalThis.alert = gammal;
+    }
+  });
+});
+
+describe('appens standardprojekt', () => {
+  // Demodatan i main.js är två kända punkter och inga mätningar. Den kan
+  // därför inte ge något k-tal alls – den strikta gränsen i Etapp 2 ändrar
+  // inget för en användare som just öppnat appen.
+  it('har inga mätningar och ger därför inget k-tal', () => {
+    const src = read('src/main.js');
+    const block = src.slice(src.indexOf('const loaded = loadAutosave()'),
+                            src.indexOf('// ── 9.'));
+    expect(block).toContain('meas: []');
+
+    const sr = computeSimulation({
+      pts: [
+        { id: 'FP1', type: 'known', E: 6500100,    N: 1620400,    H: 45.23 },
+        { id: 'FP2', type: 'known', E: 6500312.45, N: 1620554.78, H: 46.112 },
+      ],
+      meas: [], centerErr: 1.0,
+    });
+    expect(sr.ok).toBeFalsy();
+    expect(sr.K_global).toBeUndefined();
+  });
+});

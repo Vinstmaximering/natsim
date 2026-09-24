@@ -73,6 +73,10 @@ const rapport = (verksamhet, nattyp, extra = {}) => buildReport({
 });
 
 // Hjälpare: alla rubriktexter i ordning, och källan som står i rubriken.
+/** Rubriktext utan källspan och utan HTML. */
+const rent = t => t.replace(/<span class="rkalla">[\s\S]*?<\/span>/g, '')
+                   .replace(/<[^>]*>/g, '').trim();
+
 const rubriker = html =>
   [...html.matchAll(/<h[12] class="r">([\s\S]*?)<\/h[12]>/g)].map(m =>
     m[1].replace(/<span class="rkalla">[\s\S]*?<\/span>/g, '').trim());
@@ -192,11 +196,18 @@ describe('gemensamt för alla fyra mallar', () => {
         expect(html).toContain('Digital leverans');
       });
 
-      it('varje normrubrik bär en källa', () => {
-        const utan = [...html.matchAll(/<h1 class="r">([\s\S]*?)<\/h1>/g)]
-          .filter(m => !m[1].includes('rkalla'))
-          .map(m => m[1].trim());
-        expect(utan, `rubriker utan källa: ${utan.join(', ')}`).toHaveLength(0);
+      // Varje rubrik ska antingen bära sin normhänvisning eller vara utpekad
+      // som produktval. Ett avsnitt utan källa som inte heller säger att det är
+      // NätSims eget val skulle läsas som ett krav.
+      it('varje rubrik bär en källa, eller är märkt som produktval', () => {
+        const brister = [];
+        for (const m of html.matchAll(/<h1 class="r">([\s\S]*?)<\/h1>/g)) {
+          if (m[1].includes('rkalla')) continue;
+          const efter = html.slice(m.index + m[0].length, m.index + m[0].length + 400);
+          if (!efter.includes('rprodukt')) brister.push(m[1].trim());
+        }
+        expect(brister, `utan källa och utan produktvalsmärkning: ${brister.join(', ')}`)
+          .toHaveLength(0);
       });
 
       it('nätbedömningen står på försättsbladet', () => {
@@ -541,5 +552,100 @@ describe('värden för punkter som inte finns i nätet', () => {
   it('gemensam markering för en borttagen punkt räknas inte', () => {
     const html = rapport('jarnvag', 'bro', { gemensam: { FP1: true, BORTA: true } });
     expect(html).not.toContain('BORTA');
+  });
+});
+
+// ── Rättningar efter granskning av Etapp 4 ──────────────────────────────────
+
+describe('koordinatförteckningen är ett produktval, inte ett krav', () => {
+  // R3.13 Koordinatförteckning finns bara i Bilaga B:s kolumn R (redovisning),
+  // inte i kolumn P (planering). Varken §2.5 K2 eller §1.7 K1 kräver den.
+  for (const [namn, v, n] of [['A', 'vag', 'bruksnat'], ['B', 'jarnvag', 'bruksnat'],
+                              ['C', 'vag', 'bro']]) {
+    it(`mall ${namn} kallar den planerade koordinater och hänvisar inte till R3.13`, () => {
+      const html = rapport(v, n);
+      expect(html).toContain('Planerade koordinater (preliminära)');
+      expect(html).not.toContain('Koordinatförteckning');
+      expect(html).not.toContain('R3.13');
+      // Rubriken måste följas av produktvalsmärkningen.
+      const i = html.indexOf('Planerade koordinater (preliminära)');
+      expect(html.slice(i, i + 600)).toContain('rprodukt');
+    });
+  }
+
+  it('mall D behåller rubriken men märker den som produktval', () => {
+    const html = rapport('ej-tv', 'sis-bruksnat');
+    expect(html).toContain('Koordinatförteckning');
+    const i = html.indexOf('Koordinatförteckning');
+    expect(html.slice(i, i + 700)).toContain('rprodukt');
+    expect(html.slice(i, i + 700)).toContain('kolumn R');
+  });
+});
+
+describe('mall D: föreskrifterna står under R3.1', () => {
+  const html = rapport('ej-tv', 'sis-bruksnat');
+
+  it('inte under R1.1', () => {
+    const r11 = html.slice(html.indexOf('R1.1 Uppdragets omfattning'),
+                           html.indexOf('R1.3 Referenssystem'));
+    expect(r11).not.toContain('Gällande föreskrifter');
+  });
+
+  it('utan under R3.1, där källan säger att de hör hemma', () => {
+    const r31 = html.slice(html.indexOf('R3.1 Redogörelse'),
+                           html.indexOf('R3.2 Översiktskarta'));
+    expect(r31).toContain('Gällande föreskrifter');
+  });
+});
+
+describe('inga underrubriker som upprepar sin överrubrik', () => {
+  const alla = [
+    ['A', rapport('vag', 'bruksnat')],
+    ['B', rapport('jarnvag', 'bruksnat')],
+    ['C bro', rapport('jarnvag', 'bro')],
+    ['C tunnel', rapport('vag', 'tunnel')],
+    ['D', rapport('ej-tv', 'sis-bruksnat')],
+  ];
+
+  for (const [namn, html] of alla) {
+    it(`mall ${namn}`, () => {
+      // Plocka ut varje H1 med de H2 som följer före nästa H1.
+      const bitar = html.split(/(?=<h1 class="r">)/);
+      const brister = [];
+      for (const bit of bitar) {
+        const h1 = bit.match(/<h1 class="r">([\s\S]*?)<\/h1>/);
+        if (!h1) continue;
+        const h1txt = rent(h1[1]);
+        for (const m of bit.matchAll(/<h2 class="r">([\s\S]*?)<\/h2>/g)) {
+          const h2txt = rent(m[1]);
+          if (!h2txt) continue;
+          // En underrubrik som är identisk med överrubriken, eller som är
+          // överrubriken utan dess ledande nummer, bär ingen information.
+          const utanNr = h1txt.replace(/^(\d+(\.\d+)?|R[\d.]+)\.?\s*/, '');
+          if (h2txt === h1txt || h2txt === utanNr) brister.push(`${h1txt} → ${h2txt}`);
+        }
+      }
+      expect(brister, brister.join(' | ')).toHaveLength(0);
+    });
+  }
+});
+
+describe('avsnitt utan normstöd är märkta som produktval', () => {
+  it('mall A: leverans krävs inte av §2.5 K2', () => {
+    const html = rapport('vag', 'bruksnat');
+    const i = html.indexOf('8. Leverans');
+    expect(html.slice(i, i + 700)).toContain('rprodukt');
+    expect(html.slice(i, i + 700)).toContain('§2.5 K2 räknar inte upp leverans');
+  });
+
+  it('mall C: programvaror krävs inte av §1.7 K1', () => {
+    const html = rapport('vag', 'bro');
+    expect(html).toContain('§1.7 K1 räknar inte upp programvaror');
+  });
+
+  it('mall B har leverans som del av §1.8 K2 och är alltså inget produktval', () => {
+    const html = rapport('jarnvag', 'bruksnat');
+    const i = html.indexOf('1.9 Leverans');
+    expect(html.slice(i, i + 200)).toContain('§1.8 K2');
   });
 });

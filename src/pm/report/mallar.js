@@ -65,8 +65,8 @@ export function mallA(ctx) {
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('5. Tidplan', `${TDOK} §2.5 K2`);
-  h += tidplan(ctx, 'Tidplan och sessionsindelning', `${TDOK} §2.5 K2`);
+  h += H1('5. Tidplan och sessionsindelning', `${TDOK} §2.5 K2`);
+  h += tidplan(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -79,16 +79,21 @@ export function mallA(ctx) {
 
   h += `<div class="rb">`;
   h += H1('7. Simulering och kvalitetsbedömning', `${SIS} §6.2.5`);
-  h += simulering(ctx, 'Simuleringsresultat', `${SIS} §6.2.5`);
+  h += simulering(ctx, null, null);
   h += bild(ctx, 'r312', 'Lägesosäkerheter', `${SIS} §6.2.5`);
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('8. Leverans', `${SIS} Bilaga B R4`);
+  h += H1('8. Leverans');
+  h += produktval('§2.5 K2 räknar inte upp leverans bland det redovisningen ska omfatta. ' +
+                  'Avsnittet följer SIS-TS 21143:2016 Bilaga B R4.1 och R4.2 och tas med ' +
+                  'för att uppdraget ska kunna avslutas entydigt.');
   h += leverans(ctx, 'Leveransomfattning och format', `${SIS} Bilaga B R4.1 · R4.2`);
   h += godkannande('Redovisningen av planerat stomnät ska godkännas av beställaren innan ' +
                    'markering utförs.', `${TDOK} §2.8 K11–K12`);
-  h += allaPunkter(ctx, 'Koordinatförteckning', `${SIS} Bilaga B R3.13`);
+  h += allaPunkter(ctx, 'Planerade koordinater (preliminära)', null,
+    'Koordinaterna är de planerade punktlägen simuleringen räknat på, inte inmätta ' +
+    'värden. Förteckningen tas med som underlag för rekognosering och utsättning.');
   h += `</div>`;
   return h;
 }
@@ -139,7 +144,7 @@ export function mallB(ctx) {
 
   h += `<div class="rb">`;
   h += H2('1.7 Tidpunkt för genomförande', `${TDOK} §1.8 K2`);
-  h += tidplan(ctx, 'Tidplan', `${TDOK} §1.8 K2`);
+  h += tidplan(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -167,7 +172,9 @@ export function mallB(ctx) {
   h += stommatningsplan(ctx, 'Planerade observationer', `${TDOK} §2.5 K1`);
   h += godkannande('Åtgärdsförslaget ska godkännas av beställaren innan fortsatt arbete ' +
                    'med stomnätet.', `${TDOK} §2.8 K9–K10`);
-  h += allaPunkter(ctx, 'Koordinatförteckning', `${SIS} Bilaga B R3.13`);
+  h += allaPunkter(ctx, 'Planerade koordinater (preliminära)', null,
+    'Koordinaterna är de planerade punktlägen simuleringen räknat på, inte inmätta ' +
+    'värden. Förteckningen tas med som underlag för rekognosering och utsättning.');
   h += `</div>`;
   return h;
 }
@@ -214,12 +221,12 @@ export function mallC(ctx) {
 
   h += `<div class="rb">`;
   h += H1('4. Tider som programmet ska förhålla sig till', `${TDOK} §1.7 K1`);
-  h += tidplan(ctx, 'Tidplan', `${TDOK} §1.7 K1`);
+  h += tidplan(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('5. Referenssystem', `${TDOK} §1.7 K1 · §1.2`);
-  h += referenssystem(ctx, `${TDOK} §1.2 · §1.6`);
+  h += H1('5. Referenssystem och kodning', `${TDOK} §1.7 K1 · §1.2 · §1.6`);
+  h += referenssystem(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -230,6 +237,8 @@ export function mallC(ctx) {
   h += instrument(ctx, 'Instrument och kompletterande utrustning',
                   `${TDOK} §1.7 K1 · §2.8 K15 · K19`);
   h += matklass(ctx, 'Mätklass', `${TDOK} §2.8 K16 · ${SIS} Tabell A.9`);
+  h += produktval('§1.7 K1 räknar inte upp programvaror bland mätningsprogrammets ' +
+                  'innehåll. Avsnittet följer SIS-TS 21143:2016 Bilaga B R3.11.');
   h += programvaror(ctx, 'Programvaror', `${SIS} Bilaga B R3.11`);
   h += simulering(ctx, 'Simulering och kvalitetsbedömning',
                   bro ? `${TDOK} §2.11.2 K5 · ${SIS} §6.2.5`
@@ -259,7 +268,9 @@ export function mallC(ctx) {
   h += `<div class="rb">`;
   h += H1('8. Vad som ska redovisas', `${TDOK} §1.7 K1`);
   h += leverans(ctx, 'Redovisningens omfattning', `${SIS} Bilaga B R4.1`);
-  h += allaPunkter(ctx, 'Koordinatförteckning', `${SIS} Bilaga B R3.13`);
+  h += allaPunkter(ctx, 'Planerade koordinater (preliminära)', null,
+    'Koordinaterna är de planerade punktlägen simuleringen räknat på, inte inmätta ' +
+    'värden. Förteckningen tas med som underlag för rekognosering och utsättning.');
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -294,26 +305,26 @@ export function mallD(ctx) {
     ['Projekt', ctx.proj], ['Projektnummer', ctx.projnr],
     ['Beställare', ctx.best], ['Utförare', ctx.utf],
   ]);
-  h += foreskrifter(ctx, `${SIS} Bilaga B R3.1`);
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('R1.3 Referenssystem', `${SIS} Bilaga B R1.3`);
-  h += referenssystem(ctx, `${SIS} Bilaga B R1.3`);
+  h += H1('R1.3 Referenssystem och kodning', `${SIS} Bilaga B R1.3`);
+  h += referenssystem(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('R1.4 Tidplan', `${SIS} Bilaga B R1.4`);
-  h += tidplan(ctx, 'Tidplan och sessionsindelning', `${SIS} Bilaga B R1.4`);
+  h += H1('R1.4 Tidplan och sessionsindelning', `${SIS} Bilaga B R1.4`);
+  h += tidplan(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
   h += H1('R2 Personal', `${SIS} Bilaga B R2`);
-  h += personal(ctx, `${SIS} Bilaga B R2`);
+  h += personal(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
   h += H1('R3.1 Redogörelse', `${SIS} Bilaga B R3.1`);
+  h += foreskrifter(ctx, `${SIS} Bilaga B R3.1`);
   h += genomforande(ctx, 'Planerat genomförande', `${SIS} Bilaga B R3.1`);
   h += `<div class="rbox">Observationer: ${ctx.sr.meas_n} | Obekanta: ${ctx.sr.unkn_n} | ` +
        `Redundans f = ${ctx.sr.redundancy} | k = ${esc(String(ctx.sr.K_global.toFixed(3)).replace('.', ','))}</div>`;
@@ -321,7 +332,7 @@ export function mallD(ctx) {
 
   h += `<div class="rb">`;
   h += H1('R3.2 Översiktskarta', `${SIS} Bilaga B R3.2`);
-  h += bild(ctx, 'r32', 'Översiktskarta', `${SIS} Bilaga B R3.2`);
+  h += bild(ctx, 'r32', null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -342,7 +353,7 @@ export function mallD(ctx) {
 
   h += `<div class="rb">`;
   h += H1('R3.5 Mätmetod, mätprogram och instrument', `${SIS} Bilaga B R3.5`);
-  h += instrument(ctx, 'Instrument och utrustning', `${SIS} Bilaga B R3.5`);
+  h += instrument(ctx, null, null);
   h += matklass(ctx, 'Mätklass', `${SIS} Tabell A.9`);
   h += `</div>`;
 
@@ -357,8 +368,8 @@ export function mallD(ctx) {
   h += `</div>`;
 
   h += `<div class="rb">`;
-  h += H1('R3.11 Programvaror', `${SIS} Bilaga B R3.11`);
-  h += programvaror(ctx, 'Programvaror inklusive version', `${SIS} Bilaga B R3.11`);
+  h += H1('R3.11 Programvaror inklusive version', `${SIS} Bilaga B R3.11`);
+  h += programvaror(ctx, null, null);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -366,7 +377,10 @@ export function mallD(ctx) {
   h += styckeEllerTomt(ctx.leverans, 'Leveransomfattningen anges i steg 4.');
   h += H1('R4.2 Leveransformat', `${SIS} Bilaga B R4.2`);
   h += styckeEllerTomt(ctx.levformat, 'Leveransformatet anges i steg 4.');
-  h += allaPunkter(ctx, 'Koordinatförteckning', `${SIS} Bilaga B R3.13 (redovisning)`);
+  h += allaPunkter(ctx, 'Koordinatförteckning', null,
+    'R3.13 Koordinatförteckning hör till Bilaga B:s kolumn R (redovisning), inte till ' +
+    'kolumn P (planering) som det här dokumentet följer. Förteckningen tas med som ' +
+    'underlag, med planerade punktlägen.');
   h += `</div>`;
   return h;
 }

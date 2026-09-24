@@ -31,6 +31,13 @@ export const kallaSpan = k => k ? ` <span class="rkalla">${esc(k)}</span>` : "";
 export const H1 = (text, kalla) => `<h1 class="r">${esc(text)}${kallaSpan(kalla)}</h1>`;
 export const H2 = (text, kalla) => `<h2 class="r">${esc(text)}${kallaSpan(kalla)}</h2>`;
 
+/**
+ * H2 som utelämnas helt när mallen inte vill ha någon underrubrik. Används när
+ * den överordnade H1:an redan säger samma sak – en underrubrik som upprepar
+ * sin överrubrik bär ingen information och delar bara upp texten i onödan.
+ */
+export const H2opt = (text, kalla) => (text ? H2(text, kalla) : "");
+
 /** Avsnitt som är NätSims eget val och inte ett normkrav. */
 export const produktval = text =>
   `<p class="rprodukt"><strong>Information:</strong> ${esc(text)} Detta är NätSims eget ` +
@@ -256,7 +263,7 @@ export function foreskrifter(ctx, kalla) {
 
 // ── Personal och behörighet (§1.1) ──────────────────────────────────────────
 
-export function personal(ctx, kalla) {
+export function personal(ctx, kalla, rubrik = 'Personal') {
   const rader = [
     ['Ansvarig mätingenjör', ctx.ans],
     ['Behörighetstyp', ctx.behtyp],
@@ -277,13 +284,13 @@ export function personal(ctx, kalla) {
     : '§1.1 K1: ansvarig ska ha giltigt behörighetsintyg utfärdat av Trafikverket enligt ' +
       'TDOK 2018:0008 med den behörighetstyp som kravställs.';
 
-  return H2('Personal', kalla) + metaTabell(rader) +
+  return H2opt(rubrik, kalla) + metaTabell(rader) +
     (ctx.dok?.mall === 'D' ? '' : `<p class="rnot">${esc(not)}</p>`);
 }
 
 // ── Referenssystem (§1.2) och kodning (§1.6) ────────────────────────────────
 
-export function referenssystem(ctx, kalla) {
+export function referenssystem(ctx, kalla, rubrik = 'Referenssystem och kodning') {
   const rader = [
     ['Referenssystem i plan', `${ctx.plansys} (konfigurerat i NätSim: ${ctx.crs})`],
     ['Referenssystem i höjd', ctx.hoj],
@@ -296,7 +303,7 @@ export function referenssystem(ctx, kalla) {
     `TDOK 2016:0257 (TDOK 2014:0571 v6.0 §1.2).` +
     (ctx.kodsystem ? ` Kodning enligt TDOK 2014:0571 v6.0 §1.6.` : '') + `</p>`;
 
-  return H2('Referenssystem och kodning', kalla) + metaTabell(rader) + not;
+  return H2opt(rubrik, kalla) + metaTabell(rader) + not;
 }
 
 // ── Utgångspunkter: kända punkter ───────────────────────────────────────────
@@ -332,8 +339,15 @@ export function planeradePunkter(ctx, rubrik, kalla) {
     `Typkoden (PP eller FIX) står före markeringstypen.</p>`;
 }
 
-/** Hela punktförteckningen, alla typer. */
-export function allaPunkter(ctx, rubrik, kalla) {
+/**
+ * Hela punktförteckningen, alla typer.
+ *
+ * `produktvalText` gör avsnittet till information i stället för krav. I mall
+ * A–C är det NätSims eget tillägg: varken §2.5 K2 eller §1.7 K1 kräver en
+ * koordinatförteckning, och SIS-TS Bilaga B R3.13 hör till kolumn R
+ * (redovisning), inte till kolumn P (planering) som mallarna följer.
+ */
+export function allaPunkter(ctx, rubrik, kalla, produktvalText = null) {
   const rader = ctx.allPts.map(p => `<tr>
     <td style="font-weight:${p.type === 'known' ? '700' : 'normal'}">${esc(p.id)}</td>
     <td>${ptLabel(p.type)}</td>
@@ -341,7 +355,8 @@ export function allaPunkter(ctx, rubrik, kalla) {
     <td>${esc(markeringText(ctx, p.id) || p.markering || "–")}</td>
     <td>${esc(p.prisma || "–")}</td></tr>`).join("");
 
-  return H2(rubrik, kalla) +
+  return H2opt(rubrik, kalla) +
+    (produktvalText ? produktval(produktvalText) : "") +
     dataTabell(['Punkt', 'Typ', 'N (m)', 'E (m)', 'H (m)', 'Markeringstyp', 'Prisma'], rader);
 }
 
@@ -374,7 +389,7 @@ export function tillstandsbedomning(ctx, rubrik, kalla) {
 export function bild(ctx, slot, rubrik, kalla, bildtext) {
   const src = ctx.imgs[slot] || (slot === 'r32' ? ctx.img : "");
   const txt = ctx.txt[slot];
-  return H2(rubrik, kalla) +
+  return H2opt(rubrik, kalla) +
     stycke(txt) +
     (src
       ? `<div class="fig"><img src="${src}" style="max-width:155mm">
@@ -414,7 +429,7 @@ export function tidplan(ctx, rubrik, kalla) {
   rader.push(['Tidplan', ctx.tidplan]);
   if (ctx.gnsssess) rader.push(['Sessionsindelning vid GNSS-mätning', ctx.gnsssess]);
 
-  return H2(rubrik, kalla) + metaTabell(rader);
+  return H2opt(rubrik, kalla) + metaTabell(rader);
 }
 
 // ── Instrument och utrustning ───────────────────────────────────────────────
@@ -435,11 +450,11 @@ export function instrument(ctx, rubrik, kalla) {
     `lufttryck ska mätas med kalibrerad termometer och barometer. Kontrolleras i ` +
     `kravtabellen nedan.</p>`;
 
-  return H2(rubrik, kalla) + metaTabell(rader) + not;
+  return H2opt(rubrik, kalla) + metaTabell(rader) + not;
 }
 
 export function programvaror(ctx, rubrik, kalla) {
-  return H2(rubrik, kalla) + metaTabell([
+  return H2opt(rubrik, kalla) + metaTabell([
     ['Fältprogramvara', ctx.swfalt],
     ['Beräkningsprogramvara', ctx.swber],
     ['Simulering och analys', 'NätSim'],
@@ -519,7 +534,7 @@ export function simulering(ctx, rubrik, kalla) {
       ${mono(muf)}${mono(yt)}</tr>`;
   }).join("");
 
-  let h = H2(rubrik, kalla);
+  let h = H2opt(rubrik, kalla);
   h += `<p class="r">Simulering utförd enligt SIS-TS 21143:2016 §6.2.5 och ` +
        `HMK – Stommätning 2024 Bilaga F.</p>`;
 
