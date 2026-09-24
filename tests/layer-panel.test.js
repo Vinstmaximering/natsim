@@ -1,4 +1,5 @@
-// Etapp 5: LAGER-sektionen i vänsterpanelen.
+// Etapp 5: LAGER-sektionen i vänsterpanelen – sedan Lager-verktyg Etapp 1
+// Lager-menyn i toolbaren. Innehållet och id:na är desamma.
 //
 // Panelens hela poäng är skillnaden mellan de två grupperna: BERÄKNING-radernas
 // öga döljer bara på kartan, medan VISUELLA-lagren aldrig deltar i någon
@@ -48,9 +49,12 @@ const calcRow = key => document.querySelector(`#layer-list [data-calc="${key}"]`
 
 function mountPanel() {
   document.body.innerHTML = `
-    <button class="tb" id="btn-new-layer">+ Nytt visuellt lager</button>
+    <button type="button" id="active-layer-chip">
+      <span id="active-layer-swatch"></span><span id="active-layer-name">–</span></button>
     <div id="layer-list"></div>
-    <div class="lyr-active">Ritas i aktivt lager: <span id="active-layer-name">–</span></div>
+    <button class="tbar-item" id="btn-new-layer">+ Nytt visuellt lager</button>
+    <button class="tbar-item" id="btn-import-layer">Importera till lager…</button>
+    <input type="file" id="lager-fi" accept=".geo,.dxf">
     <div class="ov" id="modal" style="display:none"><div class="mo" id="mi"></div></div>`;
   initLayerPanel();
 }
@@ -64,28 +68,46 @@ beforeEach(() => {
 
 // ── Strukturkontrakt mot index.html ─────────────────────────────────────────
 
-describe('index.html: LAGER-sektionen', () => {
-  const lp = HTML.slice(HTML.indexOf('id="lp"'), HTML.indexOf('id="lrh"'));
+describe('index.html: Lager-menyn i toolbaren', () => {
+  // Ändrat i Lager-verktyg Etapp 1: sektionen flyttades från #lp till en
+  // toppmeny. Kontrakten nedan ersätter "ligger mellan LÄGG TILL och PUNKTER".
+  const lp  = HTML.slice(HTML.indexOf('id="lp"'), HTML.indexOf('id="lrh"'));
+  const bar = HTML.slice(HTML.indexOf('id="topbar"'), HTML.indexOf('id="app-body"'));
+  const pop = HTML.slice(HTML.indexOf('id="mnu-lager"'), HTML.indexOf('id="active-layer-chip"'));
 
-  it('ligger mellan LÄGG TILL och PUNKTER', () => {
-    const i = k => lp.indexOf(k);
-    expect(i('LÄGG TILL PUNKT')).toBeGreaterThan(-1);
-    expect(i('LÄGG TILL PUNKT')).toBeLessThan(i('>LAGER<'));
-    expect(i('>LAGER<')).toBeLessThan(i('id="pth"'));
+  it('Lager ligger efter Rapport i toolbaren', () => {
+    expect(bar.indexOf('id="mnu-rapport-btn"')).toBeGreaterThan(-1);
+    expect(bar.indexOf('id="mnu-lager-btn"')).toBeGreaterThan(bar.indexOf('id="mnu-rapport-btn"'));
+    expect(HTML).toMatch(/id="mnu-lager-btn"[^>]*aria-controls="mnu-lager"/);
   });
 
-  it('har knapp för nytt lager, listbehållare och raden om aktivt lager', () => {
-    expect(lp).toContain('id="btn-new-layer"');
-    expect(lp).toContain('id="layer-list"');
-    expect(lp).toContain('id="active-layer-name"');
-    expect(lp).toContain('Ritas i aktivt lager:');
+  it('menyn har nål, stängknapp, listan och båda knapparna', () => {
+    expect(pop).toContain('id="mnu-lager-pin"');
+    expect(pop).toContain('id="mnu-lager-close"');
+    expect(pop).toContain('id="layer-list"');
+    expect(pop).toContain('id="btn-new-layer"');
+    expect(pop).toContain('+ Nytt visuellt lager');
+    expect(pop).toContain('id="btn-import-layer"');
+    expect(pop).toContain('Importera till lager…');
   });
 
-  it('ritknapparna flyttades hit med sina id:n i behåll', () => {
-    const lager = lp.slice(lp.indexOf('>LAGER<'));
-    expect(lager).toContain('id="btn-visual-point"');
-    expect(lager).toContain('id="btn-visual-line"');
-    // Exakt en gång i hela filen – buildTools() slår upp dem på id.
+  it('etiketten för aktivt lager står direkt efter menyn, utanför popupen', () => {
+    const efter = bar.slice(bar.indexOf('id="mnu-lager"'));
+    expect(efter).toContain('id="active-layer-chip"');
+    expect(efter).toContain('id="active-layer-name"');
+    expect(pop).not.toContain('id="active-layer-name"');
+  });
+
+  it('id:na finns exakt en gång och LAGER är borta ur vänsterpanelen', () => {
+    for (const id of ['layer-list', 'btn-new-layer', 'active-layer-name', 'lager-fi']) {
+      expect((HTML.match(new RegExp(`id="${id}"`, 'g')) || []).length, id).toBe(1);
+    }
+    const utan = lp.replace(/<!--[\s\S]*?-->/g, '');
+    expect(utan).not.toContain('id="layer-list"');
+    expect(utan).not.toContain('>LAGER<');
+  });
+
+  it('ritknapparna står kvar i vänsterpanelen tills verktygsraden finns (etapp 2)', () => {
     for (const id of ['btn-visual-point', 'btn-visual-line']) {
       expect((HTML.match(new RegExp(`id="${id}"`, 'g')) || []).length).toBe(1);
       expect(readFileSync(join(root, 'src/ui/toolbar.js'), 'utf8')).toContain(id);
@@ -115,16 +137,23 @@ describe('rendering', () => {
     expect(calcRow('obs').querySelector('.lyr-inc').textContent).toBe('✓');
   });
 
-  it('VISUELLA-rubriken säger att lagren inte ingår i simuleringen', () => {
-    expect($('layer-list').textContent).toContain('INGÅR EJ I SIMULERING');
+  // Rubriken ändrad i Lager-verktyg Etapp 1 till uppdragets formulering.
+  it('VISUELLA-rubriken säger att lagren inte ingår i beräkningen', () => {
+    expect($('layer-list').textContent).toContain('VISUELLA · INGÅR EJ I BERÄKNING');
   });
 
+  // Ändrat i Lager-verktyg Etapp 1: etiketten säger "inget aktivt lager" i
+  // stället för att förutsäga lagret "Handritat" (som nu står i title).
   it('tom lista säger att det inte finns några lager', () => {
     expect($('layer-list').querySelector('.lyr-empty')).not.toBeNull();
-    expect($('active-layer-name').textContent).toContain('Handritat');
+    expect($('active-layer-name').textContent).toBe('inget aktivt lager');
+    expect($('active-layer-chip').title).toContain('Handritat');
+    expect($('active-layer-chip').classList.contains('tbar-chip-none')).toBe(true);
+    expect($('active-layer-chip').getAttribute('aria-label')).toBe('Inget aktivt lager');
   });
 
-  it('varje lager får färgruta, namn och antal punkter/linjer', () => {
+  // Ändrat i Lager-verktyg Etapp 1: antalet visar punkter · linjer · ytor.
+  it('varje lager får färgruta, namn och antal punkter/linjer/ytor', () => {
     const a = addVisualLayer({ name: 'Bottenplatta', color: '#4dd0e1' });
     const p1 = addVisualPt({ E: 0, N: 0, layerId: a });
     const p2 = addVisualPt({ E: 10, N: 0, layerId: a });
@@ -134,18 +163,36 @@ describe('rendering', () => {
     expect(rows()).toHaveLength(1);
     const r = rows()[0];
     expect(r.textContent).toContain('Bottenplatta');
-    expect(r.textContent).toContain('2 p · 1 l');
+    expect(r.querySelector('.lyr-count').textContent).toBe('2 · 1 · 0');
+    expect(r.querySelector('.lyr-count').title).toBe('2 punkter · 1 linje · 0 ytor');
     expect(r.querySelector('.lyr-swatch').style.background).toBeTruthy();
   });
 
-  it('aktivt lager markeras och namnges under listan', () => {
-    const a = addVisualLayer({ name: 'A' });
+  it('hörn räknas inte som punkter', () => {
+    const a = addVisualLayer({ name: 'Kontur' });
+    const p1 = addVisualPt({ E: 0, N: 0, layerId: a, role: 'vertex' });
+    const p2 = addVisualPt({ E: 10, N: 0, layerId: a, role: 'vertex' });
+    addVisualPt({ E: 5, N: 5, layerId: a });
+    addVisualLine({ from: makeEndpoint('visual', p1), to: makeEndpoint('visual', p2), layerId: a });
+    renderLayerPanel();
+    expect(rows()[0].querySelector('.lyr-count').textContent).toBe('1 · 1 · 0');
+  });
+
+  // Ändrat i Lager-verktyg Etapp 1: aktivt lager visas i etiketten i
+  // toppraden ("aktivt · namn") i stället för i en rad under listan.
+  it('aktivt lager markeras och visas i etiketten med sin färg', () => {
+    const a = addVisualLayer({ name: 'A', color: '#4dd0e1' });
     const b = addVisualLayer({ name: 'B' });
     renderLayerPanel();
     expect(rows()[0].classList.contains('lyr-act')).toBe(true);   // A är aktivt
     expect(rows()[1].classList.contains('lyr-act')).toBe(false);
-    expect($('active-layer-name').textContent).toBe('A');
-    void b;
+    expect($('active-layer-name').textContent).toBe('aktivt · A');
+    expect($('active-layer-chip').classList.contains('tbar-chip-none')).toBe(false);
+    expect($('active-layer-chip').getAttribute('aria-label')).toBe('Aktivt lager: A');
+    expect($('active-layer-swatch').style.background).toMatch(/4dd0e1|77, 208, 225/i);
+    rows()[1].click();
+    expect($('active-layer-name').textContent).toBe('aktivt · B');
+    void a;
   });
 
   it('dolt lager visas nedtonat', () => {
@@ -252,12 +299,27 @@ describe('radinteraktion', () => {
 describe('radmenyn', () => {
   const openMenu = i => { rows()[i].querySelector('[data-menu]').click(); return document.querySelector('.lyr-pop'); };
 
-  it('har alla fem valen', () => {
+  // Ändrat i Lager-verktyg Etapp 1: valet "Namn på punkter" (labels) tillkom.
+  it('har alla sex valen', () => {
     addVisualLayer({ name: 'A' });
     renderLayerPanel();
     const m = openMenu(0);
     expect([...m.querySelectorAll('[data-act]')].map(b => b.dataset.act))
-      .toEqual(['rename', 'color', 'active', 'zoom', 'delete']);
+      .toEqual(['rename', 'color', 'labels', 'active', 'zoom', 'delete']);
+  });
+
+  it('Namn på punkter slår av och på lagrets labels, går att ångra', () => {
+    const a = addVisualLayer({ name: 'A' });
+    renderLayerPanel();
+    const item = openMenu(0).querySelector('[data-act="labels"]');
+    expect(item.getAttribute('aria-checked')).toBe('true');
+    item.click();
+    expect(findVisualLayer(a).labels).toBe(false);
+    expect(document.querySelector('.lyr-pop')).toBeNull();
+    expect(openMenu(0).querySelector('[data-act="labels"]').getAttribute('aria-checked')).toBe('false');
+    closeLayerMenu();
+    undo();
+    expect(findVisualLayer(a).labels).toBe(true);
   });
 
   it('Gör aktivt byter aktivt lager och stänger menyn', () => {

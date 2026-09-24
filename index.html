@@ -60,12 +60,14 @@
             <label class="tg"><input type="checkbox" id="tgc" checked> Mätningar</label>
             <label class="tg"><input type="checkbox" id="tga" checked> Riktningar (gon)</label>
             <label class="tg"><input type="checkbox" id="tgd" checked> Avstånd</label>
-            <label class="tg"><input type="checkbox" id="tgl" checked> Etiketter</label>
+            <!-- Gäller nätets punkter. De visuella lagrens punktnamn styrs per
+                 lager i Lager-menyn (labels / vertexLabels). -->
+            <label class="tg"><input type="checkbox" id="tgl" checked> Etiketter (nätpunkter)</label>
             <label class="tg"><input type="checkbox" id="tge" checked> Felellipser</label>
             <label class="tg"><input type="checkbox" id="tgs"> Föreslagna mätningar</label>
             <label class="tg"><input type="checkbox" id="tgb"> Blockerade förslag</label>
             <!-- Kryssrutan #tgv ("Visuella objekt") låg här. Borttagen i Etapp 1:
-                 synligheten styrs numera per visuellt lager i lagerpanelen. -->
+                 synligheten styrs numera per visuellt lager i Lager-menyn. -->
           </div>
           <div>
             <div class="tbar-grp">PUNKTTYPER</div>
@@ -119,6 +121,36 @@
         <button type="button" role="menuitem" class="tbar-item" data-act="meas-scheme">Mätschema (.txt)</button>
       </div>
     </div>
+
+    <!-- ── LAGER ─────────────────────────────────────────────────────────── -->
+    <!-- Lager-verktyg Etapp 1: innehållet kommer från vänsterpanelens borttagna
+         LAGER-sektion. Raderna i #layer-list renderas av ui/layer-panel.js.
+         Menyn kan låsas öppen med nålen (ui/topbar.js); en låst meny stängs
+         bara med nålen eller ×. role="dialog" eftersom raderna har flera
+         kontroller var, inte en menypost. -->
+    <div class="tbar-menu">
+      <button type="button" class="tbar-btn" id="mnu-lager-btn"
+              aria-haspopup="dialog" aria-expanded="false" aria-controls="mnu-lager">Lager <span aria-hidden="true">▾</span></button>
+      <div class="tbar-pop tbar-pop-lager" id="mnu-lager" role="dialog" aria-label="Lager" hidden>
+        <div class="tbar-pop-head">
+          <span class="tbar-pop-title">LAGER</span>
+          <button type="button" class="tbar-pin" id="mnu-lager-pin" aria-pressed="false"
+                  title="Lås menyn öppen" aria-label="Lås menyn öppen">📌</button>
+          <button type="button" class="tbar-close" id="mnu-lager-close"
+                  title="Stäng" aria-label="Stäng Lager-menyn">×</button>
+        </div>
+        <div id="layer-list"></div>
+        <div class="tbar-sep" role="separator"></div>
+        <button type="button" class="tbar-item" id="btn-new-layer">+ Nytt visuellt lager</button>
+        <button type="button" class="tbar-item" id="btn-import-layer">Importera till lager… <span class="tbar-key">.geo / .dxf</span></button>
+      </div>
+    </div>
+    <!-- Aktivt lager, synligt även när menyn är stängd. Klick öppnar menyn. -->
+    <button type="button" class="tbar-chip" id="active-layer-chip"
+            aria-controls="mnu-lager" title="Aktivt visuellt lager – nya visuella objekt ritas här. Klicka för Lager-menyn.">
+      <span class="tbar-chip-swatch" id="active-layer-swatch" aria-hidden="true"></span>
+      <span id="active-layer-name">inget aktivt lager</span>
+    </button>
   </nav>
 
   <div class="tbar-spacer"></div>
@@ -130,6 +162,7 @@
   <input type="file" id="dxf-fi"  accept=".dxf"            style="display:none">
   <input type="file" id="xl-fi"   accept=".xlsx,.xls,.csv" style="display:none">
   <input type="file" id="load-fi" accept=".json"           style="display:none">
+  <input type="file" id="lager-fi" accept=".geo,.dxf"      style="display:none">
 </div>
 
 <div id="app-body">
@@ -164,16 +197,14 @@
   </div>
   <div class="dv"></div>
 
-  <!-- LAGER (Etapp 5) – raderna renderas av ui/layer-panel.js. Ritknapparna
-       och raden om aktivt lager är statiska, så att buildTools() alltid hittar
-       sina id:n även mellan omritningar av listan. -->
+  <!-- LAGER-sektionen låg här. Flyttad till Lager-menyn i toolbaren
+       (Lager-verktyg Etapp 1) med id:n layer-list, btn-new-layer och
+       active-layer-name i behåll. Ritknapparna nedan står kvar tillfälligt och
+       flyttas till verktygsraden på kartan i etapp 2. -->
   <div class="sec">
-    <div class="sl">LAGER</div>
-    <button class="tb" id="btn-new-layer" style="--c:#cfd8dc;">+ Nytt visuellt lager</button>
-    <div id="layer-list"></div>
-    <div class="lyr-active">Ritas i aktivt lager: <span id="active-layer-name" class="val-value">–</span></div>
-    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">○ Visuell punkt</button>
-    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Visuella objekt ingår inte i simuleringen">⤺ Visuell linje</button>
+    <div class="sl">RITA VISUELLT</div>
+    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Ritas i aktivt lager · ingår inte i simuleringen">○ Visuell punkt</button>
+    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Ritas i aktivt lager · ingår inte i simuleringen">⤺ Visuell linje</button>
   </div>
   <!-- Sektionen VISA (kartinnehåll + punkttyper) låg här. Flyttad till
        Visa-menyn i toolbaren (Etapp 4). Kryssrutornas id:n är oförändrade.

@@ -73,7 +73,7 @@ describe('lager som datamodell', () => {
     const l = addVisualLine({ from: makeEndpoint('visual', p), to: makeEndpoint('visual', q) });
     expect(findVisualPt(p).layerId).toBe(b);
     expect(findVisualLine(l).layerId).toBe(b);
-    expect(visualLayerCounts(b)).toEqual({ pts: 2, lines: 1 });
+    expect(visualLayerCounts(b)).toEqual({ pts: 2, lines: 1, areas: 0 });
   });
 
   it('explicit layerId vid import vinner över aktivt lager', () => {

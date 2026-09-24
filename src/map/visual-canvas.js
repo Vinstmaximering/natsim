@@ -2,8 +2,8 @@
 // Stilen är medvetet skild från nätpunkter och mätningar: ihåliga cirklar och
 // streckade linjer, så att visuella objekt aldrig förväxlas med mätdata.
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
-import { visualLineCoords, visualObjColor, isVisualObjVisible, visualPtLabel }
-  from '../state/visual.js';
+import { visualLineCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
+         visualPtShowsLabel } from '../state/visual.js';
 
 const DASH = [7, 5];
 
@@ -13,10 +13,13 @@ export const visualColor = (obj, state) => visualObjColor(obj, state);
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} state      - hela state (behövs för att slå upp endpoints)
- * @param {{map, ENtoLatLng, symSize:number, showLabels:boolean}} helpers
+ * @param {{map, ENtoLatLng, symSize:number}} helpers
+ *
+ * Punktnamnen styrs per lager (labels / vertexLabels), inte av Visa-menyns
+ * Etiketter – den gäller nätets punkter. Se state/visual.js.
  */
 export function drawVisualLayer(ctx, state, helpers) {
-  const { map, ENtoLatLng, symSize = 10, showLabels = true } = helpers;
+  const { map, ENtoLatLng, symSize = 10 } = helpers;
   if (!map) return;
 
   // Dolda lager ritas inte alls – synlighet per lager ersatte kryssrutan #tgv.
@@ -25,6 +28,7 @@ export function drawVisualLayer(ctx, state, helpers) {
   if (!pts.length && !lines.length) return;
 
   const sel = state.selVisualId;
+  const layerById = new Map((state.visualLayers || []).map(l => [l.id, l]));
   const xy  = (E, N) => {
     const p = map.latLngToContainerPoint(ENtoLatLng(E, N));
     return { x: p.x, y: p.y };
@@ -94,10 +98,10 @@ export function drawVisualLayer(ctx, state, helpers) {
       ctx.stroke();
     }
 
-    // Hörn i importerade linjer får ingen etikett – en polygonkontur med ett
-    // hundratal "01"/"02" över sig är oläsbar. Etiketten visar originalnamnet
-    // ur importfilen när det finns, annars det interna id:t.
-    if (showLabels && p.role !== 'vertex') {
+    // Fria punkter följer lagrets labels, hörn lagrets vertexLabels (förval
+    // av – en polygonkontur med ett hundratal "01"/"02" över sig är oläsbar).
+    // Etiketten visar originalnamnet ur importfilen när det finns, annars id:t.
+    if (visualPtShowsLabel(p, layerById.get(p.layerId))) {
       const label = visualPtLabel(p);
       ctx.font = '10px monospace';
       ctx.lineWidth   = 3;

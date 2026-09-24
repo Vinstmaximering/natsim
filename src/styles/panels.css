@@ -52,6 +52,40 @@
 .tbar-num  { font-size:11px;width:34px;text-align:right;flex-shrink:0; }
 .tbar-pop-wide .tg { font-size:12px; }
 
+/* ── Lager-menyn (Lager-verktyg Etapp 1) ── */
+.tbar-pop-lager { min-width:360px;max-width:min(440px,92vw);padding:0 0 5px; }
+.tbar-pop-lager #layer-list { padding:0 10px;max-height:min(58vh,520px);overflow-y:auto; }
+.tbar-pop-head {
+  display:flex;align-items:center;gap:4px;padding:5px 6px 5px 12px;
+  border-bottom:1px solid var(--border-default);
+}
+.tbar-pop-title { flex:1;font-size:10px;color:var(--accent);letter-spacing:1.5px; }
+.tbar-pin, .tbar-close {
+  background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;
+  color:var(--text-secondary);font-size:13px;line-height:1;padding:3px 6px;
+}
+.tbar-pin:hover, .tbar-close:hover { background:var(--bg-hover);color:var(--text-value); }
+.tbar-pin:focus-visible,
+.tbar-close:focus-visible { outline:2px solid var(--accent);outline-offset:-2px; }
+.tbar-pin[aria-pressed="false"] { filter:grayscale(1);opacity:0.55; }
+.tbar-pin[aria-pressed="true"]  { border-color:var(--accent);background:color-mix(in srgb,var(--accent) 15%,transparent); }
+/* Låst meny: tydlig kant, så att det syns varför den inte stänger sig. Ligger
+   under en vanlig öppen meny där de överlappar – den öppnades senare. */
+.tbar-pop-pinned { z-index:69;border:2px solid var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent),var(--shadow-modal); }
+
+/* Etiketten för aktivt lager, direkt till höger om Lager-knappen. */
+.tbar-chip {
+  display:flex;align-items:center;gap:5px;margin-left:2px;padding:3px 8px;max-width:240px;
+  font-size:11px;color:var(--text-secondary);background:transparent;cursor:pointer;
+  border:1px solid var(--border-default);border-radius:10px;white-space:nowrap;
+}
+.tbar-chip:hover         { background:var(--bg-selected);color:var(--text-value); }
+.tbar-chip:focus-visible { outline:2px solid var(--accent);outline-offset:-2px; }
+.tbar-chip #active-layer-name { overflow:hidden;text-overflow:ellipsis; }
+.tbar-chip-swatch { width:9px;height:9px;border-radius:2px;flex-shrink:0;box-shadow:0 0 0 1px #00000055; }
+.tbar-chip-none   { color:var(--text-muted);font-style:italic; }
+.tbar-chip-none .tbar-chip-swatch { box-shadow:none;border:1px dashed var(--text-muted); }
+
 /* Phone: menyerna fyller bredden i stället för att hänga ut ur skärmen. */
 @media (max-width: 767px) {
   #topbar { gap:2px;padding:0 6px; }
@@ -63,6 +97,14 @@
     max-height:calc(100dvh - 50px);overflow-y:auto;
   }
   .tbar-cols { flex-direction:column;gap:6px; }
+  /* Låsning används inte på telefon: menyn skulle täcka kartan. */
+  .tbar-pin  { display:none; }
+  .tbar-pop-lager { max-width:none; }
+  /* Fem knappar och etiketten ska rymmas på 360 px: tätare knappar, och
+     etiketten visar bara lagrets färg (namnet står i title/aria-label). */
+  .tbar-btn  { padding:5px 6px; }
+  .tbar-chip { padding:4px 5px;margin-left:0; }
+  .tbar-chip #active-layer-name { display:none; }
 }
 
 /* Panel-komponenter */
@@ -83,7 +125,7 @@
 .lyr-grp     { font-size:10px;color:var(--text-muted);letter-spacing:1.5px;margin:7px 0 3px; }
 .lyr-grp-vis span { color:var(--text-muted);opacity:0.75;letter-spacing:0.5px; }
 .lyr-empty   { font-size:11px;color:var(--text-muted);padding:3px 0 5px;font-style:italic; }
-.lyr-active  { font-size:11px;color:var(--text-muted);margin:8px 0 4px; }
+.lyr-colhead { display:flex;justify-content:flex-end;font-size:9px;color:var(--text-muted);padding:0 50px 1px 0; }
 
 .lyr-row {
   display:flex;align-items:center;gap:5px;padding:3px 4px;border-radius:3px;
@@ -98,14 +140,19 @@
 .lyr-inc     { color:var(--color-success);font-size:11px;width:12px;text-align:center; }
 .lyr-swatch  { width:12px;height:12px;border-radius:2px;flex-shrink:0;box-shadow:0 0 0 1px #00000055; }
 
-.lyr-eye, .lyr-menu {
+.lyr-eye, .lyr-menu, .lyr-vlab {
   background:transparent;border:none;cursor:pointer;padding:1px 2px;
   font-size:12px;color:var(--text-secondary);line-height:1;flex-shrink:0;
 }
-.lyr-eye:hover, .lyr-menu:hover     { color:var(--text-value); }
+.lyr-eye:hover, .lyr-menu:hover, .lyr-vlab:hover { color:var(--text-value); }
 .lyr-eye:focus-visible,
-.lyr-menu:focus-visible             { outline:2px solid var(--accent);outline-offset:-2px; }
+.lyr-menu:focus-visible,
+.lyr-vlab:focus-visible             { outline:2px solid var(--accent);outline-offset:-2px; }
 .lyr-eye[aria-pressed="false"]      { opacity:0.5; }
+/* Hörnnamn: tänd = accentfärgad ram, släckt = dämpad. */
+.lyr-vlab { font-size:10px;padding:1px 3px;border:1px solid transparent;border-radius:3px; }
+.lyr-vlab[aria-pressed="false"] { color:var(--text-muted);opacity:0.6; }
+.lyr-vlab[aria-pressed="true"]  { color:var(--accent);border-color:var(--accent); }
 
 .lyr-pop {
   position:fixed;z-index:300;min-width:170px;padding:4px 0;

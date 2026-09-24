@@ -457,7 +457,9 @@ export function draw() {
   // ── Visuellt lager (under punkter) ──
   // Etapp 1: synligheten styrs per lager i lagerpanelen, inte längre av en
   // global kryssruta (#tgv). drawVisualLayer filtrerar bort dolda lager.
-  drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10, showLabels: showL });
+  // Punktnamnen i de visuella lagren styrs per lager i Lager-menyn; showL
+  // (Visa → Etiketter) gäller bara nätets punkter.
+  drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10 });
   drawVisualPreview(ctx);
 
   // ── Punkter ──

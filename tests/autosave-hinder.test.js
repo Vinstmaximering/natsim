@@ -158,9 +158,9 @@ describe('storlek', () => {
 
   it('2 000 byggnader à 10 hörn ryms med god marginal i 5 MB', () => {
     const tecken = JSON.stringify(_buildAutosaveSnapshot(osmProjekt(2000, 10))).length;
-    // Uppmätt ≈ 0,98 miljoner tecken (5 000 byggnader ≈ 2,5 miljoner). localStorage
-    // rymmer ~5 miljoner tecken
-    // per ursprung i Chrome/Edge/Firefox, delat med PM-utkastet m.m.
+    // Uppmätt ≈ 0,98 miljoner tecken (5 000 byggnader ≈ 2,5 miljoner).
+    // localStorage rymmer ~5 miljoner tecken per ursprung i Chrome/Edge/
+    // Firefox, delat med PM-utkastet m.m.
     expect(tecken).toBeLessThan(1_200_000);
     expect(tecken).toBeGreaterThan(600_000);
   });

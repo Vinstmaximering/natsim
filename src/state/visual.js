@@ -2,7 +2,7 @@
 // Helt separata från pts/meas – simuleringen läser aldrig visualPts/visualLines.
 //
 // Datamodell
-//   visualLayers: [{ id, name, color, visible, source }]
+//   visualLayers: [{ id, name, color, visible, source, labels, vertexLabels }]
 //   visualPts:    [{ id, layerId, E, N, H, color, name?, attrs?, role? }]
 //   visualLines:  [{ id, layerId, from, to, color, linkedObsId }]
 //
@@ -12,9 +12,18 @@
 // går att känna igen i lagerpanelen. Lagren är lika osynliga för simuleringen
 // som resten av det visuella lagret.
 //
+// Punktnamn styrs per lager (Lager-menyn):
+//   labels       – namn på fria punkter (role saknas eller 'point'). Förval på.
+//   vertexLabels – namn på hörn i linjer och ytor (role 'vertex'). Förval av:
+//                  en importerad kontur med hundratals "01"/"02" är oläsbar.
+// Lager sparade innan fälten fanns laddas med labels=true, vertexLabels=false,
+// vilket är precis hur de ritades förut. Den globala kryssrutan Etiketter i
+// Visa-menyn styr bara nätets punkter.
+//
 // p.name är originalnamnet ur en importfil – etiketten visar name ?? id, så att
 // ett importerat "8" inte döps om till "V17" på kartan. p.role === 'vertex'
-// markerar hörn i importerade linjer; de ritas utan etikett.
+// markerar hörn i linjer (och från etapp 3 ytor); deras etikett styrs av
+// lagrets vertexLabels.
 //
 // En linjes endpoint är {ref, id} där ref är 'visual' (en visualPt) eller
 // 'net' (en vanlig NätSim-punkt i pts). Explicit ref i stället för att slå upp
@@ -65,7 +74,8 @@ export function findVisualLayer(id, state = getState()) {
   return (state.visualLayers || []).find(l => l.id === id) || null;
 }
 
-export function addVisualLayer({ name, color = null, visible = true, source = null } = {}) {
+export function addVisualLayer({ name, color = null, visible = true, source = null,
+                                 labels = true, vertexLabels = false } = {}) {
   const { visualLayers = [], nVlyid = 1, activeVisualLayerId } = getState();
   const id = `VLY${nVlyid}`;
   const layer = {
@@ -74,6 +84,8 @@ export function addVisualLayer({ name, color = null, visible = true, source = nu
     color: normalizeHexColor(color),
     visible: visible !== false,
     source: _normalizeLayerSource(source),
+    labels: labels !== false,
+    vertexLabels: vertexLabels === true,
   };
   setState({
     visualLayers: [...visualLayers, layer],
@@ -114,6 +126,8 @@ export function updateVisualLayer(id, changes) {
   if ('color'   in changes) patch.color   = normalizeHexColor(changes.color);
   if ('visible' in changes) patch.visible = changes.visible !== false;
   if ('source'  in changes) patch.source  = _normalizeLayerSource(changes.source);
+  if ('labels'       in changes) patch.labels       = changes.labels !== false;
+  if ('vertexLabels' in changes) patch.vertexLabels = changes.vertexLabels === true;
   setState({ visualLayers: layers.map(l => l.id === id ? { ...l, ...patch } : l) });
 }
 
@@ -159,11 +173,22 @@ export function visualObjColor(obj, state = getState()) {
 // Etiketten visar originalnamnet ur importfilen när det finns.
 export const visualPtLabel = p => p?.name ?? p?.id ?? '';
 
-// Antal objekt per lager – för lagerpanelen.
+// Ska punktens namn ritas? Hörn styrs av lagrets vertexLabels, övriga punkter
+// av labels. Ett objekt utan känt lager ritas som förut: namn på fria punkter,
+// inte på hörn.
+export function visualPtShowsLabel(p, layer) {
+  if (p?.role === 'vertex') return layer?.vertexLabels === true;
+  return layer ? layer.labels !== false : true;
+}
+
+// Antal objekt per lager – för Lager-menyn. Hörn räknas inte som punkter:
+// de hör till sin linje eller yta, och en importerad kontur med 200 hörn är
+// inte 200 punkter för den som läser raden.
 export function visualLayerCounts(layerId, state = getState()) {
   return {
-    pts:   (state.visualPts   || []).filter(p => p.layerId === layerId).length,
+    pts:   (state.visualPts   || []).filter(p => p.layerId === layerId && p.role !== 'vertex').length,
     lines: (state.visualLines || []).filter(l => l.layerId === layerId).length,
+    areas: (state.visualAreas || []).filter(a => a.layerId === layerId).length,
   };
 }
 
@@ -424,6 +449,9 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
       color: normalizeHexColor(l.color),
       visible: l.visible !== false,
       source: _normalizeLayerSource(l.source),
+      // Saknas fälten (lager sparade före Lager-menyn) ritas lagret som förut.
+      labels: l.labels !== false,
+      vertexLabels: l.vertexLabels === true,
     }));
 
   const pts   = [...(visualPts   || [])];
@@ -443,6 +471,8 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
         color: null,
         visible: true,
         source: _normalizeLayerSource({ kind: 'manual' }),
+        labels: true,
+        vertexLabels: false,
       };
       layers.push(fallback);
       known.add(fallback.id);

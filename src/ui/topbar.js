@@ -10,6 +10,13 @@
 // Tangentbord: Enter/Mellanslag/Pil ned öppnar och går till första posten,
 // pilarna vandrar i menyn, Home/End hoppar till ändarna, Escape stänger och
 // lämnar tillbaka fokus till knappen, vänster/höger byter meny.
+//
+// Lager-menyn (Lager-verktyg Etapp 1) kan låsas öppen med nålen i sitt huvud.
+// En låst meny räknas inte som "den öppna menyn" (_open): den stängs inte av
+// klick utanför eller Escape, och en annan meny kan öppnas bredvid den. Den
+// stängs bara av × (som också släpper låset) eller av nålen – att släppa låset
+// gör den till en vanlig öppen meny. Låset sparas per användare i
+// localStorage, inte i projektet, och används inte på telefon (< 768 px).
 
 import { getState } from '../state/store.js';
 
@@ -17,9 +24,15 @@ const MENUS = [
   { btn: 'mnu-data-btn',    pop: 'mnu-data' },
   { btn: 'mnu-visa-btn',    pop: 'mnu-visa' },
   { btn: 'mnu-rapport-btn', pop: 'mnu-rapport' },
+  { btn: 'mnu-lager-btn',   pop: 'mnu-lager' },
 ];
 
-let _open = null;   // id:t på den öppna popupen, eller null
+const LAGER = 'mnu-lager';
+export const LAGER_PIN_KEY = 'natsim_lager_pinned';
+export const PIN_MIN_WIDTH = 768;
+
+let _open = null;     // id:t på den öppna (olåsta) popupen, eller null
+let _pinned = false;  // Lager-menyn är låst öppen
 
 const el = id => document.getElementById(id);
 const menuOf = popId => MENUS.find(m => m.pop === popId);
@@ -44,11 +57,19 @@ export function closeTopbarMenus(focusBtn = false) {
 }
 
 export function openTopbarMenu(popId, focusFirst = false) {
-  if (_open && _open !== popId) closeTopbarMenus();
   const m = menuOf(popId);
   if (!m) return;
   const pop = el(popId), btn = el(m.btn);
   if (!pop || !btn) return;
+  // Den låsta Lager-menyn ligger redan öppen vid sidan av; att "öppna" den
+  // rör inte den meny som är öppen för tillfället.
+  if (popId === LAGER && _pinned) {
+    pop.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    if (focusFirst) items(pop)[0]?.focus();
+    return;
+  }
+  if (_open && _open !== popId) closeTopbarMenus();
   // Rapport-menyns poster beror på nätets tillstånd – räknas om vid varje
   // öppning, innan items() plockar de fokuserbara (disabled räknas inte).
   if (popId === 'mnu-rapport') updateReportMenu();
@@ -59,10 +80,64 @@ export function openTopbarMenu(popId, focusFirst = false) {
 }
 
 export const isTopbarMenuOpen = () => _open;
+export const isLagerPinned = () => _pinned;
 
 function toggle(popId, focusFirst = false) {
+  // En låst meny stängs bara med nålen eller × – knappen lämnar den öppen.
+  if (popId === LAGER && _pinned) { openTopbarMenu(popId, focusFirst); return; }
   if (_open === popId) closeTopbarMenus(focusFirst);
   else openTopbarMenu(popId, focusFirst);
+}
+
+// ── Låsning av Lager-menyn ───────────────────────────────────────────────────
+
+const canPin = () => typeof window === 'undefined' || window.innerWidth >= PIN_MIN_WIDTH;
+
+function _savePin(on) {
+  try { localStorage.setItem(LAGER_PIN_KEY, on ? '1' : '0'); } catch { /* privat läge m.m. */ }
+}
+function _loadPin() {
+  try { return localStorage.getItem(LAGER_PIN_KEY) === '1'; } catch { return false; }
+}
+
+function _paintPin() {
+  const pop = el(LAGER), pin = el('mnu-lager-pin');
+  pop?.classList.toggle('tbar-pop-pinned', _pinned);
+  if (pin) {
+    pin.setAttribute('aria-pressed', String(_pinned));
+    const t = _pinned ? 'Lås upp menyn' : 'Lås menyn öppen';
+    pin.title = t;
+    pin.setAttribute('aria-label', t);
+  }
+}
+
+/** Låser (true) eller släpper (false) Lager-menyn. Låsning öppnar den. */
+export function setLagerPinned(on) {
+  on = !!on && canPin();
+  const pop = el(LAGER), btn = el('mnu-lager-btn');
+  _pinned = on;
+  _savePin(on);
+  if (on) {
+    if (_open === LAGER) _open = null;
+    if (pop) pop.hidden = false;
+    btn?.setAttribute('aria-expanded', 'true');
+  } else if (pop && !pop.hidden) {
+    // Upplåst men fortfarande öppen: den blir den vanliga öppna menyn, så en
+    // annan öppen meny får stänga för den.
+    if (_open && _open !== LAGER) closeTopbarMenus();
+    _open = LAGER;
+  }
+  _paintPin();
+}
+
+/** ×: stänger Lager-menyn och släpper låset. */
+export function closeLagerMenu(focusBtn = false) {
+  if (_pinned) { _pinned = false; _savePin(false); _paintPin(); }
+  const pop = el(LAGER), btn = el('mnu-lager-btn');
+  if (pop) pop.hidden = true;
+  btn?.setAttribute('aria-expanded', 'false');
+  if (_open === LAGER) _open = null;
+  if (focusBtn) btn?.focus();
 }
 
 // Flyttar fokus steg i listan och stannar inte – menyn är cirkulär.
@@ -166,7 +241,11 @@ export function initTopbar() {
     });
 
     p.addEventListener('keydown', e => {
-      if (e.key === 'Escape')         { e.stopPropagation(); closeTopbarMenus(true); }
+      if (e.key === 'Escape') {
+        // En låst meny står kvar; Escape går vidare till kartan.
+        if (pop === LAGER && _pinned) return;
+        e.stopPropagation(); closeTopbarMenus(true);
+      }
       else if (e.key === 'ArrowDown') { e.preventDefault(); move(p, document.activeElement, 1); }
       else if (e.key === 'ArrowUp')   { e.preventDefault(); move(p, document.activeElement, -1); }
       else if (e.key === 'Home')      { e.preventDefault(); items(p)[0]?.focus(); }
@@ -202,16 +281,38 @@ export function initTopbar() {
   // Visa-menyn stängs inte av att en kryssruta bockas – då går det inte att
   // ändra två saker i rad. Den stängs med Escape, klick utanför eller knappen.
 
-  // Klick utanför.
+  // ── Lager-menyn: nål, ×, och etiketten för aktivt lager ──
+  el('mnu-lager-pin')?.addEventListener('click', e => {
+    e.stopPropagation();
+    setLagerPinned(!_pinned);
+  });
+  el('mnu-lager-close')?.addEventListener('click', e => {
+    e.stopPropagation();
+    closeLagerMenu(true);
+  });
+  el('active-layer-chip')?.addEventListener('click', e => {
+    e.stopPropagation();
+    openTopbarMenu(LAGER);
+  });
+  if (_loadPin() && canPin()) setLagerPinned(true);
+  else _paintPin();
+
+  // Klick utanför. composedPath() i stället för target.closest(): Lager-menyns
+  // rader ritas om av sin egen klicklyssnare, så target kan vara urkopplat ur
+  // dokumentet när klicket når hit. Radens ⋮-meny ligger i body men hör till
+  // Lager-menyn.
   document.addEventListener('click', e => {
     if (!_open) return;
-    if (e.target.closest('#topbar')) return;
+    const path = e.composedPath?.() || [];
+    if (path.some(n => n.id === 'topbar' || n.classList?.contains('lyr-pop'))) return;
     closeTopbarMenus();
   });
 
-  // Escape var som helst.
+  // Escape var som helst. Är radens ⋮-meny öppen stänger Escape bara den.
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && _open) { e.stopPropagation(); closeTopbarMenus(true); }
+    if (e.key !== 'Escape' || !_open) return;
+    if (document.querySelector('.lyr-pop')) return;
+    e.stopPropagation(); closeTopbarMenus(true);
   }, true);
 
   // Ctrl+S sparar projektet – samma genväg som menyposten visar.

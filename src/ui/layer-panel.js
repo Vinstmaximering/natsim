@@ -1,4 +1,6 @@
-// Etapp 5: LAGER-sektionen i vänsterpanelen.
+// Lager-menyn i toolbaren. Var LAGER-sektionen i vänsterpanelen (Etapp 5)
+// och flyttades till toppraden i Lager-verktyg Etapp 1 med id:n i behåll;
+// menyns öppna/stäng/lås-beteende bor i ui/topbar.js, innehållet här.
 //
 // Två grupper med olika innebörd, och skillnaden är hela poängen med panelen:
 //
@@ -10,7 +12,12 @@
 //                synliga de än är. Ögat här styr både ritning och om objekten
 //                går att träffa på kartan (se state/visual.js).
 //
-// Listan ritas om ur state vid varje draw(); inget tillstånd bor i DOM:en.
+// Listan och etiketten för aktivt lager ritas om ur state vid varje draw();
+// inget tillstånd bor i DOM:en.
+//
+// Punktnamn per visuellt lager: knappen "Aa" på raden styr vertexLabels (namn
+// på hörn i linjer och ytor, förval av); ⋮-menyn styr labels (namn på fria
+// punkter, förval på). Visa-menyns Etiketter gäller bara nätets punkter.
 import { getState, setState } from '../state/store.js';
 import { draw, fitViewToENBounds } from '../map/leaflet-setup.js';
 import { saveUndo } from '../state/undo.js';
@@ -26,6 +33,7 @@ const esc = v => String(v ?? '')
 
 const el = id => document.getElementById(id);
 const eye = on => on ? '👁' : '🚫';
+const plural = (n, en, fler) => `${n} ${n === 1 ? en : fler}`;
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 
@@ -56,6 +64,9 @@ export function renderLayerPanel() {
   const layerRow = l => {
     const c = visualLayerCounts(l.id, st);
     const on = l.visible !== false;
+    const vl = l.vertexLabels === true;
+    const vlTxt = vl ? 'Dölj namn på linje- och ythörn' : 'Visa namn på linje- och ythörn';
+    const antal = `${plural(c.pts, 'punkt', 'punkter')} · ${plural(c.lines, 'linje', 'linjer')} · ${plural(c.areas, 'yta', 'ytor')}`;
     return `
       <div class="lyr-row lyr-vis${l.id === active ? ' lyr-act' : ''}" data-layer="${esc(l.id)}"
            title="Klicka för att göra lagret aktivt">
@@ -64,7 +75,9 @@ export function renderLayerPanel() {
                 >${eye(on)}</button>
         <span class="lyr-swatch" style="background:${l.color || VISUAL_DEFAULT_COLOR};"></span>
         <span class="lyr-name${on ? '' : ' lyr-off'}">${esc(l.name)}</span>
-        <span class="lyr-count">${c.pts} p · ${c.lines} l</span>
+        <span class="lyr-count" title="${antal}">${c.pts} · ${c.lines} · ${c.areas}</span>
+        <button type="button" class="lyr-vlab" data-vlabels="${esc(l.id)}"
+                aria-pressed="${vl}" title="${vlTxt}" aria-label="${vlTxt}">Aa</button>
         <button type="button" class="lyr-menu" data-menu="${esc(l.id)}"
                 aria-haspopup="true" aria-expanded="false" title="Fler val">⋮</button>
       </div>`;
@@ -74,15 +87,31 @@ export function renderLayerPanel() {
     <div class="lyr-grp">BERÄKNING</div>
     ${calcRow('net', netOn, 'Nät', `${nPts} p · ${nMeas} m`)}
     ${calcRow('obs', obsOn, 'Hinder', `${nObs} st`)}
-    <div class="lyr-grp lyr-grp-vis">VISUELLA <span>(INGÅR EJ I SIMULERING)</span></div>
+    <div class="lyr-grp lyr-grp-vis">VISUELLA <span>· INGÅR EJ I BERÄKNING</span></div>
     ${layers.length
-      ? layers.map(layerRow).join('')
+      ? `<div class="lyr-colhead" aria-hidden="true"><span>punkter · linjer · ytor</span></div>
+         ${layers.map(layerRow).join('')}`
       : '<div class="lyr-empty">Inga visuella lager än.</div>'}`;
 
+  renderActiveLayerChip(st);
+}
+
+// Etiketten till höger om Lager-knappen: aktivt lagers färg och namn.
+export function renderActiveLayerChip(st = getState()) {
   const nameEl = el('active-layer-name');
-  if (nameEl) {
-    const a = findVisualLayer(active, st);
-    nameEl.textContent = a ? a.name : `${VISUAL_LAYER_FALLBACK_NAME} (skapas vid första objektet)`;
+  const sw     = el('active-layer-swatch');
+  const chip   = el('active-layer-chip');
+  const a = findVisualLayer(st.activeVisualLayerId, st);
+  if (nameEl) nameEl.textContent = a ? `aktivt · ${a.name}` : 'inget aktivt lager';
+  // Utan aktivt lager blir rutan en streckad kontur (tbar-chip-none) – på
+  // telefon är rutan det enda som syns av etiketten.
+  if (sw) sw.style.background = a ? (a.color || VISUAL_DEFAULT_COLOR) : 'transparent';
+  if (chip) {
+    chip.classList.toggle('tbar-chip-none', !a);
+    chip.title = a
+      ? `Aktivt visuellt lager: ${a.name} – nya visuella objekt ritas här. Klicka för Lager-menyn.`
+      : `Inget aktivt lager – första visuella objektet skapar lagret "${VISUAL_LAYER_FALLBACK_NAME}". Klicka för Lager-menyn.`;
+    chip.setAttribute('aria-label', a ? `Aktivt lager: ${a.name}` : 'Inget aktivt lager');
   }
 }
 
@@ -108,12 +137,15 @@ function openLayerMenu(layerId, btn) {
   const item = (act, label) => `
     <button type="button" data-act="${act}" class="lyr-mi">${label}</button>`;
 
+  const labelsOn = l.labels !== false;
   const m = document.createElement('div');
   m.className = 'lyr-pop';
   m.innerHTML = `
     <div class="lyr-pop-head">${esc(l.name)}</div>
     ${item('rename', '✎ Byt namn')}
     ${item('color',  '🎨 Byt färg')}
+    <button type="button" data-act="labels" class="lyr-mi" role="menuitemcheckbox"
+            aria-checked="${labelsOn}">${labelsOn ? '☑' : '☐'} Namn på punkter</button>
     ${item('active', '◉ Gör aktivt')}
     ${item('zoom',   '⌖ Zooma till')}
     <div class="lyr-pop-sep"></div>
@@ -132,6 +164,11 @@ function openLayerMenu(layerId, btn) {
     const act = b.dataset.act;
     closeLayerMenu();
     if (act === 'rename' || act === 'color') openLayerSettings(layerId, act);
+    if (act === 'labels') {
+      saveUndo(`Punktnamn ${l.name}`);
+      updateVisualLayer(layerId, { labels: !labelsOn });
+      renderLayerPanel(); draw();
+    }
     if (act === 'active') { setActiveVisualLayer(layerId); renderLayerPanel(); draw(); }
     if (act === 'zoom')   zoomToLayer(layerId);
     if (act === 'delete') openLayerDelete(layerId);
@@ -309,6 +346,21 @@ export function initLayerPanel() {
       return;
     }
 
+    // Hörnnamn: en visningsinställning som sparas i projektet, så den går att
+    // ångra som andra lagerinställningar.
+    const vlBtn = e.target.closest('button[data-vlabels]');
+    if (vlBtn) {
+      e.stopPropagation();
+      const l = findVisualLayer(vlBtn.dataset.vlabels);
+      if (l) {
+        saveUndo(`Hörnnamn ${l.name}`);
+        updateVisualLayer(l.id, { vertexLabels: l.vertexLabels !== true });
+      }
+      renderLayerPanel();
+      draw();
+      return;
+    }
+
     const menuBtn = e.target.closest('button[data-menu]');
     if (menuBtn) {
       e.stopPropagation();
@@ -333,6 +385,20 @@ export function initLayerPanel() {
     renderLayerPanel();
     draw();
     openLayerSettings(id, 'rename');
+  });
+
+  // Importera till lager: samma dialoger som Data-menyn, vald efter filändelse.
+  el('btn-import-layer')?.addEventListener('click', () => el('lager-fi')?.click());
+  el('lager-fi')?.addEventListener('change', e => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (ext === 'geo')
+      f.text().then(t => import('./geo-import-modal.js').then(m => m.openGeoImport(t, f.name)));
+    else if (ext === 'dxf')
+      f.text().then(t => import('./dxf-import-modal.js').then(m => m.openDxfImport(t, f.name)));
+    else showToast('⚠ Välj en .geo- eller .dxf-fil', '#ff5050');
   });
 
   renderLayerPanel();
