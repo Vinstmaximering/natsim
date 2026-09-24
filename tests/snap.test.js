@@ -87,6 +87,30 @@ describe('mål och prioritet', () => {
     expect(hitta(2, 0).label).toBe('nätpunkt FP1');
   });
 
+  // Tillägg efter STOPP 5.
+  it('visuell punkt exakt på en nätpunkt: nätpunkten vinner och ger ref:"net"', () => {
+    const l = V.addVisualLayer({ name: 'L' });
+    V.addVisualPt({ E: 0, N: 0, layerId: l, name: 'V' });          // exakt på FP1
+    // Från alla håll, också när pekaren ligger lika nära båda.
+    for (const [E, N] of [[0, 0], [3, 4], [-5, 2]])
+      expect(hitta(E, N)).toMatchObject({ kind: 'net', ref: 'net', id: 'FP1' });
+    // Inom 1 px räknas som samma ställe – även om den visuella punkten är närmast.
+    setState({ visualPts: [{ ...getState().visualPts[0], E: 0.8, N: 0 }] });
+    expect(hitta(1, 0)).toMatchObject({ ref: 'net', id: 'FP1' });
+    // Längre isär än 1 px vinner den närmaste som vanligt.
+    setState({ visualPts: [{ ...getState().visualPts[0], E: 3, N: 0 }] });
+    expect(hitta(3, 0)).toMatchObject({ ref: 'visual' });
+  });
+
+  it('linje och yta: hörnet på en nätpunkt med en visuell punkt ovanpå fäster i nätet', () => {
+    const l = V.addVisualLayer({ name: 'L' });
+    V.addVisualPt({ E: 0, N: 0, layerId: l });
+    D.startVisualLineDraw();
+    D.handleVisualMapClick({ lat: 50, lng: 50 });
+    D.handleVisualMapClick({ lat: 0, lng: 0 });
+    expect(getState().visualLines[0].to).toEqual({ ref: 'net', id: 'FP1' });
+  });
+
   it('släckta lager snappar inte', () => {
     const { l } = scen();
     V.updateVisualLayer(l, { visible: false });
@@ -231,5 +255,15 @@ describe('ritverktygen använder snappningen', () => {
     const ctx = new Proxy({}, { get: (_, p) => p === 'fillText' ? t => texts.push(t) : () => {}, set: () => true });
     S.drawSnapMarker(ctx, { x: 0, y: 0 }, { ref: null, label: 'på linje VL1' });
     expect(texts).toEqual(['på linje VL1']);
+  });
+});
+
+describe('punktverktyget vid en nätpunkt med en visuell punkt ovanpå', () => {
+  it('skapar ingen dubblett', () => {
+    const l = V.addVisualLayer({ name: 'L' });
+    V.addVisualPt({ E: 0, N: 0, layerId: l });
+    D.startVisualPointDraw();
+    expect(D.handleVisualMapClick({ lat: 2, lng: 2 }).created).toBeNull();
+    expect(getState().visualPts).toHaveLength(1);
   });
 });

@@ -2,7 +2,9 @@
 //
 // Mål, i prioritetsordning:
 //   1. punkter – nätpunkter, fria visuella punkter och hörn i linjer och ytor
-//      (närmaste inom radien vinner, oavsett sort)
+//      (närmaste inom radien vinner, oavsett sort – men ligger en nätpunkt och
+//      en visuell punkt inom 1 px från varandra på skärmen vinner nätpunkten,
+//      så att hörnet fäster i nätet med ref:'net')
 //   2. närmaste punkt på en visuell linje eller en ytas kant
 // En punkt vinner alltid över en linje, även om linjen ligger närmare pekaren –
 // annars går det inte att träffa ett hörn där två kanter möts.
@@ -22,6 +24,9 @@ import { visualLineCoords, visualAreaCoords, isVisualObjVisible, visualPtLabel }
 export const SNAP_PX = 10;
 export const SNAP_PX_TOUCH = 22;
 export const SNAP_KEY = 'natsim_snap';
+// Nätpunkt och visuell punkt så här nära varandra på skärmen räknas som samma
+// ställe – då vinner nätpunkten.
+export const SAME_SPOT_PX = 1;
 
 const coarse = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
 export const snapRadius = () => (coarse() ? SNAP_PX_TOUCH : SNAP_PX);
@@ -68,10 +73,13 @@ export function findSnapTarget(state, px, py, project, radius) {
   let best = null, bestD = Infinity;
   const pröva = (d, t) => { if (d <= radius && d < bestD) { bestD = d; best = t; } };
 
+  const näthits = [];   // nätpunkter inom radien, med skärmläge
   for (const p of state.pts || []) {
     const c = project(p.E, p.N);
-    pröva(Math.hypot(c.x - px, c.y - py),
-      { kind: 'net', ref: 'net', id: p.id, objId: p.id, E: p.E, N: p.N, label: `nätpunkt ${p.id}` });
+    const t = { kind: 'net', ref: 'net', id: p.id, objId: p.id, E: p.E, N: p.N, label: `nätpunkt ${p.id}` };
+    const d = Math.hypot(c.x - px, c.y - py);
+    if (d <= radius) näthits.push({ c, t });
+    pröva(d, t);
   }
   for (const p of state.visualPts || []) {
     if (!isVisualObjVisible(p, state)) continue;
@@ -80,6 +88,12 @@ export function findSnapTarget(state, px, py, project, radius) {
     pröva(Math.hypot(c.x - px, c.y - py),
       { kind: hörn ? 'vertex' : 'point', ref: 'visual', id: p.id, objId: p.id, E: p.E, N: p.N,
         label: `${hörn ? 'hörn' : 'punkt'} ${visualPtLabel(p)}` });
+  }
+  // En visuell punkt på (nästan) samma ställe som en nätpunkt: nätpunkten vinner.
+  if (best && best.ref === 'visual') {
+    const b = project(best.E, best.N);
+    const nät = näthits.find(h => Math.hypot(h.c.x - b.x, h.c.y - b.y) <= SAME_SPOT_PX);
+    if (nät) return nät.t;
   }
   if (best) return best;
 

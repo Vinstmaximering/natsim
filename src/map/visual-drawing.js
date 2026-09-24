@@ -190,6 +190,10 @@ export function handleVisualMapClick(latlng) {
     // Klick på en befintlig visuell punkt skapar ingen dubblett. Snapp mot en
     // nätpunkt eller en linje lägger den nya punkten exakt där.
     if (snap?.ref === 'visual') return { created: null };
+    // Nätpunkten vinner över en visuell punkt på samma ställe (map/snap.js) –
+    // men här finns redan en visuell punkt, så ingen dubblett.
+    if (snap?.ref === 'net' && (getState().visualPts || []).some(p =>
+        _pxDist(p, snap) <= 1)) return { created: null };
     const en = _posFor(snap, latlng);
     return { created: 'point', id: addVisualPt({ E: en.E, N: en.N }) };
   }
