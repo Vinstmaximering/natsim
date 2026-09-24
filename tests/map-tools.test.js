@@ -3,7 +3,7 @@
 //   title/aria-label som anger kortkommandot
 // – valt verktyg markeras; samma verktyg igen återgår till Panorera
 // – kortkommandon P/L, och när de inte ska slå till
-// – verktyg som ännu inte finns (M, Y, S) är inaktiva och reagerar inte
+// – verktyg som ännu inte finns (M, S) är inaktiva och reagerar inte
 // – telefon: de visuella verktygen finns i den mobila raden (#mtb)
 // – hjälptexten står under verktygsraden
 
@@ -86,9 +86,10 @@ describe('markup', () => {
     }
   });
 
+  // Ändrat i Etapp 3: Yta finns nu.
   it('verktyg som kommer i senare etapper är inaktiva', () => {
-    for (const id of ['btn-select-area', 'btn-visual-area', 'btn-snap']) expect($(id).disabled).toBe(true);
-    for (const id of ['btn-visual-point', 'btn-visual-line']) expect($(id).disabled).toBe(false);
+    for (const id of ['btn-select-area', 'btn-snap']) expect($(id).disabled).toBe(true);
+    for (const id of ['btn-visual-point', 'btn-visual-line', 'btn-visual-area']) expect($(id).disabled).toBe(false);
   });
 
   it('hjälptexten står direkt under verktygsraden, i samma högerkolumn', () => {
@@ -133,7 +134,7 @@ describe('val av verktyg', () => {
   });
 
   it('inaktiva knappar gör ingenting', () => {
-    $('btn-visual-area').click();
+    $('btn-snap').click();
     $('btn-select-area').click();
     expect(getState().tool).toBe('pan');
   });
@@ -149,9 +150,17 @@ describe('kortkommandon', () => {
     expect(getState().tool).toBe('pan');
   });
 
-  it('M, Y och S gör ingenting så länge verktygen saknas', () => {
-    for (const k of ['m', 'y', 's']) key(k);
+  // Ändrat i Etapp 3: Y väljer Yta.
+  it('M och S gör ingenting så länge verktygen saknas', () => {
+    for (const k of ['m', 's']) key(k);
     expect(getState().tool).toBe('pan');
+  });
+
+  it('Y väljer Yta och startar ytläget', () => {
+    key('y');
+    expect(getState().tool).toBe('visual-area');
+    expect(getVisualDrawMode()).toBe('area');
+    expect($('btn-visual-area').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('inte med Ctrl, Alt, Cmd eller Skift', () => {
@@ -194,7 +203,8 @@ describe('kortkommandon', () => {
 
   it('Esc avbryter ritläget (befintlig hantering i interactions.js)', () => {
     const src = readFileSync(join(root, 'src/map/interactions.js'), 'utf8');
-    expect(src).toMatch(/e\.key === 'Escape'[\s\S]{0,80}isDrawingVisual\(\)[\s\S]{0,40}cancelVisualDraw\(\)/);
+    // Etapp 3: en påbörjad yta kastas först (hasPendingArea), sedan lämnas läget.
+    expect(src).toMatch(/e\.key === 'Escape'[\s\S]{0,300}isDrawingVisual\(\)[\s\S]{0,40}cancelVisualDraw\(\)/);
   });
 
   it('toolForKey och shortcutAllowed som rena hjälpare', () => {

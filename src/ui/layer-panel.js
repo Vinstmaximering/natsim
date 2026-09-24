@@ -25,7 +25,7 @@ import { showToast } from './toast.js';
 import {
   VISUAL_COLORS, VISUAL_DEFAULT_COLOR, VISUAL_LAYER_FALLBACK_NAME,
   getVisualLayers, findVisualLayer, addVisualLayer, updateVisualLayer,
-  removeVisualLayer, setActiveVisualLayer, visualLayerCounts,
+  removeVisualLayer, setActiveVisualLayer, visualLayerCounts, visualAreaCoords,
 } from '../state/visual.js';
 
 const esc = v => String(v ?? '')
@@ -145,7 +145,7 @@ function openLayerMenu(layerId, btn) {
     ${item('rename', '✎ Byt namn')}
     ${item('color',  '🎨 Byt färg')}
     <button type="button" data-act="labels" class="lyr-mi" role="menuitemcheckbox"
-            aria-checked="${labelsOn}">${labelsOn ? '☑' : '☐'} Namn på punkter</button>
+            aria-checked="${labelsOn}">${labelsOn ? '☑' : '☐'} Namn på punkter och ytor</button>
     ${item('active', '◉ Gör aktivt')}
     ${item('zoom',   '⌖ Zooma till')}
     <div class="lyr-pop-sep"></div>
@@ -182,13 +182,16 @@ function openLayerMenu(layerId, btn) {
 
 export function layerBounds(layerId, state = getState()) {
   let minE = Infinity, maxE = -Infinity, minN = Infinity, maxN = -Infinity;
-  for (const p of state.visualPts || []) {
-    if (p.layerId !== layerId) continue;
-    if (p.E < minE) minE = p.E;
-    if (p.E > maxE) maxE = p.E;
-    if (p.N < minN) minN = p.N;
-    if (p.N > maxN) maxN = p.N;
-  }
+  const ta = (E, N) => {
+    if (E < minE) minE = E;
+    if (E > maxE) maxE = E;
+    if (N < minN) minN = N;
+    if (N > maxN) maxN = N;
+  };
+  for (const p of state.visualPts || []) if (p.layerId === layerId) ta(p.E, p.N);
+  // Ytor kan ha hörn i nätpunkter, som inte ligger i lagret.
+  for (const a of state.visualAreas || [])
+    if (a.layerId === layerId) for (const [E, N] of visualAreaCoords(a, state) || []) ta(E, N);
   return Number.isFinite(minE) ? { minE, maxE, minN, maxN } : null;
 }
 
@@ -237,7 +240,7 @@ export function openLayerSettings(layerId, fokus = 'rename') {
     <div style="font-size:14px;color:${l.color || VISUAL_DEFAULT_COLOR};font-weight:bold;margin-bottom:2px;">
       Lagerinställningar</div>
     <div class="val-muted" style="font-size:11px;margin-bottom:10px;">
-      ${c.pts} punkter · ${c.lines} linjer · ingår inte i simuleringen</div>
+      ${c.pts} punkter · ${c.lines} linjer · ${c.areas} ytor · ingår inte i simuleringen</div>
     ${src}
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Namn</div>
     <input type="text" id="lyr-name" maxlength="60" value="${esc(l.name)}">
@@ -284,15 +287,15 @@ export function openLayerDelete(layerId) {
   // Hinder som är kopplade till lagrets linjer försvinner med dem – säg det
   // rakt ut, eftersom hindren påverkar siktberäkningen.
   const st = getState();
-  const lineIds = new Set((st.visualLines || []).filter(x => x.layerId === layerId).map(x => x.id));
-  const nObs = (st.visualLines || []).filter(x => lineIds.has(x.id) && x.linkedObsId).length;
+  const nObs = [...(st.visualLines || []), ...(st.visualAreas || [])]
+    .filter(x => x.layerId === layerId && x.linkedObsId).length;
 
   mi().innerHTML = `
     <div style="font-size:14px;color:var(--color-danger);font-weight:bold;margin-bottom:8px;">
       🗑 Radera lagret ${esc(l.name)}?</div>
     <div style="font-size:12px;color:var(--text-secondary);line-height:1.7;background:var(--bg-card);
                 padding:8px 10px;border-radius:3px;margin-bottom:8px;">
-      ${c.pts} punkter och ${c.lines} linjer tas bort.
+      ${c.pts} punkter, ${c.lines} linjer och ${c.areas} ytor tas bort (med sina hörn).
       ${nObs ? `<br><span class="val-warn">⚠ ${nObs} kopplade hinder försvinner också –
         siktberäkningen ändras.</span>` : ''}
       <br><span class="val-muted">Går att ångra.</span>
@@ -310,7 +313,7 @@ export function openLayerDelete(layerId) {
     closeModal();
     renderLayerPanel();
     draw();
-    showToast(`🗑 ${l.name} borttaget · ${n.pts} punkter, ${n.lines} linjer`, '#cfd8dc');
+    showToast(`🗑 ${l.name} borttaget · ${n.lines} linjer, ${n.areas} ytor`, '#cfd8dc');
   };
 }
 

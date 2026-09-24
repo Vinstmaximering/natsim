@@ -24,9 +24,12 @@ let _state = {
   nVlyid: 1,
   visualPts: [],
   visualLines: [],
+  // Lager-verktyg Etapp 3: ytor. Samma separation som punkter och linjer.
+  visualAreas: [],
   selVisualId: null,
   nVid: 1,
   nVlid: 1,
+  nVaid: 1,
 
   // ── Nätoptimering (Etapp E) ──
   // Vikterna styr optimeringens avvägning mellan sänkt punktosäkerhet och

@@ -1,10 +1,23 @@
-// Visuellt lager: punkter och linjer som ritas för hand och ENBART är visuella.
-// Helt separata från pts/meas – simuleringen läser aldrig visualPts/visualLines.
+// Visuellt lager: punkter, linjer och ytor som ritas för hand och ENBART är
+// visuella. Helt separata från pts/meas – simuleringen läser aldrig
+// visualPts/visualLines/visualAreas. Den enda vägen in i siktberäkningen är ett
+// hinder som projiceras ur en linje eller yta (linkedObsId, se nedan).
 //
 // Datamodell
 //   visualLayers: [{ id, name, color, visible, source, labels, vertexLabels }]
 //   visualPts:    [{ id, layerId, E, N, H, color, name?, attrs?, role? }]
 //   visualLines:  [{ id, layerId, from, to, color, linkedObsId }]
+//   visualAreas:  [{ id, layerId, name?, vertices: [{ref,id}, …], color,
+//                    fillOpacity, pattern, blocksSight, linkedObsId }]
+//
+// Ytor (Lager-verktyg Etapp 3) har samma hörnmodell som linjerna: varje hörn
+// är en endpoint {ref:'visual'|'net', id}. Ett hörn som ritas fritt blir en
+// visuell punkt med role:'vertex' i ytans lager; ett hörn som snappar mot en
+// nätpunkt blir {ref:'net'} och följer punkten när den flyttas eller byter
+// namn. Polygonen är sluten implicit – sista hörnet upprepas inte.
+// blocksSight=true betyder att ytan har ett kopplat polygonhinder
+// (linkedObsId) som syncLinkedObstacles() håller i synk, precis som "Använd
+// som vägg" för linjer. Area och omkrets räknas i state/area-geometry.js.
 //
 // Varje visuellt objekt tillhör exakt ett lager (Etapp 1). Lagret bär namn,
 // färg och synlighet; objektets egen färg vinner när den är satt. Lagret bär
@@ -36,6 +49,7 @@
 // syncLinkedObstacles(), så projektionen kan inte glida isär från källan.
 import { getState, setState } from './store.js';
 import { normalizeHexColor }  from '../core/colors.js';
+import { addObstacle }        from './obstacles.js';
 
 // Standardfärger när objektet saknar egen färg.
 export const VISUAL_DEFAULT_COLOR = '#cfd8dc';
@@ -135,12 +149,15 @@ export function updateVisualLayer(id, changes) {
 // mutationsfunktionerna, så att kopplade hinder städas bort på samma väg som
 // vid en manuell radering. Bekräftelsedialogen ligger i UI:t, inte här.
 export function removeVisualLayer(id) {
-  if (!findVisualLayer(id)) return { pts: 0, lines: 0 };
+  if (!findVisualLayer(id)) return { pts: 0, lines: 0, areas: 0 };
   const st = getState();
+  const areaIds = (st.visualAreas || []).filter(a => a.layerId === id).map(a => a.id);
   const lineIds = (st.visualLines || []).filter(l => l.layerId === id).map(l => l.id);
-  const ptIds   = (st.visualPts   || []).filter(p => p.layerId === id).map(p => p.id);
 
+  // Ytorna först: removeVisualArea städar sina egna hörn och sitt hinder.
+  areaIds.forEach(removeVisualArea);
   lineIds.forEach(removeVisualLine);
+  const ptIds = (getState().visualPts || []).filter(p => p.layerId === id).map(p => p.id);
   // removeVisualPt tar även med sig linjer i andra lager som hänger i punkten –
   // en linje utan ändpunkt kan ändå inte ritas.
   ptIds.forEach(removeVisualPt);
@@ -151,7 +168,7 @@ export function removeVisualLayer(id) {
     activeVisualLayerId: getState().activeVisualLayerId === id
       ? (rest[0]?.id ?? null) : getState().activeVisualLayerId,
   });
-  return { pts: ptIds.length, lines: lineIds.length };
+  return { pts: ptIds.length, lines: lineIds.length, areas: areaIds.length };
 }
 
 // Ett dolt lager ritas inte och går inte att träffa på kartan. Objekt vars
@@ -209,11 +226,11 @@ export function visualLayerPositions(layerId, state = getState()) {
   };
   for (const p of state.visualPts || [])
     if (p.layerId === layerId) add(`visual:${p.id}`, p);
-  for (const l of state.visualLines || []) {
-    if (l.layerId !== layerId) continue;
-    for (const ep of [l.from, l.to])
-      if (ep?.id) add(`${ep.ref === 'net' ? 'net' : 'visual'}:${ep.id}`, resolveEndpoint(ep, state));
-  }
+  const eps = [];
+  for (const l of state.visualLines || []) if (l.layerId === layerId) eps.push(l.from, l.to);
+  for (const a of state.visualAreas || []) if (a.layerId === layerId) eps.push(...(a.vertices || []));
+  for (const ep of eps)
+    if (ep?.id) add(`${ep.ref === 'net' ? 'net' : 'visual'}:${ep.id}`, resolveEndpoint(ep, state));
   return out;
 }
 
@@ -235,6 +252,20 @@ export function resolveEndpoint(ep, state = getState()) {
   return v ? { E: v.E, N: v.N, H: v.H ?? 0 } : null;
 }
 
+// [[E,N], …] för en yta, eller null om ett hörn saknas eller hörnen är färre
+// än tre – en yta som inte går att lösa upp ritas inte och projiceras inte.
+export function visualAreaCoords(area, state = getState()) {
+  const vs = area?.vertices || [];
+  if (vs.length < 3) return null;
+  const out = [];
+  for (const ep of vs) {
+    const p = resolveEndpoint(ep, state);
+    if (!p) return null;
+    out.push([p.E, p.N]);
+  }
+  return out;
+}
+
 // [[E,N],[E,N]] för en visuell linje, eller null om någon endpoint saknas.
 export function visualLineCoords(line, state = getState()) {
   const a = resolveEndpoint(line?.from, state);
@@ -248,8 +279,11 @@ export function visualLineCoords(line, state = getState()) {
 export const getVisualPts   = () => getState().visualPts   || [];
 export const getVisualLines = () => getState().visualLines || [];
 
+export const getVisualAreas = () => getState().visualAreas || [];
+
 export function findVisualPt(id)   { return getVisualPts().find(p => p.id === id) || null; }
 export function findVisualLine(id) { return getVisualLines().find(l => l.id === id) || null; }
+export function findVisualArea(id) { return getVisualAreas().find(a => a.id === id) || null; }
 
 // ── Mutationer ───────────────────────────────────────────────────────────────
 // Samtliga går via _commit() så att kopplade hinder alltid synkas.
@@ -298,9 +332,191 @@ export function updateVisualLine(id, changes) {
   _commit({ visualLines: visualLines.map(l => l.id === id ? { ...l, ...changes, ...c } : l) });
 }
 
+// ── Ytor ─────────────────────────────────────────────────────────────────────
+
+export const AREA_PATTERNS = ['none', 'hatch', 'grid'];
+export const AREA_DEFAULT_OPACITY = 0.25;
+
+const _opacity = v => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : AREA_DEFAULT_OPACITY;
+};
+const _pattern = v => (AREA_PATTERNS.includes(v) ? v : 'none');
+const _ep = e => (e && typeof e.id === 'string')
+  ? { ref: e.ref === 'net' ? 'net' : 'visual', id: e.id } : null;
+
+// Skapar en yta. vertices är endpoints ({ref,id}) till punkter som redan finns;
+// ritverktyget och importerna skapar hörnpunkterna först. blocksSight kopplar
+// ett hinder direkt.
+export function addVisualArea({ vertices, layerId = null, name = null, color = null,
+                                fillOpacity = AREA_DEFAULT_OPACITY, pattern = 'none',
+                                blocksSight = false }) {
+  const vs = (vertices || []).map(_ep).filter(Boolean);
+  if (vs.length < 3) return null;
+  const lid = (layerId && findVisualLayer(layerId)) ? layerId : ensureActiveVisualLayer();
+  const { visualAreas = [], nVaid = 1 } = getState();
+  const id = `VA${nVaid}`;
+  const area = {
+    id, layerId: lid, vertices: vs, color: normalizeHexColor(color),
+    fillOpacity: _opacity(fillOpacity), pattern: _pattern(pattern),
+    blocksSight: false, linkedObsId: null,
+  };
+  if (typeof name === 'string' && name.trim()) area.name = name.trim();
+  _commit({ visualAreas: [...visualAreas, area], nVaid: nVaid + 1 });
+  if (blocksSight) setVisualAreaBlocksSight(id, true);
+  return id;
+}
+
+export function updateVisualArea(id, changes) {
+  const { visualAreas = [] } = getState();
+  const c = {};
+  if ('name' in changes) c.name = typeof changes.name === 'string' ? changes.name.trim() : '';
+  if ('color' in changes) c.color = normalizeHexColor(changes.color);
+  if ('fillOpacity' in changes) c.fillOpacity = _opacity(changes.fillOpacity);
+  if ('pattern' in changes) c.pattern = _pattern(changes.pattern);
+  if ('vertices' in changes) c.vertices = (changes.vertices || []).map(_ep).filter(Boolean);
+  if ('layerId' in changes && findVisualLayer(changes.layerId)) c.layerId = changes.layerId;
+  _commit({ visualAreas: visualAreas.map(a => {
+    if (a.id !== id) return a;
+    const n = { ...a, ...c };
+    if (n.name === '') delete n.name;
+    return n;
+  }) });
+  // Hindrets etikett följer ytans namn, så att det går att känna igen i
+  // hinder-listan.
+  const area = findVisualArea(id);
+  if ('name' in c && area?.linkedObsId) {
+    const { obstacles = [] } = getState();
+    setState({ obstacles: obstacles.map(o => o.id === area.linkedObsId
+      ? { ...o, label: `Yta (${area.name || area.id})` } : o) });
+  }
+}
+
+// Slår av och på "Blockerar sikt (hinder)". På: ett polygonhinder skapas och
+// kopplas via linkedObsId – samma mekanism som "Använd som vägg" för linjer.
+// Av: hindret tas bort. Ytan kan inte blockera sikt utan sitt hinder, så
+// flaggan och kopplingen följs alltid åt.
+export function setVisualAreaBlocksSight(id, on) {
+  const area = findVisualArea(id);
+  if (!area) return false;
+  if (on) {
+    if (area.linkedObsId) return true;
+    const coords = visualAreaCoords(area);
+    if (!coords) return false;
+    const obsId = addObstacle({
+      type: 'polygon',
+      label: `Yta (${area.name || area.id})`,
+      color: visualObjColor(area),
+      source: 'visual',
+      points: coords,
+    });
+    const { visualAreas = [] } = getState();
+    _commit({ visualAreas: visualAreas.map(a => a.id === id
+      ? { ...a, blocksSight: true, linkedObsId: obsId } : a) });
+    return true;
+  }
+  const obsId = area.linkedObsId;
+  const { visualAreas = [] } = getState();
+  _commit({ visualAreas: visualAreas.map(a => a.id === id
+    ? { ...a, blocksSight: false, linkedObsId: null } : a) });
+  _removeObstaclesFor([obsId]);
+  return true;
+}
+
+// Punkter som ingen linje eller yta längre använder – för att städa bort
+// hörnpunkter när deras yta försvinner.
+function _unusedVisualPtIds(candidates, state = getState()) {
+  const used = new Set();
+  for (const l of state.visualLines || [])
+    for (const ep of [l.from, l.to]) if (ep?.ref === 'visual') used.add(ep.id);
+  for (const a of state.visualAreas || [])
+    for (const ep of a.vertices || []) if (ep?.ref === 'visual') used.add(ep.id);
+  return candidates.filter(id => !used.has(id));
+}
+
+// Tar bort en yta, dess kopplade hinder och de hörnpunkter (role 'vertex') som
+// bara den använde. Nätpunkter rörs aldrig, och inte heller en fri punkt som
+// ytan snappat mot.
+export function removeVisualArea(id) {
+  const { visualAreas = [], visualPts = [], selVisualId } = getState();
+  const area = visualAreas.find(a => a.id === id);
+  if (!area) return;
+  _commit({
+    visualAreas: visualAreas.filter(a => a.id !== id),
+    selVisualId: selVisualId === id ? null : selVisualId,
+  });
+  _removeObstaclesFor([area.linkedObsId]);
+  const hörn = (area.vertices || []).filter(ep => ep.ref === 'visual').map(ep => ep.id)
+    .filter(pid => visualPts.find(p => p.id === pid)?.role === 'vertex');
+  const bort = new Set(_unusedVisualPtIds(hörn));
+  if (bort.size) _commit({ visualPts: getState().visualPts.filter(p => !bort.has(p.id)) });
+}
+
+// Tar bort hörnet ref:id ur alla ytor. En yta som då får färre än tre hörn tas
+// bort helt (med sitt hinder) – den går inte längre att rita. Returnerar
+// { changed, removed } med ytornas id:n.
+function _dropVertexFromAreas(ref, id) {
+  const { visualAreas = [] } = getState();
+  const träff = ep => ep?.ref === ref && ep.id === id;
+  const changed = [], removed = [], dropObs = [];
+  const next = [];
+  for (const a of visualAreas) {
+    if (!(a.vertices || []).some(träff)) { next.push(a); continue; }
+    const vs = a.vertices.filter(ep => !träff(ep));
+    if (vs.length < 3) { removed.push(a.id); dropObs.push(a.linkedObsId); continue; }
+    changed.push(a.id);
+    next.push({ ...a, vertices: vs });
+  }
+  if (!changed.length && !removed.length) return { changed, removed };
+  const { selVisualId } = getState();
+  _commit({ visualAreas: next, selVisualId: removed.includes(selVisualId) ? null : selVisualId });
+  _removeObstaclesFor(dropObs);
+  return { changed, removed };
+}
+
+// ── Nätpunkter som linjer och ytor hänger i ──────────────────────────────────
+// Anropas av punktdialogen (ui/modals.js) när en nätpunkt byter namn eller tas
+// bort, så att visuella linjer och ytor följer med.
+
+/** Nätpunkten oldId heter nu newId: flytta alla {ref:'net'}-referenser. */
+export function renameNetPointInVisual(oldId, newId) {
+  const { visualLines = [], visualAreas = [] } = getState();
+  const remap = ep => (ep?.ref === 'net' && ep.id === oldId) ? { ...ep, id: newId } : ep;
+  setState({
+    visualLines: visualLines.map(l => ({ ...l, from: remap(l.from), to: remap(l.to) })),
+    visualAreas: visualAreas.map(a => ({ ...a, vertices: (a.vertices || []).map(remap) })),
+  });
+}
+
+/**
+ * Nätpunkten id tas bort. Linjer som hängde i den tas bort (de kan inte ritas
+ * med en ändpunkt), och deras hinder med dem. Ytor tappar hörnet; en yta med
+ * färre än tre hörn kvar tas bort. Returnerar vad som hände, för dialogen.
+ * Anropas INNAN punkten tas bort ur pts – kopplade hinder synkas då mot den
+ * nya formen.
+ */
+export function dropNetPointFromVisual(id) {
+  const { visualLines = [], selVisualId } = getState();
+  const anchored = ep => ep?.ref === 'net' && ep.id === id;
+  const dropped  = visualLines.filter(l => anchored(l.from) || anchored(l.to));
+  if (dropped.length) {
+    setState({
+      visualLines: visualLines.filter(l => !dropped.includes(l)),
+      selVisualId: dropped.some(l => l.id === selVisualId) ? null : selVisualId,
+    });
+    _removeObstaclesFor(dropped.map(l => l.linkedObsId));
+  }
+  const areas = _dropVertexFromAreas('net', id);
+  return { lines: dropped.length, areasChanged: areas.changed.length, areasRemoved: areas.removed.length };
+}
+
 // Tar bort en visuell punkt. Linjer som hänger på punkten tas bort med den –
-// en linje utan endpoint kan ändå inte ritas.
+// en linje utan endpoint kan ändå inte ritas. Ytor tappar hörnet (och tas bort
+// om färre än tre hörn återstår).
 export function removeVisualPt(id) {
+  // Ytorna först, medan punkten finns: annars ser syncLinkedObstacles en yta
+  // med ett oupplösligt hörn och kastar hindret i stället för att krympa det.
+  _dropVertexFromAreas('visual', id);
   const { visualPts = [], visualLines = [], selVisualId } = getState();
   const orphaned = visualLines.filter(l =>
     (l.from?.ref === 'visual' && l.from.id === id) ||
@@ -341,38 +557,42 @@ function _removeObstaclesFor(obsIds) {
 
 // ── Koppling till hinder-systemet (Etapp D4) ─────────────────────────────────
 
-// Projicerar varje kopplad visuell linje på sitt hinder. Körs efter varje
-// mutation av det visuella lagret och efter laddning från fil.
-// Kopplingar vars linje eller hinder försvunnit städas bort.
+// Projicerar varje kopplad visuell linje och yta på sitt hinder. Körs efter
+// varje mutation av det visuella lagret, när en nätpunkt flyttas och efter
+// laddning från fil. Kopplingar vars källa eller hinder försvunnit städas bort;
+// en yta vars hinder raderats i hinder-panelen blockerar inte längre sikt.
 export function syncLinkedObstacles() {
   const state  = getState();
   const lines  = state.visualLines || [];
-  const linked = lines.filter(l => l.linkedObsId);
-  if (!linked.length) return;
+  const areas  = state.visualAreas || [];
+  const linkedLines = lines.filter(l => l.linkedObsId);
+  const linkedAreas = areas.filter(a => a.linkedObsId);
+  if (!linkedLines.length && !linkedAreas.length) return;
 
   const obstacles = state.obstacles || [];
   const obsById   = new Map(obstacles.map(o => [o.id, o]));
 
-  const dropObs   = new Set();   // hinder vars källinje inte längre går att lösa upp
-  const clearLink = new Set();   // linjer vars hinder inte finns kvar
+  const dropObs   = new Set();   // hinder vars källa inte längre går att lösa upp
+  const clearLine = new Set();   // linjer vars hinder inte finns kvar
+  const clearArea = new Set();   // ytor vars hinder inte finns kvar
   const newPoints = new Map();   // obsId → uppdaterade koordinater
 
-  for (const l of linked) {
-    // Hindret raderat i hinder-panelen: linjen styr inget längre.
-    if (!obsById.has(l.linkedObsId)) { clearLink.add(l.id); continue; }
+  const samePoints = (p, coords) => Array.isArray(p) && p.length === coords.length
+    && coords.every((c, i) => p[i]?.[0] === c[0] && p[i]?.[1] === c[1]);
 
-    const coords = visualLineCoords(l, state);
-    // Källan går inte att lösa upp (en endpoint är borta). Projektionen har
-    // inget att spegla och tas bort i stället för att bli en spökvägg.
-    if (!coords) { dropObs.add(l.linkedObsId); clearLink.add(l.id); continue; }
+  const project = (src, coords, clear) => {
+    // Hindret raderat i hinder-panelen: källan styr inget längre.
+    if (!obsById.has(src.linkedObsId)) { clear.add(src.id); return; }
+    // Källan går inte att lösa upp (ett hörn är borta). Projektionen har
+    // inget att spegla och tas bort i stället för att bli ett spökhinder.
+    if (!coords) { dropObs.add(src.linkedObsId); clear.add(src.id); return; }
+    if (!samePoints(obsById.get(src.linkedObsId).points, coords))
+      newPoints.set(src.linkedObsId, coords);
+  };
+  for (const l of linkedLines) project(l, visualLineCoords(l, state), clearLine);
+  for (const a of linkedAreas) project(a, visualAreaCoords(a, state), clearArea);
 
-    const p = obsById.get(l.linkedObsId).points;
-    const same = p?.[0]?.[0] === coords[0][0] && p?.[0]?.[1] === coords[0][1]
-              && p?.[1]?.[0] === coords[1][0] && p?.[1]?.[1] === coords[1][1];
-    if (!same) newPoints.set(l.linkedObsId, coords);
-  }
-
-  if (!dropObs.size && !clearLink.size && !newPoints.size) return;
+  if (!dropObs.size && !clearLine.size && !clearArea.size && !newPoints.size) return;
 
   const patch = {};
   if (dropObs.size || newPoints.size) {
@@ -380,8 +600,12 @@ export function syncLinkedObstacles() {
       .filter(o => !dropObs.has(o.id))
       .map(o => newPoints.has(o.id) ? { ...o, points: newPoints.get(o.id) } : o);
   }
-  if (clearLink.size) {
-    patch.visualLines = lines.map(l => clearLink.has(l.id) ? { ...l, linkedObsId: null } : l);
+  if (clearLine.size) {
+    patch.visualLines = lines.map(l => clearLine.has(l.id) ? { ...l, linkedObsId: null } : l);
+  }
+  if (clearArea.size) {
+    patch.visualAreas = areas.map(a => clearArea.has(a.id)
+      ? { ...a, linkedObsId: null, blocksSight: false } : a);
   }
   if (dropObs.has(state.selObsId)) patch.selObsId = null;
   setState(patch);
@@ -424,6 +648,31 @@ export function _sanitizeVisual(visualPts, visualLines) {
   return { visualPts: pts, visualLines: lines };
 }
 
+// Ytor ur en fil. Hörnen saneras som linjernas endpoints; en yta med färre än
+// tre giltiga hörn kastas. blocksSight följer kopplingen – en yta utan
+// linkedObsId kan inte blockera sikt, hur flaggan än står i filen.
+export function _sanitizeVisualAreas(visualAreas) {
+  return (Array.isArray(visualAreas) ? visualAreas : [])
+    .filter(a => a && typeof a.id === 'string' && Array.isArray(a.vertices))
+    .map(a => {
+      const vertices = a.vertices.map(_ep).filter(Boolean);
+      const linkedObsId = typeof a.linkedObsId === 'string' ? a.linkedObsId : null;
+      const out = {
+        id: a.id,
+        layerId: typeof a.layerId === 'string' ? a.layerId : null,
+        vertices,
+        color: normalizeHexColor(a.color),
+        fillOpacity: _opacity(a.fillOpacity ?? AREA_DEFAULT_OPACITY),
+        pattern: _pattern(a.pattern),
+        blocksSight: !!linkedObsId,
+        linkedObsId,
+      };
+      if (typeof a.name === 'string' && a.name.trim()) out.name = a.name.trim();
+      return out;
+    })
+    .filter(a => a.vertices.length >= 3);
+}
+
 // Nästa lediga id-räknare efter laddning, så att nya objekt inte krockar.
 export function _nextCounter(items, prefix) {
   const re = new RegExp(`^${prefix}(\\d+)$`);
@@ -440,7 +689,8 @@ export function _nextCounter(items, prefix) {
 // pekar på ett lager som finns. Objekt utan giltigt layerId – varje objekt i en
 // projektfil sparad före Etapp 1 – samlas i lagret "Handritat".
 // Returnerar hela uppsättningen inklusive nästa lediga lager-räknare.
-export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activeVisualLayerId) {
+export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activeVisualLayerId,
+                                     visualAreas = []) {
   const layers = (visualLayers || [])
     .filter(l => l && typeof l.id === 'string')
     .map(l => ({
@@ -456,12 +706,13 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
 
   const pts   = [...(visualPts   || [])];
   const lines = [...(visualLines || [])];
+  const areas = [...(visualAreas || [])];
   const known = new Set(layers.map(l => l.id));
   const orphan = o => !(typeof o.layerId === 'string' && known.has(o.layerId));
 
   let nVlyid = _nextCounter(layers, 'VLY');
 
-  if (pts.some(orphan) || lines.some(orphan)) {
+  if (pts.some(orphan) || lines.some(orphan) || areas.some(orphan)) {
     // Återanvänd ett befintligt "Handritat" i stället för att skapa ett till.
     let fallback = layers.find(l => l.name === VISUAL_LAYER_FALLBACK_NAME);
     if (!fallback) {
@@ -479,11 +730,12 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
     }
     for (const o of pts)   if (orphan(o)) o.layerId = fallback.id;
     for (const o of lines) if (orphan(o)) o.layerId = fallback.id;
+    for (const o of areas) if (orphan(o)) o.layerId = fallback.id;
   }
 
   const active = (typeof activeVisualLayerId === 'string' && known.has(activeVisualLayerId))
     ? activeVisualLayerId : (layers[0]?.id ?? null);
 
-  return { visualPts: pts, visualLines: lines, visualLayers: layers,
+  return { visualPts: pts, visualLines: lines, visualAreas: areas, visualLayers: layers,
            activeVisualLayerId: active, nVlyid };
 }

@@ -11,9 +11,11 @@ import { draw }               from '../map/leaflet-setup.js';
 import { showToast }          from './toast.js';
 import {
   VISUAL_COLORS, visualObjColor,
-  findVisualPt, findVisualLine, visualLineCoords, findVisualLayer,
+  findVisualPt, findVisualLine, findVisualArea, visualLineCoords, findVisualLayer,
   updateVisualPt, updateVisualLine, removeVisualPt, removeVisualLine,
+  removeVisualArea, setVisualAreaBlocksSight,
 } from '../state/visual.js';
+import { setState } from '../state/store.js';
 import { normalizeHexColor } from '../core/colors.js';
 
 // Roller för hinder skapade ur en visuell linje. Båda blockerar sikt likadant –
@@ -48,8 +50,50 @@ function _onMenuKey(e) {
   if (e.key === 'Escape') { e.stopPropagation(); closeVisualMenu(); }
 }
 
+// Ytor (Lager-verktyg Etapp 3): menyn pekar mot egenskapskortet, som har alla
+// inställningar; här finns bara de vanligaste valen.
+function openAreaMenu(area, clientX, clientY) {
+  const item = (label, act, danger) => `
+    <button data-act="${act}" class="lyr-mi">${danger ? `<span class="lyr-danger">${label}</span>` : label}</button>`;
+  const el = document.createElement('div');
+  el.className = 'lyr-pop visual-ctx';
+  el.innerHTML = `
+    <div class="lyr-pop-head">▱ Yta ${esc(area.name || area.id)}</div>
+    ${item('✎ Egenskaper', 'props')}
+    ${item(area.linkedObsId ? '☑ Blockerar sikt (hinder)' : '☐ Blockerar sikt (hinder)', 'block')}
+    <div class="lyr-pop-sep"></div>
+    ${item('🗑 Ta bort', 'delete', true)}`;
+  document.body.appendChild(el);
+  _menuEl = el;
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.min(clientX, window.innerWidth  - r.width  - 8) + 'px';
+  el.style.top  = Math.min(clientY, window.innerHeight - r.height - 8) + 'px';
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    closeVisualMenu();
+    if (b.dataset.act === 'props') openEditVisual(area.id);
+    if (b.dataset.act === 'block') {
+      saveUndo(`Blockerar sikt ${area.name || area.id}`);
+      setVisualAreaBlocksSight(area.id, !area.linkedObsId);
+      draw();
+    }
+    if (b.dataset.act === 'delete') {
+      const hinder = area.linkedObsId ? '\nDess hinder försvinner också – siktberäkningen ändras.' : '';
+      if (!confirm(`Ta bort ytan ${area.name || area.id}?${hinder}`)) return;
+      saveUndo(`Ta bort yta ${area.name || area.id}`);
+      removeVisualArea(area.id);
+      draw();
+    }
+  });
+  document.addEventListener('mousedown', _onDocDown, true);
+  document.addEventListener('keydown', _onMenuKey, true);
+}
+
 export function openVisualMenu(id, clientX, clientY) {
   closeVisualMenu();
+  const area = findVisualArea(id);
+  if (area) { openAreaMenu(area, clientX, clientY); return; }
   const obj = findVisual(id);
   if (!obj) return;
   const line = isLine(id);
@@ -173,6 +217,8 @@ function renderPalette() {
 }
 
 export function openEditVisual(id) {
+  // En yta redigeras i sitt egenskapskort, som visas när ytan är markerad.
+  if (findVisualArea(id)) { setState({ selVisualId: id }); draw(); return; }
   const obj = findVisual(id);
   if (!obj) return;
   _editId    = id;

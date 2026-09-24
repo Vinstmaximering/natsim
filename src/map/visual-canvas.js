@@ -2,8 +2,10 @@
 // Stilen är medvetet skild från nätpunkter och mätningar: ihåliga cirklar och
 // streckade linjer, så att visuella objekt aldrig förväxlas med mätdata.
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
-import { visualLineCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
+import { visualLineCoords, visualAreaCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
          visualPtShowsLabel } from '../state/visual.js';
+import { areaStats, polygonCentroid, formatPlanArea } from '../state/area-geometry.js';
+import { hexToRgba } from '../core/colors.js';
 
 const DASH = [7, 5];
 
@@ -25,7 +27,8 @@ export function drawVisualLayer(ctx, state, helpers) {
   // Dolda lager ritas inte alls – synlighet per lager ersatte kryssrutan #tgv.
   const pts   = (state.visualPts   || []).filter(p => isVisualObjVisible(p, state));
   const lines = (state.visualLines || []).filter(l => isVisualObjVisible(l, state));
-  if (!pts.length && !lines.length) return;
+  const areas = (state.visualAreas || []).filter(a => isVisualObjVisible(a, state));
+  if (!pts.length && !lines.length && !areas.length) return;
 
   const sel = state.selVisualId;
   const layerById = new Map((state.visualLayers || []).map(l => [l.id, l]));
@@ -37,6 +40,59 @@ export function drawVisualLayer(ctx, state, helpers) {
   const r = Math.max(3, Math.min(9, symSize * 0.45));
 
   ctx.save();
+
+  // ── Ytor (under linjer och punkter) ──
+  for (const area of areas) {
+    const coords = visualAreaCoords(area, state);
+    if (!coords) continue;
+    const px = coords.map(([E, N]) => xy(E, N));
+    const col = visualColor(area, state);
+    const isSel = area.id === sel;
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(px[0].x, px[0].y);
+      for (const p of px.slice(1)) ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+    };
+
+    path();
+    ctx.fillStyle = hexToRgba(col, area.fillOpacity ?? 0.25) || col;
+    ctx.fill();
+    if (area.pattern === 'hatch' || area.pattern === 'grid') drawPattern(ctx, px, path, col, area.pattern);
+
+    path();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = isSel ? 3 : 1.6;
+    ctx.stroke();
+    if (isSel) {
+      path();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+    }
+
+    // Namn och area i tyngdpunkten, när lagrets namn är tända. En
+    // självkorsande yta har ingen area – där står en varning i stället.
+    const layer = layerById.get(area.layerId);
+    if (layer?.labels !== false) {
+      const st = areaStats(coords);
+      const c  = polygonCentroid(coords);
+      const p  = xy(c[0], c[1]);
+      const rader = [area.name, st.selfIntersecting ? '⚠ självkorsande' : formatPlanArea(st.area)]
+        .filter(Boolean);
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      rader.forEach((t, i) => {
+        const y = p.y + (i - (rader.length - 1) / 2) * 12;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(7,13,24,0.7)';
+        ctx.strokeText(t, p.x, y);
+        ctx.fillStyle = st.selfIntersecting && i === rader.length - 1 ? '#ffb74d' : col;
+        ctx.fillText(t, p.x, y);
+      });
+    }
+  }
 
   // ── Linjer (streckade) ──
   for (const line of lines) {
@@ -115,6 +171,28 @@ export function drawVisualLayer(ctx, state, helpers) {
   ctx.restore();
 }
 
+// Mönster i ytan: snedstreck eller rutnät med 8 px mellanrum i skärmen, så
+// att det ser likadant ut på alla zoomnivåer.
+function drawPattern(ctx, px, path, col, pattern) {
+  const xs = px.map(p => p.x), ys = px.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const STEG = 8;
+  ctx.save();
+  path();
+  ctx.clip();
+  ctx.beginPath();
+  if (pattern === 'hatch') {
+    for (let k = x0 - (y1 - y0); k <= x1; k += STEG) { ctx.moveTo(k, y1); ctx.lineTo(k + (y1 - y0), y0); }
+  } else {
+    for (let x = x0; x <= x1; x += STEG) { ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+    for (let y = y0; y <= y1; y += STEG) { ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  }
+  ctx.strokeStyle = hexToRgba(col, 0.9) || col;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+}
+
 // ── Hit-test ────────────────────────────────────────────────────────────────
 
 const PT_HIT_PX   = 10;
@@ -146,6 +224,28 @@ export function hitTestVisualLine(px, py, state, map, ENtoLatLng) {
     }
     const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
     if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) <= LINE_HIT_PX) return line;
+  }
+  return null;
+}
+
+// Träff inuti ytan eller inom LINE_HIT_PX från en kant. Ytor provas sist –
+// punkter och linjer ligger ovanpå och ska gå att träffa inuti en yta.
+export function hitTestVisualArea(px, py, state, map, ENtoLatLng) {
+  const areas = (state.visualAreas || []).filter(a => isVisualObjVisible(a, state));
+  // Senast ritade ytan ligger överst.
+  for (let k = areas.length - 1; k >= 0; k--) {
+    const coords = visualAreaCoords(areas[k], state);
+    if (!coords) continue;
+    const pts = coords.map(([E, N]) => map.latLngToContainerPoint(ENtoLatLng(E, N)));
+    let inne = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y) + a.x) inne = !inne;
+      const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+      const t = l2 < 1 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / l2));
+      if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) <= LINE_HIT_PX) return areas[k];
+    }
+    if (inne) return areas[k];
   }
   return null;
 }

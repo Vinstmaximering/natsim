@@ -14,6 +14,7 @@ import {
   unitFactor, AXIS_ORDERS, AXIS_SANITY_MAX_DIST_M,
 } from '../io/dxf-import.js';
 import { showToast } from './toast.js';
+import { isClosedPolyline } from '../io/vertex-index.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -188,7 +189,21 @@ function _structure() {
       </div>
       <label class="tg"><input type="checkbox" id="dxf-usez" checked>
         <span>Använd Z-värden som H där de finns</span></label>
+      ${_nClosed() ? `
+      <div id="dxf-closed" style="margin-top:6px;padding-top:5px;border-top:1px solid var(--border-default);">
+        <div style="font-size:11px;color:var(--text-value);margin-bottom:2px;">Slutna polylinjer som (${_nClosed()} st):</div>
+        <label class="tg" style="display:inline-flex;margin-right:12px;">
+          <input type="radio" name="dxf-closed" value="lines" style="width:auto;margin:0;"> linjer</label>
+        <label class="tg" style="display:inline-flex;">
+          <input type="radio" name="dxf-closed" value="areas" style="width:auto;margin:0;"> ytor</label>
+      </div>` : ''}
     </div>`;
+}
+
+// Slutna LWPOLYLINE/POLYLINE i filen – valet visas bara när det finns sådana.
+function _nClosed() {
+  return (_parsed?.entities || []).filter(e =>
+    (e.type === 'LWPOLYLINE' || e.type === 'POLYLINE') && isClosedPolyline(e.vertices, e.closed)).length;
 }
 
 function _warnings() {
@@ -215,6 +230,10 @@ function _wire() {
   _ov.querySelectorAll('input[name="dxf-struct"]').forEach(r => {
     r.checked = r.value === _opts.layerStructure;
     r.addEventListener('change', () => { _opts.layerStructure = r.value; _sync(); });
+  });
+  _ov.querySelectorAll('input[name="dxf-closed"]').forEach(r => {
+    r.checked = r.value === _opts.closedAs;
+    r.addEventListener('change', () => { _opts.closedAs = r.value; });
   });
 
   _ov.querySelectorAll('input.dxf-lay').forEach(cb => {
@@ -316,6 +335,7 @@ function _doImport() {
   if (r.layerIds.length)     delar.push(`${r.layerIds.length} lager`);
   if (r.verticesCreated)     delar.push(`${r.verticesCreated} hörn`);
   if (r.linesCreated)        delar.push(`${r.linesCreated} linjer`);
+  if (r.areasCreated)        delar.push(`${r.areasCreated} ytor`);
   if (r.visualPts)           delar.push(`${r.visualPts} punkter`);
   showToast(delar.length ? `✓ Importerat: ${delar.join(' · ')}` : '.dxf: inget importerades',
     delar.length ? '#00ff88' : '#7090a8');

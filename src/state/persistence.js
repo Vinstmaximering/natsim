@@ -1,7 +1,8 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 3590–3613 + rad 3974 (SAVE_KEY).
 // Strukturella ändringar: läser/skriver via store istället för globaler.
 import { getState, setState } from './store.js';
-import { _sanitizeVisual, _migrateVisualLayers, _nextCounter, syncLinkedObstacles } from './visual.js';
+import { _sanitizeVisual, _sanitizeVisualAreas, _migrateVisualLayers, _nextCounter,
+         syncLinkedObstacles } from './visual.js';
 import { _sanitizeObstacleColors, _syncObstacleCounter } from './obstacles.js';
 import { showToast } from '../ui/toast.js';
 
@@ -14,10 +15,11 @@ let _asTimer = null;
 //   visualPts/visualLines/visualLayers (Etapp 1): saknas → tomt visuellt lager
 //   obstacles (Lager-verktyg): saknas → inga hinder, vilket var vad en
 //     omladdning alltid gav innan hindren togs med
+//   visualAreas (Lager-verktyg Etapp 3): saknas → inga ytor
 export function _buildAutosaveSnapshot(state = getState()) {
   const { pts, meas, centerErr, nMid, obstacles = [],
-          visualPts = [], visualLines = [], visualLayers = [],
-          activeVisualLayerId = null, nVid, nVlid, nVlyid } = state;
+          visualPts = [], visualLines = [], visualAreas = [], visualLayers = [],
+          activeVisualLayerId = null, nVid, nVlid, nVaid, nVlyid } = state;
   return {
     ver: 2,
     savedAt: new Date().toISOString(),
@@ -31,10 +33,12 @@ export function _buildAutosaveSnapshot(state = getState()) {
     obstacles:           JSON.parse(JSON.stringify(obstacles)),
     visualPts:           JSON.parse(JSON.stringify(visualPts)),
     visualLines:         JSON.parse(JSON.stringify(visualLines)),
+    visualAreas:         JSON.parse(JSON.stringify(visualAreas)),
     visualLayers:        JSON.parse(JSON.stringify(visualLayers)),
     activeVisualLayerId,
     nVid:   nVid   ?? 1,
     nVlid:  nVlid  ?? 1,
+    nVaid:  nVaid  ?? 1,
     nVlyid: nVlyid ?? 1,
   };
 }
@@ -115,9 +119,10 @@ export function loadAutosave() {
     // Samma migrering som vid laddning av projektfil: objekt utan layerId
     // samlas i "Handritat".
     const sanitized = _sanitizeVisual(s.visualPts, s.visualLines);
-    const { visualPts, visualLines, visualLayers, activeVisualLayerId, nVlyid } =
+    const { visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId, nVlyid } =
       _migrateVisualLayers(sanitized.visualPts, sanitized.visualLines,
-                           s.visualLayers, s.activeVisualLayerId);
+                           s.visualLayers, s.activeVisualLayerId,
+                           _sanitizeVisualAreas(s.visualAreas));
     // Autosparningar från före hindren saknar fältet → inga hinder, som förut.
     const obstacles = _sanitizeObstacles(s.obstacles);
     _syncObstacleCounter(obstacles);
@@ -127,9 +132,10 @@ export function loadAutosave() {
       obstacles,
       centerErr: s.centerErr != null ? s.centerErr : 1.0,
       nMid:      s.nMid      ?? 1,
-      visualPts, visualLines, visualLayers, activeVisualLayerId,
+      visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId,
       nVid:   Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
       nVlid:  Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
+      nVaid:  Math.max(s.nVaid ?? 1, _nextCounter(visualAreas, 'VA')),
       nVlyid: Math.max(s.nVlyid ?? 1, nVlyid),
     });
     syncLinkedObstacles();

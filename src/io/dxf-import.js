@@ -10,9 +10,9 @@
 // (ui/dxf-import-modal.js, all DOM). Hela importen är EN ångra-åtgärd.
 import { getState } from '../state/store.js';
 import { saveUndo } from '../state/undo.js';
-import { addVisualLayer, addVisualPt, addVisualLine, makeEndpoint } from '../state/visual.js';
+import { addVisualLayer, addVisualPt, addVisualLine, addVisualArea, makeEndpoint } from '../state/visual.js';
 import { VISUAL_COLORS } from '../state/visual.js';
-import { VertexIndex } from './vertex-index.js';
+import { VertexIndex, closedRing } from './vertex-index.js';
 import { DXF_UNITS, DXF_DEFAULT_UNIT, dxfBounds } from './parse-dxf.js';
 
 // Rimlighetsgräns för georefereringen: ligger ritningens mittpunkt längre än
@@ -99,6 +99,9 @@ export function defaultDxfImportOptions(parsed, filename) {
     useZ: true,
     layerStructure: 'per',                 // 'per' | 'single'
     layerName: stripExtension(filename),   // används vid 'single'
+    // Lager-verktyg Etapp 3: slutna LWPOLYLINE/POLYLINE som linjer eller ytor.
+    // Förval linjer = som förut.
+    closedAs: 'lines',                     // 'lines' | 'areas'
     // Förvalt: alla lager som innehåller något vi kan rita.
     selectedLayers: (parsed?.layers || []).filter(l => l.supported).map(l => l.name),
     filename,
@@ -123,7 +126,7 @@ export function assignLayerColors(names) {
  */
 export function applyDxfImport(parsed, opts) {
   const result = {
-    layerIds: [], visualPts: 0, verticesCreated: 0, linesCreated: 0,
+    layerIds: [], visualPts: 0, verticesCreated: 0, linesCreated: 0, areasCreated: 0,
     bounds: null, skippedLayers: 0,
   };
 
@@ -224,6 +227,13 @@ export function applyDxfImport(parsed, opts) {
     const vs = e.vertices || [];
     if (vs.length < 2) continue;
     const ids = vs.map(v => hörn(lid, v, 'vertex'));
+    // Sluten polylinje (grupp 70 bit 1, eller första hörnet upprepat sist)
+    // som yta, om det valts.
+    const ring = opts.closedAs === 'areas' ? closedRing(ids, e.closed) : null;
+    if (ring && addVisualArea({ vertices: ring.map(id => makeEndpoint('visual', id)), layerId: lid })) {
+      result.areasCreated++;
+      continue;
+    }
     for (let i = 0; i < ids.length - 1; i++) segment(lid, ids[i], ids[i + 1]);
     if (e.closed && ids.length > 2) segment(lid, ids[ids.length - 1], ids[0]);
   }

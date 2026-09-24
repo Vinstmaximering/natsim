@@ -276,8 +276,8 @@
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16 L7.5 6 L12.5 12.5 L17 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><g fill="currentColor"><rect x="1.5" y="14.5" width="3" height="3"/><rect x="6" y="4.5" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/><rect x="15.5" y="2.5" width="3" height="3"/></g></svg>
         </button>
         <button type="button" class="mt-btn" id="btn-visual-area" data-tool="visual-area" data-key="Y"
-                aria-pressed="false" disabled
-                title="Yta (Y) – kommer i etapp 3" aria-label="Yta (Y)">
+                aria-pressed="false"
+                title="Yta (Y) – klicka hörn i aktivt lager, dubbelklick sluter; ingår inte i beräkningen" aria-label="Yta (Y)">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5 L5.5 4 L14.5 2.5 L17.5 11.5 L10 17.5 Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         </button>
         <span class="mt-sep" aria-hidden="true"></span>
@@ -328,6 +328,10 @@
   </div>
 
   <div class="zb"   id="zb">z16</div>
+
+  <!-- Egenskapskort för markerad yta (Lager-verktyg Etapp 3). Innehållet
+       byggs av ui/area-card.js; kortet visas när en yta är markerad. -->
+  <div class="area-card" id="area-card" role="dialog" aria-label="Yta" hidden></div>
   <div class="mfb"  id="mfb" style="display:none"></div>
 
   <!-- D4: Onboarding-overlay -->

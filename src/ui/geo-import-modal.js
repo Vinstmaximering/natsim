@@ -14,6 +14,7 @@ import { VISUAL_COLORS } from '../state/visual.js';
 import { parseGeo } from '../io/parse-geo.js';
 import { applyGeoImport, defaultGeoImportOptions, stripExtension } from '../io/geo-import.js';
 import { showToast } from './toast.js';
+import { isClosedPolyline } from '../io/vertex-index.js';
 
 const PREVIEW_ROWS = 6;
 
@@ -69,7 +70,8 @@ function _body(parsed, filename, activeCRS) {
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">${esc(filename)}</div>
     ${_summary(parsed, activeCRS)}
     ${nPts ? _pointsSection(filename) : _emptyNote('Filen innehåller inga punkter i den yttre punktlistan.')}
-    ${nLines ? _linesSection(nLines) : _emptyNote('Filen innehåller inga linjer.')}
+    ${nLines ? _linesSection(nLines, parsed.lines.filter(l => isClosedPolyline(l.vertices, l.closed)).length)
+             : _emptyNote('Filen innehåller inga linjer.')}
     ${_preview(parsed)}
     ${_warnings(parsed)}
     <div class="mbs">
@@ -167,7 +169,7 @@ function _pointsSection(filename) {
     </div>`;
 }
 
-function _linesSection(nLines) {
+function _linesSection(nLines, nClosed = 0) {
   const opt = (v, t, d) => `
     <label class="tg" style="align-items:flex-start;">
       <input type="radio" name="gi-lines" value="${v}" style="width:auto;margin:2px 0 0;">
@@ -179,6 +181,15 @@ function _linesSection(nLines) {
       ${opt('visual', '⤺ Visuella linjer', 'Hörnen blir visuella punkter, varje segment en visuell linje.')}
       ${opt('obstacle', '━ Hinder (väggar, blockerar sikt)', 'Samma linjer, men kopplade som väggar som skymmer sikten.')}
       ${opt('skip', '✕ Hoppa över', 'Linjerna importeras inte.')}
+      ${nClosed ? `
+      <div id="gi-closed" style="margin-top:6px;padding-top:5px;border-top:1px solid var(--border-default);">
+        <div style="font-size:11px;color:var(--text-value);margin-bottom:2px;">Slutna linjer som (${nClosed} st):</div>
+        <label class="tg" style="display:inline-flex;margin-right:12px;">
+          <input type="radio" name="gi-closed" value="lines" style="width:auto;margin:0;"> linjer</label>
+        <label class="tg" style="display:inline-flex;">
+          <input type="radio" name="gi-closed" value="areas" style="width:auto;margin:0;"> ytor</label>
+        <div style="font-size:10px;color:var(--text-muted);">Ytor får area och omkrets; med Hinder blir de byggnadshinder.</div>
+      </div>` : ''}
       <div style="font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
         Linjernas hörn har egna koordinater i filen och är oberoende av punktvalet ovan.
       </div>
@@ -248,6 +259,10 @@ function _wire() {
   _ov.querySelectorAll('input[name="gi-lines"]').forEach(r => {
     r.checked = r.value === _opts.lines;
     r.addEventListener('change', () => { _opts.lines = r.value; _sync(); });
+  });
+  _ov.querySelectorAll('input[name="gi-closed"]').forEach(r => {
+    r.checked = r.value === _opts.closedAs;
+    r.addEventListener('change', () => { _opts.closedAs = r.value; _sync(); });
   });
 
   $('gi-layer-name')?.addEventListener('input', e => { _opts.layerName = e.target.value; });
@@ -339,6 +354,7 @@ function _resultText(r) {
   if (r.ptsRenamed)      parts.push(`${r.ptsRenamed} omdöpta`);
   if (r.ptsSkipped)      parts.push(`${r.ptsSkipped} överhoppade`);
   if (r.linesCreated)    parts.push(`${r.linesCreated} linjer`);
+  if (r.areasCreated)    parts.push(`${r.areasCreated} ytor`);
   if (r.obstaclesCreated) parts.push(`${r.obstaclesCreated} hinder`);
   if (!parts.length) return '.geo: inget importerades';
   return `✓ Importerat: ${parts.join(' · ')}`;

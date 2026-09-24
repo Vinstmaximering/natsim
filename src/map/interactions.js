@@ -12,9 +12,11 @@ import { clearObstacleSelection, getObstacles } from '../state/obstacles.js';
 import {
   isDrawingVisual, handleVisualMapClick, cancelVisualDraw,
   updateVisualMousePos, hasPendingChain, breakVisualChain,
+  getVisualDrawMode, hasPendingArea, discardPendingArea, undoLastAreaVertex,
+  completeVisualArea,
 } from './visual-drawing.js';
-import { syncLinkedObstacles } from '../state/visual.js';
-import { hitTestVisualPt, hitTestVisualLine } from './visual-canvas.js';
+import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
+import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
 import {
   hitTestHandle, hitTestEdge, hitTestObstacle,
   startNodeDrag, updateNodeDrag, endNodeDrag, isDraggingNode,
@@ -37,6 +39,14 @@ const cb = {
   openVisualMenu: null,  // högerklick på visuellt objekt → kontextmeny (Etapp D4)
   openEditVisual: null,  // dubbelklick på visuellt objekt → redigeringsdialog
 };
+
+// En sluten yta: varna om den korsar sig själv (Lager-verktyg Etapp 3).
+function _areaDone(r) {
+  if (r?.ok && r.selfIntersecting && cb.showToast)
+    cb.showToast('⚠ Ytan korsar sig själv – ingen area visas. Flytta eller ta bort ett hörn.', '#ffb74d');
+  else if (r?.reason === 'few' && cb.showToast)
+    cb.showToast('En yta behöver minst tre hörn', '#7090a8');
+}
 export function setInteractionCallbacks(callbacks) { Object.assign(cb, callbacks); }
 
 // ── near – hitta närmaste punkt inom pixelradie – rad 587–589 exakt ──
@@ -69,10 +79,12 @@ export function initInteractions(map) {
   let nodeDragActive = false;  // true när ett hörn-handtag dras
 
   // Slå av Leaflet's dubbelklicks-zoom när ett hinder är markerat,
-  // annars blockerar zoomen dblclick → kant-infogning.
+  // annars blockerar zoomen dblclick → kant-infogning. Samma sak under
+  // ytritning (Lager-verktyg Etapp 3): dubbelklicket sluter ytan och ska inte
+  // samtidigt zooma kartan.
   subscribe(state => {
-    if (state.selObsId) { map.doubleClickZoom?.disable(); }
-    else                { map.doubleClickZoom?.enable();  }
+    if (state.selObsId || state.tool === 'visual-area') { map.doubleClickZoom?.disable(); }
+    else                                                 { map.doubleClickZoom?.enable();  }
   });
 
   // ── Drag – rad 1254–1290 ──
@@ -198,7 +210,7 @@ export function initInteractions(map) {
     // Ritning av visuella objekt: intercepta klick. Läget står kvar tills
     // användaren avslutar med Esc eller högerklick.
     if (isDrawingVisual()) {
-      handleVisualMapClick(e.latlng);
+      _areaDone(handleVisualMapClick(e.latlng));
       draw();
       return;
     }
@@ -249,6 +261,16 @@ export function initInteractions(map) {
 
     // ── Träff på hinder-yta → välj hindret ──
     const hitObs = getObstacles().find(obs => hitTestObstacle(px.x, px.y, obs, map, ENtoLatLng));
+    // Ett hinder som projiceras ur en synlig yta ("Blockerar sikt") redigeras
+    // genom ytan: klicket markerar ytan och visar dess egenskapskort.
+    const ägare = hitObs && (getState().visualAreas || [])
+      .find(a => a.linkedObsId === hitObs.id && isVisualObjVisible(a));
+    if (ägare) {
+      if (selObsId) { clearObstacleSelection(); if (cb.renderObsPanel) cb.renderObsPanel(); }
+      setState({ selVisualId: ägare.id });
+      draw();
+      return;
+    }
     if (hitObs) {
       if (selObsId !== hitObs.id) {
         setState({ selObsId: hitObs.id });
@@ -270,8 +292,11 @@ export function initInteractions(map) {
     // ── Träff på visuellt objekt → markera det (lägst prioritet: mätdata går
     // alltid före visuell dokumentation) ──
     const stateNow = getState();
+    // Ytor träffas bara i Panorera: med ett punktverktyg ska ett klick inuti
+    // en yta lägga punkten, inte markera ytan.
     const hitV = hitTestVisualPt(px.x, px.y, stateNow, map, ENtoLatLng)
-              || hitTestVisualLine(px.x, px.y, stateNow, map, ENtoLatLng);
+              || hitTestVisualLine(px.x, px.y, stateNow, map, ENtoLatLng)
+              || (tool === 'pan' ? hitTestVisualArea(px.x, px.y, stateNow, map, ENtoLatLng) : null);
     if (hitV) {
       setState({ selVisualId: stateNow.selVisualId === hitV.id ? null : hitV.id });
       draw();
@@ -325,6 +350,11 @@ export function initInteractions(map) {
 
   // ── Dubbelklick → infoga hörn på kant, avsluta ritning, eller openEditPt ──
   map.on("dblclick", e => {
+    // Dubbelklick sluter en yta under ritning.
+    if (isDrawingVisual()) {
+      if (getVisualDrawMode() === 'area') { _areaDone(completeVisualArea()); draw(); }
+      return;
+    }
     if (isDrawing()) {
       const ok = completeDraw();
       if (ok) {
@@ -355,7 +385,8 @@ export function initInteractions(map) {
     // Dubbelklick på visuellt objekt → redigeringsdialog
     const st   = getState();
     const hitV = hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng)
-              || hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng);
+              || hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualArea(px.x, px.y, st, map, ENtoLatLng);
     if (hitV && cb.openEditVisual) cb.openEditVisual(hitV.id);
   });
 
@@ -368,6 +399,7 @@ export function initInteractions(map) {
     if (isDrawingVisual()) {
       e.originalEvent.preventDefault();
       if (hasPendingChain()) { breakVisualChain(); draw(); return; }
+      if (hasPendingArea())  { discardPendingArea(); draw(); return; }
       cancelVisualDraw();
       setState({ tool: 'pan' });
       if (cb.buildTools) cb.buildTools();
@@ -396,7 +428,8 @@ export function initInteractions(map) {
     // Högerklick på visuellt objekt → kontextmeny (Etapp D4)
     const st   = getState();
     const hitV = hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng)
-              || hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng);
+              || hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualArea(px.x, px.y, st, map, ENtoLatLng);
     if (hitV && cb.openVisualMenu) {
       e.originalEvent.preventDefault();
       setState({ selVisualId: hitV.id });
@@ -407,8 +440,22 @@ export function initInteractions(map) {
 
   // ── Tangentbord: Esc/Enter – prioritetsordning: ritläge > hinder > mätning ──
   document.addEventListener('keydown', e => {
+    // Backspace under ytritning tar bort senaste hörnet – inte när man skriver
+    // i ett fält, där Backspace ska sudda text.
+    if (e.key === 'Backspace' && hasPendingArea()) {
+      const a = document.activeElement;
+      if (a && (['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName) || a.isContentEditable)) return;
+      e.preventDefault();
+      undoLastAreaVertex();
+      draw();
+      return;
+    }
     if (e.key === 'Escape') {
-      if (isDrawingVisual()) {
+      // En påbörjad yta kastas först; nästa Escape lämnar ytläget.
+      if (hasPendingArea()) {
+        discardPendingArea();
+        draw();
+      } else if (isDrawingVisual()) {
         cancelVisualDraw();
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();

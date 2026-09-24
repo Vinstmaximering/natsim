@@ -8,6 +8,9 @@
 //   obstacles[].color (Etapp B): saknas → standardfärg (ritas som före Etapp B)
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
 //   visualLayers (Etapp 1): saknas → objekten samlas i lagret "Handritat"
+//   visualAreas (Lager-verktyg Etapp 3): saknas → inga ytor
+//   visualLayers[].labels/vertexLabels (Lager-verktyg Etapp 1): saknas →
+//                                          punktnamn på, hörnnamn av
 //   optimizerConfig (Etapp E): saknas → vikterna 50/50
 //   optimizerConfig.sigma_max_mm (Fas 2): saknas/null → mätklassens default
 //                                          (3 mm för G2)
@@ -17,7 +20,8 @@ import { CRS_DEFS } from '../core/constants.js';
 import { normalizeWeights } from '../core/optimizer.js';
 import { showToast } from '../ui/toast.js';
 import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
-import { _sanitizeVisual, _nextCounter, _migrateVisualLayers, syncLinkedObstacles } from '../state/visual.js';
+import { _sanitizeVisual, _sanitizeVisualAreas, _nextCounter, _migrateVisualLayers,
+         syncLinkedObstacles } from '../state/visual.js';
 
 // ── Serialisera state till spara-objekt ──────────────────────────────────────
 // Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
@@ -31,6 +35,7 @@ export function _buildSnapshot() {
     // Etapp D: visuellt lager, helt skilt från pts/meas.
     visualPts:   JSON.parse(JSON.stringify(s.visualPts   || [])),
     visualLines: JSON.parse(JSON.stringify(s.visualLines || [])),
+    visualAreas: JSON.parse(JSON.stringify(s.visualAreas || [])),
     // Etapp 1: lagerlistan. Filer utan fältet laddas med allt i "Handritat".
     visualLayers:        JSON.parse(JSON.stringify(s.visualLayers || [])),
     activeVisualLayerId: s.activeVisualLayerId ?? null,
@@ -48,6 +53,7 @@ export function _buildSnapshot() {
     nMid:           s.nMid           ?? 1,
     nVid:           s.nVid           ?? 1,
     nVlid:          s.nVlid          ?? 1,
+    nVaid:          s.nVaid          ?? 1,
     nVlyid:         s.nVlyid         ?? 1,
     mapCenter: (() => {
       try {
@@ -111,9 +117,10 @@ export function _applySnapshot(s) {
   const sanitized = _sanitizeVisual(s.visualPts, s.visualLines);
   // Etapp 1: objekt utan giltigt layerId hamnar i "Handritat", så att en
   // projektfil sparad före lagren laddas med allt innehåll i behåll.
-  const { visualPts, visualLines, visualLayers, activeVisualLayerId, nVlyid } =
+  const { visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId, nVlyid } =
     _migrateVisualLayers(sanitized.visualPts, sanitized.visualLines,
-                         s.visualLayers, s.activeVisualLayerId);
+                         s.visualLayers, s.activeVisualLayerId,
+                         _sanitizeVisualAreas(s.visualAreas));
 
   setState({
     pts,
@@ -134,6 +141,7 @@ export function _applySnapshot(s) {
     nMid:           s.nMid           ?? 1,
     visualPts,
     visualLines,
+    visualAreas,
     visualLayers,
     activeVisualLayerId,
     // Samma resonemang som för nVid/nVlid: räknaren härleds ur innehållet.
@@ -142,6 +150,7 @@ export function _applySnapshot(s) {
     // en handredigerad fil ska inte kunna ge id-kollisioner.
     nVid:           Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
     nVlid:          Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
+    nVaid:          Math.max(s.nVaid ?? 1, _nextCounter(visualAreas, 'VA')),
     selVisualId:    null,
     // Etapp 5: ritsynligheten hör till sessionen och sparas inte. En laddad
     // fil ska visa allt den innehåller – annars ser man en tom karta utan att

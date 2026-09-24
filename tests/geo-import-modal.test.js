@@ -162,3 +162,37 @@ describe('stängning', () => {
     expect(txt()).toContain('b.geo');
   });
 });
+
+describe('slutna linjer som ytor (Lager-verktyg Etapp 3)', () => {
+  beforeEach(() => setState({ visualAreas: [], nVaid: 1 }));
+  const radios = () => [...document.querySelectorAll('input[name="gi-closed"]')];
+
+  it('valet visas med antal slutna linjer och förval linjer', () => {
+    openGeoImport(NORR, 'f.geo');
+    expect(radios().map(r => r.value)).toEqual(['lines', 'areas']);
+    expect(radios().find(r => r.checked).value).toBe('lines');
+    expect(txt()).toContain('Slutna linjer som (1 st)');
+  });
+
+  it('förval: linjen importeras som linjer, som förut', () => {
+    openGeoImport(NORR, 'f.geo');
+    $('gi-ok').click();
+    expect(getState().visualAreas).toEqual([]);
+    expect(getState().visualLines.length).toBeGreaterThan(0);
+  });
+
+  it('"ytor" importerar den slutna linjen som en yta', () => {
+    openGeoImport(NORR, 'f.geo');
+    const ytor = radios().find(r => r.value === 'areas');
+    ytor.checked = true;
+    ytor.dispatchEvent(new Event('change'));
+    $('gi-ok').click();
+    expect(getState().visualAreas).toHaveLength(1);
+    expect(getState().visualAreas[0].vertices).toHaveLength(4);
+  });
+
+  it('valet visas inte när filen saknar slutna linjer', () => {
+    openGeoImport(PALL, 'p.geo');
+    expect(radios()).toEqual([]);
+  });
+});

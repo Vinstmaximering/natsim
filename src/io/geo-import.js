@@ -11,11 +11,11 @@ import { getState, setState } from '../state/store.js';
 import { saveUndo } from '../state/undo.js';
 import { addObstacle } from '../state/obstacles.js';
 import {
-  addVisualLayer, addVisualPt, addVisualLine, updateVisualLine,
+  addVisualLayer, addVisualPt, addVisualLine, updateVisualLine, addVisualArea,
   makeEndpoint, findVisualLine, visualLineCoords,
 } from '../state/visual.js';
 import { geoPointTypeFromId } from './import-geo.js';
-import { VertexIndex, VERTEX_DEDUP_TOL_M } from './vertex-index.js';
+import { VertexIndex, VERTEX_DEDUP_TOL_M, closedRing } from './vertex-index.js';
 
 // Dedupliceringen delas med DXF-importen (Etapp 6) och bor i vertex-index.js.
 // Re-exporteras här eftersom .geo-importen var först med den.
@@ -36,6 +36,9 @@ export function defaultGeoImportOptions(parsed, filename, activeCRS) {
     netPointType: 'prefix',        // 'prefix' | 'detail' | 'new' | 'known'
     idConflict:   'skip',          // 'skip' | 'update' | 'rename'
     lines:        'visual',        // 'visual' | 'obstacle' | 'skip'
+    // Lager-verktyg Etapp 3: slutna linjer (flagga 1 eller första hörnet
+    // upprepat sist) som linjer eller ytor. Förval linjer = som förut.
+    closedAs:     'lines',         // 'lines' | 'areas'
     // Avvikande koordinatsystem i filen föreslås, eftersom koordinater ur en
     // annan zon annars hamnar fel på kartan. Användaren kan kryssa av.
     changeCRS:    !!(parsed?.fileInfo?.crs && parsed.fileInfo.crs !== activeCRS),
@@ -64,7 +67,7 @@ export function applyGeoImport(parsed, opts) {
   const result = {
     layerId: null, ptsImported: 0, ptsUpdated: 0, ptsSkipped: 0, ptsRenamed: 0,
     visualPts: 0, linesCreated: 0, verticesCreated: 0, obstaclesCreated: 0,
-    bounds: null, crsChanged: false,
+    areasCreated: 0, bounds: null, crsChanged: false,
   };
 
   // Utbredningen av det som faktiskt importerades – dialogen zoomar hit efteråt.
@@ -165,6 +168,22 @@ export function applyGeoImport(parsed, opts) {
         }
         ids.push(id);
         extend(v.E, v.N);
+      }
+
+      // Slutna linjer som ytor: ringen blir en yta i lagret, med linjens namn.
+      // Valet "Hinder" gör ytan till ett byggnadshinder (blocksSight) i
+      // stället för väggar längs kanterna.
+      const ring = opts.closedAs === 'areas' ? closedRing(ids, ln.closed) : null;
+      if (ring) {
+        const areaId = addVisualArea({
+          vertices: ring.map(id => makeEndpoint('visual', id)), layerId,
+          name: ln.name || null, blocksSight: opts.lines === 'obstacle',
+        });
+        if (areaId) {
+          result.areasCreated++;
+          if (opts.lines === 'obstacle') result.obstaclesCreated++;
+          continue;
+        }
       }
 
       // Sluten linje sluts med segmentet sista → första.

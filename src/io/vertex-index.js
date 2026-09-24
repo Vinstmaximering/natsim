@@ -41,3 +41,35 @@ export class VertexIndex {
     this.cells.get(key).push({ E, N, H, id });
   }
 }
+
+// ── Slutna linjer som ytor (Lager-verktyg Etapp 3) ───────────────────────────
+
+/**
+ * Hörnen i en sluten linje som ytans ring, eller null om linjen inte är sluten
+ * eller har färre än tre skilda hörn. ids är hörnens punkt-id:n efter
+ * dedupliceringen. Sluten betyder flaggan i filen (.geo flagga 1, DXF grupp 70
+ * bit 1) eller att första hörnet upprepas sist – dedupliceringen har då gett
+ * sista och första hörnet samma id. Upprepade grannhörn slås ihop.
+ */
+export function closedRing(ids, closedFlag) {
+  const ring = [];
+  for (const id of ids || []) if (ring[ring.length - 1] !== id) ring.push(id);
+  const upprepad = ring.length > 1 && ring[0] === ring[ring.length - 1];
+  if (upprepad) ring.pop();
+  if (!(closedFlag || upprepad)) return null;
+  return new Set(ring).size >= 3 ? ring : null;
+}
+
+/**
+ * Räknas en inläst linje som sluten? För dialogernas antal, innan hörnen
+ * dedupliceras: flaggan, eller första hörnet upprepat sist (inom toleransen).
+ * Kräver minst tre skilda hörn, som closedRing().
+ */
+export function isClosedPolyline(vertices, closedFlag, tol = VERTEX_DEDUP_TOL_M) {
+  const vs = vertices || [];
+  const E = v => v.E ?? v.x, N = v => v.N ?? v.y;
+  const a = vs[0], b = vs[vs.length - 1];
+  const upprepad = vs.length > 3 && Math.abs(E(a) - E(b)) <= tol && Math.abs(N(a) - N(b)) <= tol;
+  if (!(closedFlag || upprepad)) return false;
+  return vs.length - (upprepad ? 1 : 0) >= 3;
+}

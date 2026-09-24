@@ -214,3 +214,35 @@ describe('varningar och stängning', () => {
     expect(txt()).toContain('b.dxf');
   });
 });
+
+describe('slutna polylinjer som ytor (Lager-verktyg Etapp 3)', () => {
+  beforeEach(() => setState({ visualAreas: [], nVaid: 1 }));
+  const HUS = entities(
+    [0, 'LWPOLYLINE'], [8, 'HUS'], [90, 4], [70, 1],
+    [10, 247000], [20, 6165000], [10, 247010], [20, 6165000],
+    [10, 247010], [20, 6165010], [10, 247000], [20, 6165010],
+    ...LINE('VÄG', 247000, 6165050, 247100, 6165050));
+  const radios = () => [...document.querySelectorAll('input[name="dxf-closed"]')];
+
+  it('valet visas med förval linjer', () => {
+    openDxfImport(HUS, 'hus.dxf');
+    expect(radios().map(r => r.value)).toEqual(['lines', 'areas']);
+    expect(radios().find(r => r.checked).value).toBe('lines');
+    expect(txt()).toContain('Slutna polylinjer som (1 st)');
+  });
+
+  it('"ytor" ger en yta; den öppna linjen förblir linje', () => {
+    openDxfImport(HUS, 'hus.dxf');
+    const ytor = radios().find(r => r.value === 'areas');
+    ytor.checked = true;
+    ytor.dispatchEvent(new Event('change'));
+    $('dxf-ok').click();
+    expect(getState().visualAreas).toHaveLength(1);
+    expect(getState().visualLines).toHaveLength(1);
+  });
+
+  it('valet visas inte utan slutna polylinjer', () => {
+    openDxfImport(BLANDAD, 'a.dxf');
+    expect(radios()).toEqual([]);
+  });
+});

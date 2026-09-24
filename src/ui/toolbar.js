@@ -3,19 +3,21 @@ import { getState, setState } from '../state/store.js';
 import { PT, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
-import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw } from '../map/visual-drawing.js';
+import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw,
+         startVisualAreaDraw } from '../map/visual-drawing.js';
 
 export { toggleMapLayer };
 
 // Verktygsraden på kartan (index.html #map-tools). tool = state.tool när
 // verktyget är valt; mobile = knapptext i den mobila verktygsraden (#mtb) för
-// verktyg som finns. Markera område (etapp 4) och yta (etapp 3) läggs till
-// här när de finns.
+// verktyg som finns. Markera område (etapp 4) läggs till här när det finns.
 export const MAP_TOOLS = [
   { btn: 'btn-visual-point', tool: 'visual-point', key: 'p', mobile: '○ Pkt',
     title: 'Visuell punkt – ritas i aktivt lager' },
   { btn: 'btn-visual-line',  tool: 'visual-line',  key: 'l', mobile: '⤺ Linje',
     title: 'Visuell linje – ritas i aktivt lager' },
+  { btn: 'btn-visual-area',  tool: 'visual-area',  key: 'y', mobile: '▱ Yta',
+    title: 'Yta – ritas i aktivt lager' },
 ];
 
 export function buildTools() {
@@ -88,7 +90,12 @@ export function buildTools() {
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
-    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Högerklick: bryt kedjan · Esc: avsluta" };
+    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Högerklick: bryt kedjan · Esc: avsluta",
+    'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt" };
+  // Pekskärm: inget tangentbord och ingen högerklick – ytan sluts genom att
+  // trycka på första hörnet, och verktygsknappen igen avbryter.
+  const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+  if (touch) hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
   const hint = document.getElementById("hint");
   if (hint) hint.textContent = hints[tool] || "";
 
@@ -112,6 +119,7 @@ export function setTool(t) {
   else if (t === 'obstacle-line') startLineDraw();
   else if (t === 'visual-point') startVisualPointDraw();
   else if (t === 'visual-line')  startVisualLineDraw();
+  else if (t === 'visual-area')  startVisualAreaDraw();
 
   import('../map/leaflet-setup.js').then(({ map: m }) => {
     if (m) { m.dragging.enable(); m.getContainer().style.cursor = t === "pan" ? "grab" : "crosshair"; }
@@ -144,7 +152,7 @@ export function clearAll() {
   if (confirm("Rensa alla punkter, mätningar, hinder och visuella objekt?")) {
     setState({
       pts: [], meas: [], obstacles: [],
-      visualPts: [], visualLines: [], selVisualId: null,
+      visualPts: [], visualLines: [], visualAreas: [], selVisualId: null,
       // Etapp 1: lagren följer sitt innehåll – ett tomt projekt har inga lager.
       visualLayers: [], activeVisualLayerId: null,
       // Etapp 5: ett tomt projekt ska inte ärva en bortgömd karta.
