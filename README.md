@@ -356,8 +356,10 @@ Hem, Koordinatlista) står till vänster och bryter rad när kartan är smal; zo
 etiketten och nordpilen har egen plats längst till höger.
 
 Punkt- och linjeläget står kvar tills du avslutar med **Escape** eller
-**högerklick**; i linjeläget bryter det första högerklicket kedjan. Allt ritas i
-det aktiva lagret. Dubbelklick på ett visuellt objekt öppnar dess dialog (för
+**högerklick**; i linjeläget bryter det första högerklicket kedjan.
+**Backspace** – på pekskärm **↶ Hörn** i den mobila raden – tar bort senaste
+hörnet i en linje eller yta under ritning: punkter som klicket skapade tas bort,
+snappade punkter och nätpunkter aldrig. Allt ritas i det aktiva lagret. Dubbelklick på ett visuellt objekt öppnar dess dialog (för
 ytor egenskapskortet).
 
 På telefon döljs raden och verktygen ligger sist i den mobila verktygsraden, som
@@ -373,8 +375,8 @@ eller en vanlig knapp. På pekskärm panorerar och zoomar två fingrar.
 ### Ytor
 
 Ritas med **Y**: klicka hörn; **dubbelklick** eller klick på **första hörnet**
-sluter ytan (minst tre hörn; med finger är träffytan 22 px). **Backspace** tar
-bort senaste hörnet, **Escape** eller högerklick kastar en påbörjad yta. En yta
+sluter ytan (minst tre hörn; med finger är träffytan 22 px). **Backspace**
+(**↶ Hörn** på pekskärm) tar bort senaste hörnet, **Escape** eller högerklick kastar en påbörjad yta. En yta
 sparas först när den sluts, som ett ångra-steg.
 
 Hörnen följer samma modell som linjernas ändpunkter: `{ref:'visual'|'net', id}`.
