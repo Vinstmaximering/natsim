@@ -55,7 +55,7 @@ const GEMENSAMMA_VALS = {
   tidplan: 'Fältarbete vecka 40–41, beräkning vecka 42.',
   plansys: 'SWEREF 99 TM', hoj: 'RH 2000', geo: 'SWEN17_RH2000',
   kordkalla: 'Riksnätet', kordkval: 'Punkterna bedöms som stabila.',
-  instr: 'Leica TS16 1″', serienr: '890562', kalib: '2026-03-15',
+  instr: 'Leica TS16 1″', serienr: '000000', kalib: '2026-03-15',
   tvangutr: 'Leica GZR3', termometer: 'Testo 925', barometer: 'Testo 511',
   swfalt: 'Leica Captivate 7.0', swber: 'NätSim',
   metod: 'Polär mätning med tvångscentrering.',
