@@ -199,13 +199,9 @@
 
   <!-- LAGER-sektionen låg här. Flyttad till Lager-menyn i toolbaren
        (Lager-verktyg Etapp 1) med id:n layer-list, btn-new-layer och
-       active-layer-name i behåll. Ritknapparna nedan står kvar tillfälligt och
-       flyttas till verktygsraden på kartan i etapp 2. -->
-  <div class="sec">
-    <div class="sl">RITA VISUELLT</div>
-    <button class="tb" id="btn-visual-point" onclick="window._setTool('visual-point')" style="--c:#cfd8dc;margin-top:2px;" title="Ritas i aktivt lager · ingår inte i simuleringen">○ Visuell punkt</button>
-    <button class="tb" id="btn-visual-line"  onclick="window._setTool('visual-line')"  style="--c:#cfd8dc;margin-top:2px;" title="Ritas i aktivt lager · ingår inte i simuleringen">⤺ Visuell linje</button>
-  </div>
+       active-layer-name i behåll. Ritknapparna för visuell punkt och linje
+       (#btn-visual-point, #btn-visual-line) flyttades till verktygsraden på
+       kartan (#map-tools) i etapp 2. -->
   <!-- Sektionen VISA (kartinnehåll + punkttyper) låg här. Flyttad till
        Visa-menyn i toolbaren (Etapp 4). Kryssrutornas id:n är oförändrade.
        Knappen #btn-au ("Vinkel: Gon (grad)" / "Vinkel: DMS") låg också här.
@@ -240,17 +236,97 @@
     <canvas id="cv"></canvas>
   </div>
 
-  <!-- Kartkontroller -->
-  <div class="lm-ctrl" id="lm-ctrl">
-    <select id="crs-sel"   title="Koordinatsystem"></select>
-    <select id="layer-sel" title="Kartlager"></select>
-    <button onclick="window.toggleMapLayer()" id="btn-maplayer">🗺 Bakgrund: PÅ</button>
-    <button onclick="window.locateMe()"       title="Gå till min plats">📍 Visa mig</button>
-    <button onclick="window.resetView()"      title="Återställ vy">⌂ Hem</button>
-    <button id="btn-coordview" onclick="window.toggleCoordView()" style="background:#4fc3f722;border-color:#4fc3f7;color:#4fc3f7;">📋 Koordinatlista</button>
+  <!-- Kartans överkant (Lager-verktyg Etapp 2): kartkontrollerna till vänster,
+       verktygsraden med hjälptexten under sig till höger. En flexrad, så att de
+       delar på bredden – kontrollerna bryter rad i stället för att hamna under
+       verktygsraden. Höger marginal lämnar plats åt zoometiketten och
+       nordpilen (canvas, x = W−44). -->
+  <div class="map-top">
+    <!-- Kartkontroller -->
+    <div class="lm-ctrl" id="lm-ctrl">
+      <select id="crs-sel"   title="Koordinatsystem"></select>
+      <select id="layer-sel" title="Kartlager"></select>
+      <button onclick="window.toggleMapLayer()" id="btn-maplayer">🗺 Bakgrund: PÅ</button>
+      <button onclick="window.locateMe()"       title="Gå till min plats">📍 Visa mig</button>
+      <button onclick="window.resetView()"      title="Återställ vy">⌂ Hem</button>
+      <button id="btn-coordview" onclick="window.toggleCoordView()" style="background:#4fc3f722;border-color:#4fc3f7;color:#4fc3f7;">📋 Koordinatlista</button>
+    </div>
+    <div class="map-top-right">
+      <!-- Verktygsrad på kartan (Lager-verktyg Etapp 2). Uppe till höger, till
+           vänster om zoometiketten och nordpilen. Knapparnas läge och markering
+           sätts av buildTools() i ui/toolbar.js; klick och kortkommandon kopplas i
+           ui/map-tools.js. På telefon döljs raden och verktygen ligger i den
+           mobila verktygsraden (#mtb). Knappar för verktyg som ännu inte finns
+           står inaktiva så att raden har sin slutliga form. -->
+      <div class="map-tools" id="map-tools" role="toolbar" aria-label="Rita och markera">
+        <button type="button" class="mt-btn" id="btn-select-area" data-tool="select-area" data-key="M"
+                aria-pressed="false" disabled
+                title="Markera område (M) – kommer i etapp 4" aria-label="Markera område (M)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="9" rx="0.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2 1.6"/><path d="M10.5 9.5 L10.5 18.5 L12.8 16.2 L14.6 19.6 L16.2 18.8 L14.4 15.4 L17.6 15.2 Z" fill="currentColor"/></svg>
+        </button>
+        <span class="mt-sep" aria-hidden="true"></span>
+        <button type="button" class="mt-btn" id="btn-visual-point" data-tool="visual-point" data-key="P"
+                aria-pressed="false"
+                title="Visuell punkt (P) – ritas i aktivt lager, ingår inte i beräkningen" aria-label="Visuell punkt (P)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="4.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 1.5v4M10 14.5v4M1.5 10h4M14.5 10h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" class="mt-btn" id="btn-visual-line" data-tool="visual-line" data-key="L"
+                aria-pressed="false"
+                title="Visuell linje (L) – klicka hörn i aktivt lager, ingår inte i beräkningen" aria-label="Visuell linje (L)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 16 L7.5 6 L12.5 12.5 L17 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><g fill="currentColor"><rect x="1.5" y="14.5" width="3" height="3"/><rect x="6" y="4.5" width="3" height="3"/><rect x="11" y="11" width="3" height="3"/><rect x="15.5" y="2.5" width="3" height="3"/></g></svg>
+        </button>
+        <button type="button" class="mt-btn" id="btn-visual-area" data-tool="visual-area" data-key="Y"
+                aria-pressed="false" disabled
+                title="Yta (Y) – kommer i etapp 3" aria-label="Yta (Y)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5 L5.5 4 L14.5 2.5 L17.5 11.5 L10 17.5 Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="mt-sep" aria-hidden="true"></span>
+        <button type="button" class="mt-btn mt-toggle" id="btn-snap" data-key="S"
+                aria-pressed="false" disabled
+                title="Snappning av/på (S) – kommer i etapp 5" aria-label="Snappning (S)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3h4v7a2 2 0 0 0 4 0V3h4v7a6 6 0 0 1-12 0z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M4 6.5h4M12 6.5h4" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+      </div>
+
+      <!-- Hjälptext för aktivt verktyg, direkt under verktygsraden (etapp 2;
+           låg tidigare uppe till vänster, bakom kartkontrollerna). -->
+      <div class="hint" id="hint">➕ Tryck för att lägga punkt</div>
+      <!-- D6: Kvalitetspanel. Lager-verktyg Etapp 2: står i kartans högerkolumn
+           under hjälptexten (var absolut placerad på top:55px;right:65px). -->
+      <div id="qPanel" style="border-radius:6px;padding:8px 12px;font-size:11px;font-family:'Segoe UI',sans-serif;z-index:600;display:none;min-width:180px;">
+        <div class="val-info" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
+          <span>Nätkvalitet</span>
+          <label class="val-muted" style="display:flex;align-items:center;gap:3px;font-size:9px;font-weight:normal;cursor:pointer">
+            <input type="checkbox" id="autoSimToggle" checked style="margin:0;cursor:pointer"> auto
+          </label>
+        </div>
+        <!--
+          Tooltiparna nedan rättade i UI-städning Omgång 1 (2026-09-11).
+          Se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2.
+
+          HISTORIK – k-tooltipen: den tidigare texten "≥1.14 utmärkt, ≥0.5 bra,
+          ≥0.3 godkänt" beskrev en klassificering som INTE längre finns i koden.
+          Gränsen 1,14 ströks medvetet ur beräkningskärnan – se blockkommentaren i
+          src/core/constants.js (K_NAT_GOLV / klassificeraKtal): 1,14 är maxvärdet
+          för viktsenhetens standardosäkerhet u₀ vid f = 70, en helt annan storhet,
+          och var matematiskt onåbar för k = f/n ∈ [0,1]. Dessutom var "≥0.3
+          godkänt" fel mot normen: normgolvet är 0,50 (SIS-TS 21143:2016 §6.2.2),
+          och bandet 0,30–0,50 uppfyller INTE kravet (uppfyllerNorm: false).
+          Ändra inte tillbaka utan att först läsa constants.js.
+        -->
+        <div id="qPanelBody" style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-family:monospace">
+          <span class="qpl val-muted" title="Global kontrollerbarhet k = f/n. Normgolv ≥ 0,50 enligt SIS-TS 21143:2016 §6.2.2 – gäller alla mätklasser. Högre värde = bättre redundans i nätet." data-tip="k: global kontrollerbarhet f/n. Normgolv ≥0,50 (SIS-TS §6.2.2, alla mätklasser). Högre = bättre redundans.">k</span><span id="qK">–</span>
+          <span class="qpl val-muted" title="Antal observationer (n) / antal obekanta (u). En mätning ger 1–2 observationer beroende på observationstyp." data-tip="n/u: antal observationer / antal obekanta">n/u</span><span id="qNu">–</span>
+          <span class="qpl val-muted" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
+          <span class="qpl val-muted" title="Minsta enskilda r-tal (redundanstal) i nätet. Under 0,30 underkänner valideringen observationen; 0,50 är nivån för ingen anmärkning (HMK Bilaga F.2)." data-tip="minsta r-tal: &lt;0,30 underkänt, ≥0,50 ingen anmärkning">min r-tal</span><span id="qRmin">–</span>
+          <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland fria punkter. Kända punkter är fixerade och räknas inte." data-tip="max σ_pos: störst positionsosäkerhet bland fria punkter">max σ_pos</span><span id="qSmax">–</span>
+          <span class="qpl val-muted" title="Antal befintliga mätningar vars siktlinje blockeras av ett hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
+        </div>
+        <div id="qTip" style="display:none;margin-top:5px;font-size:9px;line-height:1.4;padding-top:4px;"></div>
+      </div>
+    </div>
   </div>
 
-  <div class="hint" id="hint">➕ Tryck för att lägga punkt</div>
   <div class="zb"   id="zb">z16</div>
   <div class="mfb"  id="mfb" style="display:none"></div>
 
@@ -268,39 +344,6 @@
       </ol>
     </div>
     <button onclick="document.getElementById('onboarding').style.display='none';localStorage.setItem('nb_onboarded','1')" style="margin-top:10px;padding:6px 14px;font-size:12px;background:#00c87a;color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:600">Förstått</button>
-  </div>
-
-  <!-- D6: Kvalitetspanel -->
-  <div id="qPanel" style="position:absolute;top:55px;right:65px;border-radius:6px;padding:8px 12px;font-size:11px;font-family:'Segoe UI',sans-serif;z-index:600;display:none;min-width:180px;">
-    <div class="val-info" style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center">
-      <span>Nätkvalitet</span>
-      <label class="val-muted" style="display:flex;align-items:center;gap:3px;font-size:9px;font-weight:normal;cursor:pointer">
-        <input type="checkbox" id="autoSimToggle" checked style="margin:0;cursor:pointer"> auto
-      </label>
-    </div>
-    <!--
-      Tooltiparna nedan rättade i UI-städning Omgång 1 (2026-09-11).
-      Se docs/troubleshooting/ui_inventering_20260910.md avsnitt B, punkt 2.
-
-      HISTORIK – k-tooltipen: den tidigare texten "≥1.14 utmärkt, ≥0.5 bra,
-      ≥0.3 godkänt" beskrev en klassificering som INTE längre finns i koden.
-      Gränsen 1,14 ströks medvetet ur beräkningskärnan – se blockkommentaren i
-      src/core/constants.js (K_NAT_GOLV / klassificeraKtal): 1,14 är maxvärdet
-      för viktsenhetens standardosäkerhet u₀ vid f = 70, en helt annan storhet,
-      och var matematiskt onåbar för k = f/n ∈ [0,1]. Dessutom var "≥0.3
-      godkänt" fel mot normen: normgolvet är 0,50 (SIS-TS 21143:2016 §6.2.2),
-      och bandet 0,30–0,50 uppfyller INTE kravet (uppfyllerNorm: false).
-      Ändra inte tillbaka utan att först läsa constants.js.
-    -->
-    <div id="qPanelBody" style="display:grid;grid-template-columns:auto auto;gap:3px 10px;font-family:monospace">
-      <span class="qpl val-muted" title="Global kontrollerbarhet k = f/n. Normgolv ≥ 0,50 enligt SIS-TS 21143:2016 §6.2.2 – gäller alla mätklasser. Högre värde = bättre redundans i nätet." data-tip="k: global kontrollerbarhet f/n. Normgolv ≥0,50 (SIS-TS §6.2.2, alla mätklasser). Högre = bättre redundans.">k</span><span id="qK">–</span>
-      <span class="qpl val-muted" title="Antal observationer (n) / antal obekanta (u). En mätning ger 1–2 observationer beroende på observationstyp." data-tip="n/u: antal observationer / antal obekanta">n/u</span><span id="qNu">–</span>
-      <span class="qpl val-muted" title="Frihetsgrader f = n − u. Fler frihetsgrader = bättre redundans." data-tip="f: frihetsgrader = n − u (fler = bättre)">f</span><span id="qF">–</span>
-      <span class="qpl val-muted" title="Minsta enskilda r-tal (redundanstal) i nätet. Under 0,30 underkänner valideringen observationen; 0,50 är nivån för ingen anmärkning (HMK Bilaga F.2)." data-tip="minsta r-tal: &lt;0,30 underkänt, ≥0,50 ingen anmärkning">min r-tal</span><span id="qRmin">–</span>
-      <span class="qpl val-muted" title="Störst positionsosäkerhet σ_pos bland fria punkter. Kända punkter är fixerade och räknas inte." data-tip="max σ_pos: störst positionsosäkerhet bland fria punkter">max σ_pos</span><span id="qSmax">–</span>
-      <span class="qpl val-muted" title="Antal befintliga mätningar vars siktlinje blockeras av ett hinder." data-tip="Utan sikt: befintliga mätningar blockerade av hinder">Utan sikt</span><span id="qSight">–</span>
-    </div>
-    <div id="qTip" style="display:none;margin-top:5px;font-size:9px;line-height:1.4;padding-top:4px;"></div>
   </div>
 
   <!-- Zoomknappar -->

@@ -118,8 +118,11 @@
     padding-right:  env(safe-area-inset-right,   0px);
   }
 
-  /* Mobile toolbar (mtb) alltid synlig */
-  .mtb { display: flex !important; flex-wrap: wrap; }
+  /* Mobile toolbar (mtb) alltid synlig. En rad som rullar i sidled: den
+     bröt tidigare till två rader, och den andra hamnade bakom kartkontrollerna
+     (top: 46px) – där ligger sedan Lager-verktyg Etapp 2 de visuella verktygen. */
+  .mtb { display: flex !important; flex-wrap: nowrap; scrollbar-width: thin; }
+  .mtb::-webkit-scrollbar { height: 3px; }
   .mtbb { min-height: 44px; padding: 8px 10px; font-size: 14px; }
 
   /* Resize-handles: dölj på touch */
@@ -179,8 +182,10 @@
   }
 
   /* ── Kartkontroller: flytta under .mtb ── */
+  /* Under .mtb (44 px knappar + 2×4 px + tunn rullningslist). */
+  .map-top { top: 58px; flex-direction: column; align-items: stretch; gap: 4px; }
+  .map-top-right { align-items: flex-start; }
   .lm-ctrl {
-    top: 46px !important;
     flex-wrap: wrap;
     max-width: calc(100vw - 20px);
     justify-content: center;
@@ -190,8 +195,11 @@
   .lm-ctrl select { font-size: 11px; padding: 4px 6px; }
 
   /* Hint och zb: under .mtb */
-  .hint { top: 46px !important; left: 8px; font-size: 12px; max-width: 52%; }
-  .zb   { top: 46px !important; right: 8px; font-size: 12px; }
+  .hint { text-align: left; font-size: 12px; max-width: 100%; }
+
+  /* Kartans verktygsrad döljs; de visuella verktygen ligger i .mtb. */
+  .map-tools { display: none; }
+  .zb   { top: 58px !important; right: 8px; font-size: 12px; }
 
   /* ── Kvalitetspanel: kompakt, uppe till höger ── */
   #qPanel {

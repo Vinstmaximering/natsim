@@ -107,11 +107,18 @@ describe('index.html: Lager-menyn i toolbaren', () => {
     expect(utan).not.toContain('>LAGER<');
   });
 
-  it('ritknapparna står kvar i vänsterpanelen tills verktygsraden finns (etapp 2)', () => {
+  // Ändrat i Lager-verktyg Etapp 2: ritknapparna flyttade från vänsterpanelen
+  // till verktygsraden på kartan, med id:n i behåll.
+  it('ritknapparna ligger i verktygsraden på kartan, inte i vänsterpanelen', () => {
+    const verktyg = HTML.slice(HTML.indexOf('id="map-tools"'), HTML.indexOf('id="hint"'));
+    const utan = lp.replace(/<!--[\s\S]*?-->/g, '');
     for (const id of ['btn-visual-point', 'btn-visual-line']) {
       expect((HTML.match(new RegExp(`id="${id}"`, 'g')) || []).length).toBe(1);
+      expect(verktyg).toContain(`id="${id}"`);
+      expect(utan).not.toContain(`id="${id}"`);
       expect(readFileSync(join(root, 'src/ui/toolbar.js'), 'utf8')).toContain(id);
     }
+    expect(utan).not.toContain('RITA VISUELLT');
   });
 
   it('LÄGG TILL har inte kvar de visuella ritknapparna', () => {

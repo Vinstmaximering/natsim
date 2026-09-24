@@ -7,6 +7,17 @@ import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLin
 
 export { toggleMapLayer };
 
+// Verktygsraden på kartan (index.html #map-tools). tool = state.tool när
+// verktyget är valt; mobile = knapptext i den mobila verktygsraden (#mtb) för
+// verktyg som finns. Markera område (etapp 4) och yta (etapp 3) läggs till
+// här när de finns.
+export const MAP_TOOLS = [
+  { btn: 'btn-visual-point', tool: 'visual-point', key: 'p', mobile: '○ Pkt',
+    title: 'Visuell punkt – ritas i aktivt lager' },
+  { btn: 'btn-visual-line',  tool: 'visual-line',  key: 'l', mobile: '⤺ Linje',
+    title: 'Visuell linje – ritas i aktivt lager' },
+];
+
 export function buildTools() {
   const { tool, measFrom } = getState();
   const ptEntries = Object.entries(PT).filter(([k]) => k !== "simstation");
@@ -37,7 +48,12 @@ export function buildTools() {
     ptEntries.map(([k,v]) => `<button class="mtbb${tool===k?" act":""}" style="--c:${v.c}" onclick="window._setTool('${k}')">${v.l.split(" ")[0]}</button>`).join("") +
     `<button class="mtbb${tool==="simstation"?" act":""}" style="--c:#ff6090" onclick="window._setTool('simstation')">🔴</button>` +
     `<button class="mtbb${tool==="pan"?" act":""}" style="--c:#a0b8d0" onclick="window._setTool('pan')">🖐</button>` +
-    `<button class="mtbb${tool==="measure"?" act":""}" style="--c:#ff9900" onclick="window._setTool('measure')">📏</button>`;
+    `<button class="mtbb${tool==="measure"?" act":""}" style="--c:#ff9900" onclick="window._setTool('measure')">📏</button>` +
+    // Lager-verktyg Etapp 2: kartans verktygsrad döljs på telefon; de visuella
+    // ritverktygen ligger i stället här, sist i den mobila raden.
+    MAP_TOOLS.filter(t => t.mobile).map(t =>
+      `<button class="mtbb${tool===t.tool?" act":""}" style="--c:#cfd8dc" aria-pressed="${tool===t.tool}" title="${t.title}" onclick="window._setTool('${t.tool}')">${t.mobile}</button>`
+    ).join("");
 
   // Uppdatera hinder-verktygsknappar
   const obsPolBtn = document.getElementById('btn-obs-polygon');
@@ -51,15 +67,15 @@ export function buildTools() {
     obsLineBtn.style.cssText = '--c:#8aa8c0;margin-top:2px;' + (tool === 'obstacle-line' ? 'border-color:#8aa8c0;background:rgba(160,184,208,0.15);color:#8aa8c0' : '');
   }
 
-  const visPtBtn = document.getElementById('btn-visual-point');
-  if (visPtBtn) {
-    visPtBtn.className = 'tb' + (tool === 'visual-point' ? ' act' : '');
-    visPtBtn.style.cssText = '--c:#cfd8dc;margin-top:2px;' + (tool === 'visual-point' ? 'border-color:#cfd8dc;background:rgba(207,216,220,0.15);color:#cfd8dc' : '');
-  }
-  const visLineBtn = document.getElementById('btn-visual-line');
-  if (visLineBtn) {
-    visLineBtn.className = 'tb' + (tool === 'visual-line' ? ' act' : '');
-    visLineBtn.style.cssText = '--c:#cfd8dc;margin-top:2px;' + (tool === 'visual-line' ? 'border-color:#cfd8dc;background:rgba(207,216,220,0.15);color:#cfd8dc' : '');
+  // Verktygsraden på kartan (Lager-verktyg Etapp 2): valt verktyg markeras
+  // med klassen act och aria-pressed. #btn-visual-point och #btn-visual-line
+  // bor numera där, med sina id:n i behåll.
+  for (const t of MAP_TOOLS) {
+    const b = document.getElementById(t.btn);
+    if (!b) continue;
+    const on = tool === t.tool;
+    b.classList.toggle('act', on);
+    b.setAttribute('aria-pressed', String(on));
   }
 
   // Omgång 2: punkttypernas namn kommer ur PT, så hjälpraden inte kan
@@ -71,8 +87,8 @@ export function buildTools() {
     measure:"📏 Klicka FRÅN-punkt → klicka TILL-punkt",
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
-    'visual-point':     "○ Klicka för att placera visuella punkter · Esc/högerklick: avsluta",
-    'visual-line':      "⤺ Klicka för att kedja visuella linjer · Esc/högerklick: avsluta" };
+    'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
+    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Högerklick: bryt kedjan · Esc: avsluta" };
   const hint = document.getElementById("hint");
   if (hint) hint.textContent = hints[tool] || "";
 
