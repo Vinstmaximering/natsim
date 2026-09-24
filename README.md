@@ -1,6 +1,7 @@
 # NätSim
 
-Stomnätssimulator enligt SIS-TS 21143:2016 och HMK Stommätning 2024.
+Stomnätssimulator enligt SIS-TS 21143:2016, HMK – Stommätning 2024 och
+TDOK 2014:0571 version 6.0.
 
 Beräknar punkt­osäkerheter, felellipser, redundanstal, MUF och YT för geodetiska
 nät innan mätning utförs. Genererar mätningstekniskt PM och simuleringsrapporter.
@@ -111,16 +112,23 @@ läsvärden – σ_max är ett produktval och kan sättas per projekt:
 
 | Storhet | Krav | Status | Källa |
 |---|---|---|---|
-| Minsta r-tal per observation | r ≥ **0,35** | **Hårt** – blockerar leverans | SIS-TS 21143:2016 §6.2.2 |
-| r-tal per observation | r ≥ 0,50 | **Mjukt** – räknas och rapporteras | HMK Stommätning 2024 Bilaga F.2 |
+| Minsta r-tal per observation | r **> 0,35** | **Hårt** – blockerar leverans | SIS-TS 21143:2016 §6.2.2 · TDOK 2014:0571 v6.0 §2.8 K3 |
+| r-tal per observation | r ≥ 0,50 | **Mjukt** – räknas och rapporteras | HMK – Stommätning 2024 Bilaga F.2 |
 | Största punktosäkerhet σ_pos (1σ efter utjämning) | G1 2 · G2 **3 mm** · G3 5 · G4 8 | Hårt | **Produktval**, konfigurerbart |
-| Kontrollerbarhet k = f/n | k ≥ 0,50 | Hårt | SIS-TS 21143:2016 §6.2.2 |
+| Kontrollerbarhet k = f/n | k **> 0,50** | Hårt | SIS-TS 21143:2016 §6.2.2 · TDOK 2014:0571 v6.0 §2.8 K3 |
 | MUF / YT | ≤ 4 × σ respektive ≤ 2 × σ | Redovisas, spärrar ej | SIS-TS 21143:2016 §6.2.2 |
+
+**Gränserna är strikta.** TDOK 2014:0571 v6.0 §2.8 K3 lyder: *"Bruksnät i plan
+ska utformas så att k-tal för nätet är större än 0,5 och enskilda mätningar
+större än 0,35."* Samma ordalydelse i SIS-TS §6.2.2. Ett nät med k = 0,50 exakt
+uppfyller alltså **inte** kravet, och en observation med r = 0,35 exakt gör det
+inte heller. HMK:s nivå 0,50 för r-tal är en rekommendation, inte v6-kravet, och
+jämförs därför med ≥.
 
 Saknar projektet mätklass används G2:s krav, och dialogen säger att kravnivån
 är antagen.
 
-**r-kravet har två nivåer.** Det hårda kravet, r ≥ 0,35, är gränsen under
+**r-kravet har två nivåer.** Det hårda kravet, r > 0,35, är gränsen vid och under
 vilken en observation är så okontrollerad att ett grovt fel inte kan upptäckas
 med normal data-snooping – felet går i stället rakt in i koordinaterna. Nät som
 bryter mot det levereras inte. Det mjuka kravet, r ≥ 0,50, blockerar inte:
@@ -128,8 +136,8 @@ observationer däremellan tas med, men **räknas och redovisas efter varje
 iteration i beslutsspårningen** så att de kan motiveras i planeringsrapporten.
 
 Följden är att "Validera nät" kan ge **varningar** på ett optimerat nät
-(varningsbandet är 0,30 ≤ r_i < 0,50) men aldrig **fel**: valideringens felgräns
-`R_OBS_GOLV` = 0,30 ligger under det hårda kravet 0,35. Antalet valideringen
+(varningsbandet är 0,35 < r_i < 0,50) men aldrig **fel**: valideringens felgräns
+är samma normtal som det hårda kravet, `R_OBS_NORM` = 0,35. Antalet valideringen
 varnar för är exakt det antal optimeringen redan har redovisat.
 
 **σ_max är ett produktval, inte ett normcitat.** Det avser punktens
@@ -374,6 +382,49 @@ nätpunkter.
   nätpunkter (.geo), och projekthantering: Spara (Ctrl+S), Ladda, Excel-mall.
 - **Visa** — kartinnehåll och punkttyper i två kolumner, samt symbolstorlek och
   felellipsskala.
+- **Rapport** — alla dokument och exporter, i tre grupper:
+  - *Dokument*: Mätningstekniskt PM…
+  - *Simulering*: Simuleringsrapport (PDF och .txt), Beräkningsrapport (.txt),
+    Granska resultat i studioläge
+  - *Fältdokumentation*: Mätbok A4, Mätschema (.txt)
+
+  Menyn ersatte högerpanelens RAPPORT-flik. Val vars förutsättning saknas visas
+  inaktiva med skälet i `title` – "Kör simuleringen först", "Lägg till minst en
+  mätning först" eller "Kräver bredare skärm (minst 768 px)" – i stället för att
+  möta användaren med en dialogruta efter klicket. Rapportstudion nås via
+  *Granska resultat i studioläge*.
+
+## Mätningstekniskt PM
+
+PM-modulen följer **TDOK 2014:0571 version 6.0** (fastställd 2026-06-17).
+Verksamhet och nättyp väljs i guidens första steg och avgör vilken dokumenttyp
+rapporten får:
+
+| Verksamhet | Nättyp | Dokumenttyp | Källa |
+|---|---|---|---|
+| Väg | Bruksnät i plan | Redovisning av planerat stomnät | §2.5 K2 |
+| Järnväg | Bruksnät i plan | Åtgärdsförslag | §2.5 K1 |
+| Väg / Järnväg | Nät i plan för bro och broliknande konstruktion | Mätningsprogram | §1.7 K1 · §2.11.2 K6 |
+| Väg / Järnväg | Nät i plan för tunnelbyggnad | Mätningsprogram | §1.7 K1 · §2.10.2 K1 |
+| Ej Trafikverket | SIS-TS-nättyperna | Planering av stomnät | SIS-TS 21143:2016 Bilaga B kolumn P |
+
+Varje rubrik, gränsvärde och automatisk kontroll i rapporten bär sin källa.
+Avsnitt utan normstöd – som koordinatförteckningen i TDOK-mallarna och valet av
+Bilaga B-struktur för uppdrag utanför Trafikverket – är märkta som information,
+inte som krav.
+
+Rapporten redovisar punktosäkerheter både som standardosäkerhet u (1σ) och som
+utökad osäkerhet U = 2·u, med täckningsfaktor 2 enligt §1 K2. Vilken av dem
+toleranskravet jämförs mot väljs i guiden och skrivs ut i rapporten.
+
+En kontrolltabell per nättyp prövar de krav som går att pröva automatiskt
+(k-tal, r-tal, punktantal, byggnadsverkets läge, viktsättning mot Tabell 3) och
+säger uttryckligen när ett svar bygger enbart på en angivelse i formuläret eller
+måste kontrolleras manuellt.
+
+NätSim simulerar terrestra nät **i plan**. Anslutningsnät (§2.6, GNSS/VRS) och
+nät i höjd (§2.7, §2.9, §2.10.3, §2.11.3) erbjuds därför inte som nättyper för
+Trafikverksuppdrag.
 
 ## Struktur
 
