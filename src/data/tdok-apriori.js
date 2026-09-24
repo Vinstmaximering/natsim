@@ -76,19 +76,45 @@ export function identifieraForval(v) {
  * Avvikelser mot Tabell 3, storhet för storhet. Används av §2.8 K25-kontrollen
  * i rapporten, som ska visa VAD som avviker och inte bara att något gör det.
  *
- * @returns {Array<{storhet, kravVarde, faktisktVarde, avviker}>}
+ * KRAVET ÄR LIKHET, INTE ETT TAK. §2.8 K25 säger att värdena för
+ * standardosäkerhet enligt Tabell 3 SKA ANVÄNDAS som underlag vid viktsättning.
+ * Det är alltså de värdena som ska användas – inte "högst" dem. Ett lägre värde
+ * är därför lika mycket en avvikelse som ett högre, och avvikelsen får en
+ * riktning:
+ *
+ *   optimistisk  mindre än tabellen. Simuleringen räknar med noggrannare
+ *                mätningar än normen förutsätter och ger därför för gynnsamma
+ *                punktosäkerheter. Viktsättningen är relativ, så förhållandet
+ *                mellan riktnings- och längdvikter förskjuter också r-talen.
+ *                (k-talet = f/n är rent kombinatoriskt och påverkas inte.)
+ *   försiktig    större än tabellen. Simuleringen räknar med sämre mätningar
+ *                än normen förutsätter; resultatet blir inte för gynnsamt, men
+ *                det är ändå inte den viktsättning kravet anger.
+ *
+ * Jämförelsen görs inom avrundning: TOLERANS nedan tar hand om att värdena
+ * skrivs och lagras med olika antal decimaler.
+ *
+ * @returns {Array<{storhet, kravVarde, faktisktVarde, avviker, riktning}>}
+ *          riktning är 'lika' | 'optimistisk' | 'forsiktig' | 'saknas'
  */
+const TOLERANS = 1e-6;
+
 export function avvikelserMotTabell3({ sigHz_mgon, sigDist_mm, sigDist_ppm, centerErr }) {
   const T = TDOK_TABELL3_JARNVAG;
-  const rad = (storhet, krav, faktisk, enhet) => ({
-    storhet,
-    kravVarde:     `${komma(krav)} ${enhet}`,
-    faktisktVarde: Number.isFinite(faktisk) ? `${komma(faktisk)} ${enhet}` : '–',
-    // Ett värde som är BÄTTRE än tabellens är ingen avvikelse att anmärka på;
-    // tabellen anger den osäkerhet viktsättningen ska utgå från, och ett lägre
-    // tal betyder noggrannare mätning. Avvikelse = större än tabellens värde.
-    avviker: !Number.isFinite(faktisk) || faktisk > krav + 1e-9,
-  });
+  const rad = (storhet, krav, faktisk, enhet) => {
+    let riktning;
+    if (!Number.isFinite(faktisk))            riktning = 'saknas';
+    else if (Math.abs(faktisk - krav) <= TOLERANS) riktning = 'lika';
+    else if (faktisk < krav)                  riktning = 'optimistisk';
+    else                                      riktning = 'forsiktig';
+    return {
+      storhet,
+      kravVarde:     `${komma(krav)} ${enhet}`,
+      faktisktVarde: Number.isFinite(faktisk) ? `${komma(faktisk)} ${enhet}` : '–',
+      avviker:       riktning !== 'lika',
+      riktning,
+    };
+  };
   return [
     rad('Horisontalvinklar', T.sigHz_mgon, sigHz_mgon, 'mgon'),
     rad('Längder, konstantdel', T.sigDist_mm, sigDist_mm, 'mm'),
@@ -96,6 +122,14 @@ export function avvikelserMotTabell3({ sigHz_mgon, sigDist_mm, sigDist_ppm, cent
     rad('Centrering i plan', T.centerErr, centerErr, 'mm'),
   ];
 }
+
+/** Läsbar text för en avvikelses riktning. */
+export const RIKTNING_TEXT = Object.freeze({
+  lika:        'Enligt Tabell 3',
+  optimistisk: 'Optimistisk – mindre än Tabell 3',
+  forsiktig:   'Försiktig – större än Tabell 3',
+  saknas:      'Värde saknas',
+});
 
 // Svensk decimalkomma. Egen minimal variant för att modulen ska vara fri från
 // beroenden till core/ och kunna användas av både UI och rapport.

@@ -16,10 +16,12 @@
 // konfidensnivå för σ_pos, och rapporten får därför inte heller göra det.
 
 import { nf, komma } from '../../core/format.js';
-import { K_R_KALLA, klassificeraRtal } from '../../core/constants.js';
+import { klassificeraRtal } from '../../core/constants.js';
 import { rColor } from '../../core/redundancy.js';
-import { identifieraForval, TDOK_TABELL3_JARNVAG } from '../../data/tdok-apriori.js';
-import { kontroller, sammanfatta, STATUS_TEXT } from './kontroller.js';
+import {
+  identifieraForval, TDOK_TABELL3_JARNVAG, RIKTNING_TEXT,
+} from '../../data/tdok-apriori.js';
+import { kontroller, sammanfatta, statusText } from './kontroller.js';
 import {
   H2, H2opt, esc, mono, stycke, metaTabell, dataTabell,
 } from './blocks.js';
@@ -90,7 +92,9 @@ export function kontrolltabell(ctx, rubrik, kalla) {
   const sum = sammanfatta(rader);
   const statusCell = r => {
     const kl = { ok: 'rok', fel: 'rerr', manuell: 'rwrn' }[r.status];
-    return `<td class="${kl}">${STATUS_TEXT[r.status]}</td>`;
+    // Angivelsebaserade rader dämpas något: de är ett svar, men inte programmets.
+    const extra = r.grund === 'angiven' ? ' rangiven' : '';
+    return `<td class="${kl}${extra}">${esc(statusText(r))}</td>`;
   };
 
   let kropp = "";
@@ -101,14 +105,22 @@ export function kontrolltabell(ctx, rubrik, kalla) {
       <td>${esc(r.resultat)}</td>
       ${statusCell(r)}</tr>`;
 
-    // Detaljer till §2.8 K25: vilken storhet som avviker, och med vad.
+    // Detaljer till §2.8 K25: vilken storhet som avviker, och åt vilket håll.
+    // Riktningen är det som betyder något – ett värde MINDRE än tabellens ger
+    // för gynnsamma punktosäkerheter och är därför inte "bättre".
     if (r.detaljer?.length) {
       kropp += `<tr><td colspan="4" class="rdetalj">
         <table class="r"><tr><th>Storhet</th><th>Tabell 3</th><th>NätSim</th><th>Utfall</th></tr>` +
         r.detaljer.map(d => `<tr><td>${esc(d.storhet)}</td><td>${esc(d.kravVarde)}</td>
           <td>${esc(d.faktisktVarde)}</td>
-          <td class="${d.avviker ? 'rerr' : 'rok'}">${d.avviker ? 'Överstiger' : 'Inom'}</td></tr>`).join("") +
-        `</table></td></tr>`;
+          <td class="${d.avviker ? 'rerr' : 'rok'}">${esc(RIKTNING_TEXT[d.riktning])}</td></tr>`).join("") +
+        `</table>
+        <p class="rnot">§2.8 K25 kräver att Tabell 3:s värden ANVÄNDS som underlag vid
+        viktsättning – tabellen är inget tak. Ett optimistiskt värde (mindre än tabellen)
+        får simuleringen att räkna med noggrannare mätningar än normen förutsätter och ger
+        för gynnsamma punktosäkerheter; eftersom viktsättningen är relativ förskjuts också
+        r-talen. Kontrollerbarhetstalet k = f/n är kombinatoriskt och påverkas inte.</p>
+        </td></tr>`;
     }
 
     // Underlag till §2.10.2 K3: nätlinjer längre än 200 m.
@@ -124,8 +136,16 @@ export function kontrolltabell(ctx, rubrik, kalla) {
   return H2opt(rubrik, kalla) +
     `<table class="r"><tr><th>Krav</th><th>Källa</th><th>Resultat</th><th>Utfall</th></tr>${kropp}</table>` +
     `<p class="rnot">Uppfyllt (${sum.ok}) · Ej uppfyllt (${sum.fel}) · ` +
-    `Kontrolleras manuellt (${sum.manuell}). "Kontrolleras manuellt" betyder att NätSim ` +
-    `saknar underlag för att avgöra kravet – inte att det är uppfyllt.</p>`;
+    `Kontrolleras manuellt (${sum.manuell}).</p>` +
+    `<p class="rnot"><strong>Så ska utfallen läsas.</strong> ` +
+    `<em>Uppfyllt</em> och <em>Ej uppfyllt</em> utan tillägg är räknade på nätet: ` +
+    `k-talet, r-talen, antalet punkter och läget i förhållande till byggnadsverket. ` +
+    `<em>(enligt angivelse)</em> betyder att svaret enbart bygger på vad som fyllts i ` +
+    `formuläret – att ett fält för termometer är ifyllt säger att någon skrivit något ` +
+    `där, inte att en kalibrerad termometer kommer att användas` +
+    (sum.angivna ? ` (${sum.angivna} rader)` : '') + `. ` +
+    `<em>Kontrolleras manuellt</em> betyder att NätSim saknar underlag för att avgöra ` +
+    `kravet – inte att det är uppfyllt.</p>`;
 }
 
 // ── Hela simuleringsavsnittet ───────────────────────────────────────────────
@@ -149,7 +169,7 @@ export function simulering(ctx, rubrik, kalla) {
     ['Minsta r-tal (riktning)', nf(ctx.sr.rMinHz, 3)],
   ]);
   h += `<div class="rbox ${kOk ? 'bok' : 'berr'}"><strong>Kontrollerbarhet:</strong> ` +
-       `Nätet uppfyller ${kOk ? '' : 'inte '}kravet k &gt; 0,50 (${esc(K_R_KALLA)}).</div>`;
+       `Nätet uppfyller ${kOk ? '' : 'inte '}kravet k &gt; 0,50 (${esc(ctx.kravKalla)}).</div>`;
 
   h += aprioriAvsnitt(ctx);
 
@@ -218,7 +238,7 @@ export function simulering(ctx, rubrik, kalla) {
   h += dataTabell(['Från → Till', 'Typ', 'r-tal', 'Bedömning', 'MUF', 'YT'], rdTab);
   h += `<p class="rnot">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.2) · ` +
        `gul = r-tal &gt; 0,35 och &lt; 0,50, uppfyller kravet · röd = r-tal ≤ 0,35, ` +
-       `uppfyller inte kravet. Källa: ${esc(K_R_KALLA)}.</p>`;
+       `uppfyller inte kravet. Källa: ${esc(ctx.kravKalla)}.</p>`;
   h += `<div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> minsta grova fel som ` +
        `kan detekteras är ${ctx.mufMaxD !== "–" ? `avstånd ≤ ${ctx.mufMaxD} mm ` : ""}` +
        `${ctx.mufMaxH !== "–" ? `riktning ≤ ${ctx.mufMaxH} mgon` : ""}. ` +

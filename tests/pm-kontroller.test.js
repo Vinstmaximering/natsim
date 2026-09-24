@@ -5,11 +5,11 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  kontroller, sammanfatta, STATUS_TEXT, konvextHolje, inomHolje,
+  kontroller, sammanfatta, STATUS_TEXT, statusText, konvextHolje, inomHolje,
 } from '../src/pm/report/kontroller.js';
 import { jamforKrav, kravFaktor, kravStorhet } from '../src/pm/report/simulering.js';
 import {
-  TDOK_TABELL3_JARNVAG, identifieraForval, avvikelserMotTabell3,
+  TDOK_TABELL3_JARNVAG, identifieraForval, avvikelserMotTabell3, RIKTNING_TEXT,
 } from '../src/data/tdok-apriori.js';
 import { buildReport } from '../src/pm/report-generator.js';
 
@@ -119,28 +119,50 @@ describe('viktsättning', () => {
     expect(r.kalla).toContain('§2.8 K24');
   });
 
-  it('järnväg: a priori-värdena jämförs mot Tabell 3 (§2.8 K25)', () => {
-    const r = hitta(kontroller(ctx({ verksamhet: 'jarnvag' })), 'Viktsättning enligt Tabell 3');
+  // §2.8 K25: "Värden för standardosäkerhet enligt Tabell 3 ska användas som
+  // underlag vid viktsättning." Kravet är LIKHET – tabellen är inget tak.
+  const k25 = o => hitta(kontroller(ctx({ verksamhet: 'jarnvag', ...o })), 'Tabell 3 används');
+
+  it('järnväg: exakt tabellens värden ger uppfyllt', () => {
+    const r = k25();
     expect(r.status).toBe('ok');
     expect(r.kalla).toContain('§2.8 K25');
     expect(r.detaljer).toHaveLength(4);
-    expect(r.detaljer.every(d => !d.avviker)).toBe(true);
+    expect(r.detaljer.every(d => d.riktning === 'lika')).toBe(true);
+    expect(r.resultat).toContain('enligt tabellen');
   });
 
-  it('avvikelser pekas ut storhet för storhet', () => {
-    const r = hitta(kontroller(ctx({ verksamhet: 'jarnvag', mHz: 0.8, mDm: 5 })),
-                    'Viktsättning enligt Tabell 3');
+  it('försiktiga avvikelser (större än tabellen) pekas ut storhet för storhet', () => {
+    const r = k25({ mHz: 0.8, mDm: 5 });
     expect(r.status).toBe('fel');
-    const avv = r.detaljer.filter(d => d.avviker).map(d => d.storhet);
-    expect(avv).toEqual(['Horisontalvinklar', 'Längder, konstantdel']);
+    const avv = r.detaljer.filter(d => d.avviker);
+    expect(avv.map(d => d.storhet)).toEqual(['Horisontalvinklar', 'Längder, konstantdel']);
+    expect(avv.every(d => d.riktning === 'forsiktig')).toBe(true);
     expect(r.resultat).toContain('2 av 4');
+    expect(r.resultat).toContain('försiktiga');
   });
 
-  // Ett bättre värde än tabellens är ingen avvikelse att anmärka på.
-  it('noggrannare värden än tabellens är inte avvikelser', () => {
-    const r = hitta(kontroller(ctx({ verksamhet: 'jarnvag', mHz: 0.3, mDm: 1, mDp: 1, centerErr: 1 })),
-                    'Viktsättning enligt Tabell 3');
-    expect(r.status).toBe('ok');
+  // Det viktiga fallet: ETT LÄGRE värde är inte "bättre". Det får simuleringen
+  // att räkna med noggrannare mätningar än normen förutsätter.
+  it('optimistiska avvikelser (mindre än tabellen) är också avvikelser', () => {
+    const r = k25({ mHz: 0.3, mDm: 1, mDp: 1, centerErr: 1 });
+    expect(r.status).toBe('fel');
+    expect(r.detaljer.every(d => d.riktning === 'optimistisk')).toBe(true);
+    expect(r.resultat).toContain('4 optimistiskt');
+    expect(r.resultat).toContain('för gynnsamma');
+  });
+
+  it('blandade avvikelser räknas var för sig', () => {
+    const r = k25({ mHz: 0.3, mDm: 5 });
+    expect(r.status).toBe('fel');
+    const per = Object.fromEntries(r.detaljer.map(d => [d.storhet, d.riktning]));
+    expect(per['Horisontalvinklar']).toBe('optimistisk');
+    expect(per['Längder, konstantdel']).toBe('forsiktig');
+    expect(per['Centrering i plan']).toBe('lika');
+  });
+
+  it('avrundningsskillnader räknas som likhet', () => {
+    expect(k25({ mHz: 0.5 + 1e-9, centerErr: 2 - 1e-9 }).status).toBe('ok');
   });
 });
 
@@ -174,7 +196,23 @@ describe('TDOK Tabell 3', () => {
     const a = avvikelserMotTabell3({ sigHz_mgon: 0.5, sigDist_mm: 3, sigDist_ppm: 3, centerErr: 2 });
     expect(a).toHaveLength(4);
     expect(a.every(x => !x.avviker)).toBe(true);
+    expect(a.every(x => x.riktning === 'lika')).toBe(true);
     expect(a[0].kravVarde).toBe('0,5 mgon');
+  });
+
+  it('riktningen har fyra utfall med läsbar text', () => {
+    expect(Object.keys(RIKTNING_TEXT).sort())
+      .toEqual(['forsiktig', 'lika', 'optimistisk', 'saknas']);
+    expect(RIKTNING_TEXT.optimistisk).toContain('mindre');
+    expect(RIKTNING_TEXT.forsiktig).toContain('större');
+  });
+
+  it('ett saknat värde är varken lika eller en riktad avvikelse', () => {
+    const a = avvikelserMotTabell3({ sigHz_mgon: undefined, sigDist_mm: 3,
+                                     sigDist_ppm: 3, centerErr: 2 });
+    expect(a[0].riktning).toBe('saknas');
+    expect(a[0].avviker).toBe(true);
+    expect(a[0].faktisktVarde).toBe('–');
   });
 });
 
@@ -290,15 +328,68 @@ describe('tunnel', () => {
 // ── Mall D och sammanfattning ───────────────────────────────────────────────
 
 describe('kontrollernas ram', () => {
-  it('Ej Trafikverket får inga TDOK-kontroller', () => {
-    expect(kontroller(ctx({ verksamhet: 'ej-tv', nattyp: 'sis-bruksnat' }))).toEqual([]);
+  // Mall D får de två krav SIS-TS självt ställer, men ingen TDOK-hänvisning:
+  // TDOK gäller Trafikverkets uppdrag.
+  it('Ej Trafikverket får SIS-TS §6.2.2 men inga TDOK-krav', () => {
+    const r = kontroller(ctx({ verksamhet: 'ej-tv', nattyp: 'sis-bruksnat' }));
+    expect(r).toHaveLength(2);
+    expect(r.map(x => x.kalla)).toEqual(['SIS-TS 21143:2016 §6.2.2',
+                                         'SIS-TS 21143:2016 §6.2.2']);
+    expect(r.some(x => x.kalla.includes('TDOK'))).toBe(false);
+    expect(r[0].krav).toContain('k-tal');
+    expect(r[1].krav).toContain('Enskilda mätningar');
+  });
+
+  it('samma gränser gäller i mall D', () => {
+    const under = kontroller(ctx({
+      verksamhet: 'ej-tv', nattyp: 'sis-bruksnat',
+      sr: { K_global: 0.50, meas_n: 12, unkn_n: 6, redundancy: 6 },
+      redund: [{ ri: 0.35, type: 'dist', fromId: 'A', toId: 'B', d: 100 }],
+    }));
+    expect(under.every(r => r.status === 'fel')).toBe(true);
+  });
+
+  it('utan vald verksamhet finns ingen norm att hänföra kontrollen till', () => {
     expect(kontroller(ctx({ verksamhet: '', nattyp: '' }))).toEqual([]);
   });
 
-  it('sammanfattningen räknar per status', () => {
-    const s = sammanfatta([{ status: 'ok' }, { status: 'ok' }, { status: 'fel' },
-                           { status: 'manuell' }]);
-    expect(s).toEqual({ ok: 2, fel: 1, manuell: 1 });
+  it('sammanfattningen räknar per status och per grund', () => {
+    const s = sammanfatta([
+      { status: 'ok', grund: 'beraknad' }, { status: 'ok', grund: 'angiven' },
+      { status: 'fel', grund: 'angiven' }, { status: 'manuell', grund: 'beraknad' },
+    ]);
+    expect(s).toEqual({ ok: 2, fel: 1, manuell: 1, angivna: 2 });
+  });
+
+  // En kontroll som bara läser ett formulärfält får inte se ut som en beräkning.
+  it('angivelsebaserade kontroller märks ut i utfallet', () => {
+    expect(statusText({ status: 'ok',  grund: 'beraknad' })).toBe('Uppfyllt');
+    expect(statusText({ status: 'fel', grund: 'beraknad' })).toBe('Ej uppfyllt');
+    expect(statusText({ status: 'ok',  grund: 'angiven' })).toBe('Uppfyllt (enligt angivelse)');
+    expect(statusText({ status: 'fel', grund: 'angiven' })).toBe('Ej uppfyllt (enligt angivelse)');
+    expect(statusText({ status: 'manuell', grund: 'beraknad' })).toBe('Kontrolleras manuellt');
+  });
+
+  it('rätt kontroller är angivelsebaserade, rätt är beräknade', () => {
+    const grund = k => Object.fromEntries(
+      kontroller(ctx(k)).map(r => [r.krav, r.grund]));
+
+    const bruks = grund({ verksamhet: 'jarnvag', nattyp: 'bruksnat' });
+    expect(bruks['Mätklass G3']).toBe('angiven');
+    expect(bruks['Tvångscentrering']).toBe('angiven');
+    expect(bruks['Temperatur och lufttryck mäts med kalibrerad termometer och barometer'])
+      .toBe('angiven');
+    // Det programmet självt räknar ut är beräknat.
+    expect(bruks['k-tal för nätet större än 0,50']).toBe('beraknad');
+    expect(bruks['Enskilda mätningar större än 0,35']).toBe('beraknad');
+    expect(bruks['Värden enligt Tabell 3 används som underlag vid viktsättning'])
+      .toBe('beraknad');
+
+    const bro = grund({ verksamhet: 'jarnvag', nattyp: 'bro' });
+    expect(bro['Minst 2 markeringar gemensamma med stomnät i plan för järnväg'])
+      .toBe('angiven');
+    expect(bro['Minst 4 punkter']).toBe('beraknad');
+    expect(bro['Punkterna omsluter byggnadsverket']).toBe('beraknad');
   });
 
   it('"Kontrolleras manuellt" är en egen status, inte ett godkännande', () => {
@@ -314,6 +405,7 @@ describe('kontrollernas ram', () => {
         expect(r.kalla, nt).toBeTruthy();
         expect(r.resultat, nt).toBeTruthy();
         expect(['ok', 'fel', 'manuell'], nt).toContain(r.status);
+        expect(['beraknad', 'angiven'], nt).toContain(r.grund);
       }
     }
   });
@@ -409,11 +501,23 @@ describe('kontrolltabellen i rapporten', () => {
     expect(h).toContain('Uppfyllt');
   });
 
-  it('järnvägens Tabell 3-detaljer följer med', () => {
+  it('järnvägens Tabell 3-detaljer följer med, med riktning', () => {
     const h = rap('jarnvag', 'bruksnat');
-    expect(h).toContain('Viktsättning enligt Tabell 3');
+    expect(h).toContain('Tabell 3 används som underlag vid viktsättning');
     expect(h).toContain('Horisontalvinklar');
     expect(h).toContain('0,5 mgon');
+    expect(h).toContain('Enligt Tabell 3');
+    expect(h).toContain('tabellen är inget tak');
+  });
+
+  it('ett optimistiskt värde redovisas som avvikelse i rapporten', () => {
+    const h = buildReport({
+      ...BAS, mHz: 0.3,
+      vals: { verksamhet: 'jarnvag', nattyp: 'bruksnat', tvangutr: 'GZR3',
+              termometer: 'T', barometer: 'B' },
+    });
+    expect(h).toContain('Optimistisk – mindre än Tabell 3');
+    expect(h).toContain('för gynnsamma');
   });
 
   it('tunnelns långa linjer listas som underlag', () => {
@@ -428,8 +532,45 @@ describe('kontrolltabellen i rapporten', () => {
     expect(h).toContain('350,0');
   });
 
-  it('mall D har ingen kontrolltabell', () => {
-    expect(rap('ej-tv', 'sis-bruksnat')).not.toContain('Automatiska kontroller');
+  it('mall D har en kontrolltabell med SIS-TS som enda källa', () => {
+    const h = rap('ej-tv', 'sis-bruksnat');
+    expect(h).toContain('Automatiska kontroller mot SIS-TS 21143:2016');
+
+    // Assertionerna gäller SJÄLVA TABELLEN. Ord som "Tvångscentrering" finns
+    // också i instrumentavsnittet, där de är innehåll och inte en kontroll.
+    const i = h.indexOf('Automatiska kontroller');
+    const tabell = h.slice(i, h.indexOf('</table>', i));
+    expect(tabell).toContain('k-tal för nätet större än 0,50');
+    expect(tabell).toContain('Enskilda mätningar större än 0,35');
+    // Inga TDOK-krav i ett dokument utanför Trafikverket.
+    expect(tabell).not.toContain('TDOK');
+    expect(tabell).not.toContain('Mätklass G3');
+    expect(tabell).not.toContain('Tvångscentrering');
+    expect(tabell).not.toContain('Termometer');
+  });
+
+  // Hela mall D ska vara fri från TDOK-hänvisningar: dokumentet gäller ett
+  // uppdrag utanför Trafikverket. Gränserna är desamma, men källan är SIS-TS.
+  it('mall D nämner inte TDOK någonstans', () => {
+    expect(rap('ej-tv', 'sis-bruksnat')).not.toContain('TDOK 2014:0571 v6.0 §2.8 K3');
+  });
+
+  it('mall A–C behåller TDOK i källan till k- och r-gränserna', () => {
+    expect(rap('vag', 'bruksnat')).toContain('TDOK 2014:0571 v6.0 §2.8 K3');
+  });
+
+  it('noten förklarar de tre slagen av utfall', () => {
+    const h = rap('vag', 'bruksnat');
+    expect(h).toContain('Så ska utfallen läsas');
+    expect(h).toContain('(enligt angivelse)');
+    expect(h).toContain('Kontrolleras manuellt');
+    expect(h).toContain('räknade på nätet');
+  });
+
+  it('angivelsebaserade rader märks i tabellen', () => {
+    const h = rap('vag', 'bruksnat');
+    expect(h).toContain('Uppfyllt (enligt angivelse)');
+    expect(h).toContain('rangiven');
   });
 
   it('u och U redovisas båda, med källan till täckningsfaktorn', () => {

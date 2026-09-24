@@ -208,6 +208,9 @@ h1.r .rkalla { color: #7089a8; }
 .rkalla-cell { font-size: 7.5pt; color: #667; white-space: nowrap; }
 .rdetalj { background: #fafbfc; padding: 1.5mm 2mm 1.5mm 6mm; }
 .rdetalj table.r { margin: 0; font-size: 8pt; }
+/* Utfall som bara bygger på användarens angivelse – ett svar, men inte
+   programmets. Dämpat och kursivt så att det inte läses som en beräkning. */
+.rangiven { font-style: italic; font-weight: 400; }
 
 /* Bilder */
 .fig { text-align: center; margin: 3mm 0; }

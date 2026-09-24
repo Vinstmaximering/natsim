@@ -366,6 +366,10 @@ export function mallD(ctx) {
   h += `<div class="rb">`;
   h += H1('R3.9 Bedömning av kvalitetskrav och toleranser', `${SIS} Bilaga B R3.9`);
   h += simulering(ctx, 'Simulering och kvalitetsbedömning', `${SIS} §6.2.5`);
+  // Bara de krav SIS-TS självt ställer. TDOK gäller Trafikverkets uppdrag och
+  // har ingenting i ett dokument utanför dem att göra.
+  h += kontrolltabell(ctx, 'Automatiska kontroller mot SIS-TS 21143:2016',
+                      `${SIS} §6.2.2`);
   h += `</div>`;
 
   h += `<div class="rb">`;

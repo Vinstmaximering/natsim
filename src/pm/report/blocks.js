@@ -165,6 +165,12 @@ export function prep(data) {
   // §2.11.2 K2: lagret användaren pekat ut som byggnadsverk, om något. Slås upp
   // ur de lager huvudfönstret skickat – ett sparat lager-id som inte längre
   // finns ger null, och kontrollen blir då "kontrolleras manuellt".
+  // Källan för k- och r-gränserna. K_R_KALLA är huvudappens formulering, med
+  // TDOK som upplysning – den passar när projekttypen är okänd. I mall D VET vi
+  // att uppdraget ligger utanför Trafikverket, och då ska TDOK inte nämnas
+  // alls. Mall A–C vet tvärtom att TDOK gäller.
+  ctx.kravKalla = ctx.dok?.mall === 'D' ? 'SIS-TS 21143:2016 §6.2.2' : K_R_KALLA;
+
   ctx.visuellaLager = data.visuellaLager || [];
   ctx.byggnadsverk  = ctx.visuellaLager.find(l => l.id === vals.byggnadsverkLager) || null;
 
