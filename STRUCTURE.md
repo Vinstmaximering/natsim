@@ -161,7 +161,11 @@ lyckad.
 ## Tillkommet i v0.6.0
 
 Beskrivning av modulerna som tillkom i de två arbetena som ingår i v0.6.0.
-Ingen av dem ändrar `src/core/`; beräkningskärnan är orörd.
+De nya modulerna ligger utanför `src/core/`. PM-arbetet ändrade i `src/core/`
+bara normgränserna – k-tal och r-tal prövas nu med strikt "större än" enligt
+TDOK 2014:0571 v6.0 §2.8 K3 och SIS-TS 21143:2016 §6.2.2 – samt kommentarer
+med felaktiga källhänvisningar. Formlerna är orörda. Lagerarbetet rör inte
+`src/core/`.
 
 ### PM enligt TDOK 2014:0571 v6.0 och Rapport-menyn
 
