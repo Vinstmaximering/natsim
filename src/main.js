@@ -271,7 +271,8 @@ async function openPM() {
     );
     return;
   }
-  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr, obstacles, activeLayerKey, sigReq } = getState();
+  const { simResult, pts, meas, activeCRS, activeMatklass, defaultInstr, centerErr,
+          obstacles, activeLayerKey, sigReq, visualLayers, visualPts, visualLines } = getState();
   if (!simResult?.ok) { alert("Beräkna simuleringen först."); return; }
 
   const popup = window.open(
@@ -347,6 +348,22 @@ async function openPM() {
     // Etapp 3: projektets σ_pos-krav ur A PRIORI σ-fliken. Ersätter kravSp, som
     // alltid skickades tomt och därför aldrig kunde förifylla kravfältet.
     sigReq: sigReq ?? null,
+    // Etapp 5: de visuella lagren, för §2.11.2 K2 – pekar användaren ut ett
+    // lager som byggnadsverk kan rapporten pröva om nätpunkterna omsluter det.
+    // Bara id, namn och punktlägen behövs; linjer tas med som sina ändpunkter
+    // eftersom kontrollen är rent geometrisk.
+    visuellaLager: (visualLayers || []).map(l => {
+      const pts_ = (visualPts || []).filter(p => p.layerId === l.id)
+        .map(p => ({ E: p.E, N: p.N }));
+      const lin = (visualLines || []).filter(x => x.layerId === l.id);
+      for (const ln of lin) {
+        for (const ref of [ln.from, ln.to]) {
+          const vp = (visualPts || []).find(p => p.id === ref);
+          if (vp) pts_.push({ E: vp.E, N: vp.N });
+        }
+      }
+      return { id: l.id, namn: l.name, antal: pts_.length, punkter: pts_ };
+    }),
   };
 
   pendingPayload = payload;

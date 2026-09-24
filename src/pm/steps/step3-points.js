@@ -64,6 +64,7 @@ export function render(D, container, vals) {
         <div class="ptab-wrap" id="mark-wrap"></div>
 
         <div id="tillstand-sek"></div>
+        <div id="byggnadsverk-sek"></div>
         <div id="gemensam-sek"></div>
         <div id="foraldralosa-sek"></div>
 
@@ -76,6 +77,7 @@ export function render(D, container, vals) {
 
   byggMarkering(D, container.querySelector("#mark-wrap"), vals);
   if (arJvg)         byggTillstand(D, container.querySelector("#tillstand-sek"), vals);
+  if (arBro)         byggByggnadsverk(D, container.querySelector("#byggnadsverk-sek"), vals);
   if (arBro && arJvg) byggGemensam(D, container.querySelector("#gemensam-sek"), vals);
   byggForaldralosa(D, container.querySelector("#foraldralosa-sek"), vals);
 }
@@ -247,6 +249,38 @@ function byggTillstand(D, sek, vals) {
     sikt.addEventListener("input", skriv);
     datum.addEventListener("change", skriv);
   }
+}
+
+// ── Byggnadsverkets läge, bro ───────────────────────────────────────────────
+// §2.11.2 K2 kräver minst 4 punkter som OMSLUTER byggnadsverket. NätSim vet
+// inte var byggnadsverket är om användaren inte säger det. Pekas ett visuellt
+// lager ut kan rapporten pröva om lagrets objekt ligger innanför nätpunkternas
+// konvexa hölje; utan utpekat lager blir kontrollen "kontrolleras manuellt".
+
+function byggByggnadsverk(D, sek, vals) {
+  if (!sek) return;
+  const lager = D.visuellaLager || [];
+  sek.innerHTML = `
+    <hr class="hr">
+    <div class="sec">Byggnadsverkets läge <span class="kalla">TDOK 2014:0571 v6.0 §2.11.2 K2</span></div>
+    <div class="hint">
+      §2.11.2 K2 kräver minst 4 punkter som omsluter byggnadsverket. Peka ut det
+      visuella lager som visar byggnadsverket, så kontrollerar rapporten automatiskt
+      om nätpunkterna omsluter det. Utan utpekat lager redovisas kravet som
+      <b>Kontrolleras manuellt</b> – programmet vet då inte var byggnadsverket ligger.
+    </div>
+    ${lager.length ? `
+      <div><div class="lbl">Visuellt lager som visar byggnadsverket</div>
+        <select id="v_byggnadsverkLager">
+          <option value="">– inget utpekat (kontrolleras manuellt) –</option>
+          ${lager.map(l => `<option value="${esc(l.id)}">${esc(l.namn)} (${l.antal} objekt)</option>`).join("")}
+        </select>
+      </div>`
+      : `<div class="ptab-tom">Projektet har inga visuella lager. Importera eller rita
+         byggnadsverket i NätSim för att kunna få kravet kontrollerat automatiskt.</div>`}`;
+
+  const sel = sek.querySelector("#v_byggnadsverkLager");
+  if (sel && vals.byggnadsverkLager) sel.value = vals.byggnadsverkLager;
 }
 
 // ── Gemensamma markeringar, bro + järnväg ───────────────────────────────────

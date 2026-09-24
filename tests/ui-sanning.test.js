@@ -166,9 +166,10 @@ describe('Fix 4 – σN står före σE i alla utdataformat', () => {
     ['src/ui/studio-views/report-studio.js', /σN mm[\s\S]{0,200}?σE mm/],
     ['src/reports/sim-report.js',            /σN mm[\s\S]{0,200}?σE mm/],
     ['src/io/export-pdf.js',                 /σN mm[\s\S]{0,200}?σE mm/],
-    // ETAPP 4: punkttabellen ligger i report/blocks.js sedan rapporten delades
-    // i fyra mallar. Kolumnrubrikerna heter "σ_N (mm)" och "σ_E (mm)".
-    ['src/pm/report/blocks.js',               /σ_N \(mm\)[\s\S]{0,200}?σ_E \(mm\)/],
+    // ETAPP 4: punkttabellen ligger i report/ sedan rapporten delades i fyra
+    // mallar. ETAPP 5: den flyttade vidare till report/simulering.js.
+    // Kolumnrubrikerna heter "σ_N (mm)" och "σ_E (mm)".
+    ['src/pm/report/simulering.js',           /σ_N \(mm\)[\s\S]{0,200}?σ_E \(mm\)/],
   ];
 
   for (const [fil, ordning] of ytor) {

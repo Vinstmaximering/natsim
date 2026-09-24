@@ -255,8 +255,11 @@ describe('Produkten uttalar sig bara där normen ger täckning', () => {
     // "Homogent"/"Inhomogent" med gränserna 0,08 och 0,15 saknade källa.
     // ETAPP 4: simuleringsavsnittet ligger i report/blocks.js sedan rapporten
     // delades i fyra mallar. report-generator.js är numera bara dispatcher.
+    // ETAPP 5: simuleringsavsnittet flyttade vidare till report/simulering.js
+    // när kontrolltabellen och u/U-redovisningen tillkom.
     const src = ['src/pm/report-generator.js', 'src/pm/report/blocks.js',
-                 'src/pm/report/mallar.js']
+                 'src/pm/report/mallar.js', 'src/pm/report/simulering.js',
+                 'src/pm/report/kontroller.js']
       .map(f => read(f)).join('\n').replace(/^\s*\/\/.*$/gm, '');
     expect(src).not.toMatch(/Inhomogent|Homogent/);
     expect(src).toMatch(/σ\(r-tal\)/);

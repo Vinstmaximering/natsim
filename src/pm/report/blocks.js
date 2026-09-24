@@ -63,7 +63,7 @@ export const dataTabell = (kolumner, rader, tomText = "Inga uppgifter.") =>
     ? `<table class="r"><tr>${kolumner.map(k => `<th>${esc(k)}</th>`).join("")}</tr>${rader}</table>`
     : `<p class="r rtom">${esc(tomText)}</p>`;
 
-const mono = v => `<td style="text-align:right;font-family:monospace">${v}</td>`;
+export const mono = v => `<td style="text-align:right;font-family:monospace">${v}</td>`;
 
 // ── Förberedelse: ctx ur data ───────────────────────────────────────────────
 // Samlar allt mallarna behöver på ett ställe, så att ingen mall gör sin egen
@@ -161,6 +161,12 @@ export function prep(data) {
 
   // Antal gemensamma markeringar (§2.11.2 K4) – bara punkter som finns i nätet.
   ctx.nGemensam = allPts.filter(p => gemensam[p.id]).length;
+
+  // §2.11.2 K2: lagret användaren pekat ut som byggnadsverk, om något. Slås upp
+  // ur de lager huvudfönstret skickat – ett sparat lager-id som inte längre
+  // finns ger null, och kontrollen blir då "kontrolleras manuellt".
+  ctx.visuellaLager = data.visuellaLager || [];
+  ctx.byggnadsverk  = ctx.visuellaLager.find(l => l.id === vals.byggnadsverkLager) || null;
 
   return ctx;
 }
@@ -498,85 +504,3 @@ export function leverans(ctx, rubrik, kalla) {
 export const godkannande = (text, kalla) =>
   `<div class="rbox bwrn"><strong>Godkännande:</strong> ${esc(text)}${kallaSpan(kalla)}</div>`;
 
-// ── Simulering och kvalitetsbedömning ───────────────────────────────────────
-// Etapp 4 flyttar hit den befintliga redovisningen oförändrad, så att alla fyra
-// mallar är kompletta. Etapp 5 bygger om avsnittet: GUM-terminologi, utökad
-// osäkerhet U = 2·u, kravjämförelse mot rätt storhet, tregradig färgning av
-// r-talen och den automatiska kontrolltabellen per nättyp.
-
-export function simulering(ctx, rubrik, kalla) {
-  const kOk = ctx.kKlass.uppfyllerNorm;
-  const stabTxt = kOk
-    ? `Nätet uppfyller kravet k > 0,50 (${K_R_KALLA}).`
-    : `Nätet uppfyller inte kravet k > 0,50 (${K_R_KALLA}).`;
-
-  const spTab = ctx.ptRes.map(r => {
-    const sm = r.sigPos * 1000;
-    const ok = ctx.kravSP == null || sm <= ctx.kravSP;
-    return `<tr><td>${esc(r.id)}</td>
-      ${mono(nf(r.sigN * 1000, 2))}${mono(nf(r.sigE * 1000, 2))}
-      <td style="text-align:right;font-family:monospace;font-weight:700;color:${ok ? "#006600" : "#cc0000"}">${nf(sm, 2)}</td>
-      ${mono(nf(r.aSemi ? r.aSemi * 1000 : null, 2))}${mono(nf(r.bSemi ? r.bSemi * 1000 : null, 2))}</tr>`;
-  }).join("");
-
-  const rdTab = ctx.redund.map(r => {
-    const ok = r.ri >= 0.5;
-    const muf = r.mdb
-      ? (r.type === "dist" ? nf(r.mdb.val * 1000, 1) + " mm" : nf(r.mdb.val, 3) + " mgon")
-      : "–";
-    const yt = r.yt_m != null && r.yt_m !== Infinity
-      ? (r.type === "dist" ? nf(r.yt_m * 1000, 1) + " mm"
-                           : nf(r.yt_m / r.d * (200000 / Math.PI), 3) + " mgon")
-      : (r.yt_m === Infinity ? "∞" : "–");
-    return `<tr><td style="font-weight:700">${esc(r.fromId)}→${esc(r.toId)}</td>
-      <td>${r.type === "dist" ? "Avstånd" : "Riktning"}</td>
-      <td style="text-align:right;font-family:monospace;font-weight:700;color:${ok ? "#006600" : "#cc0000"}">${nf(r.ri, 3)}</td>
-      ${mono(muf)}${mono(yt)}</tr>`;
-  }).join("");
-
-  let h = H2opt(rubrik, kalla);
-  h += `<p class="r">Simulering utförd enligt SIS-TS 21143:2016 §6.2.5 och ` +
-       `HMK – Stommätning 2024 Bilaga F.</p>`;
-
-  h += H2('Nätstatistik') + metaTabell([
-    ['Observationer (n)', String(ctx.sr.meas_n)],
-    ['Obekanta (u)', String(ctx.sr.unkn_n)],
-    ['Redundans f = n − u', String(ctx.sr.redundancy)],
-    ['Kontrollerbarhet k = f/n', `${nf(ctx.sr.K_global, 3)} – ${ctx.kKlass.klass}`],
-    ['κ (HMK Formel F.16)', komma(ctx.sr.kappa)],
-    ['Minsta r-tal (avst.)', nf(ctx.sr.rMinDist, 3)],
-    ['Minsta r-tal (riktning)', nf(ctx.sr.rMinHz, 3)],
-  ]);
-  h += `<div class="rbox ${kOk ? 'bok' : 'berr'}"><strong>Kontrollerbarhet:</strong> ${esc(stabTxt)}</div>`;
-
-  h += H2('A priori standardosäkerheter') + dataTabell(
-    ['Storhet', 'σ', 'Helsatser'],
-    `<tr><td>Riktningar</td><td>${nf(ctx.mHz, 3)} mgon</td><td>${ctx.mSt}</td></tr>
-     <tr><td>Avstånd</td><td>${nf(ctx.mDm, 1)} mm + ${nf(ctx.mDp, 1)} ppm</td><td>–</td></tr>
-     <tr><td>Centrering</td><td>${nf(ctx.centerErr, 1)} mm</td><td>–</td></tr>`);
-
-  h += H2('Förväntade punktosäkerheter');
-  if (ctx.kravStr) {
-    h += `<div class="rbox"><strong>Toleranskrav:</strong> σ_pos ≤ ${komma(esc(ctx.kravStr))} mm` +
-         ` (täckningsfaktor ${esc(ctx.kravk)})</div>`;
-  }
-  h += dataTabell(['Punkt', 'σ_N (mm)', 'σ_E (mm)', 'σ_pos (mm)', 'σ_a (mm)', 'σ_b (mm)'], spTab);
-  h += metaTabell([['Medel σ_pos', `${ctx.spMean} mm`], ['Max σ_pos', `${ctx.spMax} mm`]]);
-
-  h += H2('Mätningars r-tal, MUF och YT');
-  h += `<p class="r">r-tal = observationens redundanstal, i HMK betecknat k_i (HMK Formel F.2) ` +
-       `– ej att förväxla med nätets globala k-tal ovan. MUF = minsta upptäckbara fel ` +
-       `(HMK Formel F.13). YT = yttre tillförlitlighet.</p>`;
-  h += dataTabell(['Från → Till', 'Typ', 'r-tal', 'MUF', 'YT'], rdTab);
-  h += `<p class="rnot">Grön = r-tal ≥ 0,50, ingen anmärkning (HMK Bilaga F.2) · ` +
-       `gul = r-tal > 0,35 och &lt; 0,50, uppfyller kravet · röd = r-tal ≤ 0,35, uppfyller ` +
-       `inte kravet. Källa: ${esc(K_R_KALLA)}.</p>`;
-  h += `<div class="rbox"><strong>Inre tillförlitlighet (MUF):</strong> minsta grova fel som ` +
-       `kan detekteras är ${ctx.mufMaxD !== "–" ? `avstånd ≤ ${ctx.mufMaxD} mm ` : ""}` +
-       `${ctx.mufMaxH !== "–" ? `riktning ≤ ${ctx.mufMaxH} mgon` : ""}. ` +
-       `<strong>YT:</strong> största koordinatpåverkan ${ctx.ytMaxD} mm. ` +
-       `<strong>Spridning i r-talen:</strong> σ(r-tal) = ${nf(ctx.rStd, 3)}.</div>`;
-
-  if (ctx.omdome) h += stycke(ctx.omdome);
-  return h;
-}

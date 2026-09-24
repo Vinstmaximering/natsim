@@ -2,6 +2,7 @@
 // rad 1679–2215 (renderTab) + rad 1116–1151 (suggestMeasurements) + rad 3332–3352 (instrument)
 import { getState, setState } from '../state/store.js';
 import { STUDIO_TABS } from './studio.js';
+import { TDOK_TABELL3_JARNVAG, APRIORI_FORVAL } from '../data/tdok-apriori.js';
 import { INSTRUMENTS, MATKLASSER, PT, CRS_DEFS, klassificeraKtal, klassificeraRtal,
          sigPosKlass, ptLabel, ptLabelShort, K_BAND, K_R_KALLA,
          bandIntervall } from '../core/constants.js';
@@ -671,6 +672,14 @@ export function renderTab() {
         <input id="center-err" type="number" step="0.1" min="0" value="${centerErr}" style="flex:1;padding:5px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;">
         <span class="val-muted" style="font-size:12px;">mm (globalt)</span>
       </div>
+      <div class="sl" ${tipAttr(TIPS.SIGMA_HZ)}>A PRIORI-FÖRVAL</div>
+      <button onclick="window._applyApriori('${TDOK_TABELL3_JARNVAG.id}')" class="tb tb-info"
+              style="width:100%;padding:6px;font-size:12px;border-radius:3px;cursor:pointer;">
+        ${TDOK_TABELL3_JARNVAG.l}
+      </button>
+      <div class="val-muted" style="font-size:11px;line-height:1.6;margin:4px 0 10px;">
+        ${TDOK_TABELL3_JARNVAG.beskrivning}
+      </div>
       <div class="sl">MAXAVSTÅND FÖRESLAGNA MÄTNINGAR</div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
         ${renderMaxSuggestDistInput("max-sugg-dist", getState().maxSuggestDist)}
@@ -762,6 +771,36 @@ export function updateGlobalInstrInfo() {
   info.innerHTML = `<span ${tipAttr(TIPS.SIGMA_HZ)}>σ riktning:</span> <span style="color:#4fc3f7">${komma(pr.sigHz)} mgon</span> &nbsp; <span ${tipAttr(TIPS.SIGMA_D)}>σ avstånd:</span> <span style="color:#4fc3f7">${komma(pr.sigDmm)} mm + ${komma(pr.sigDppm)} ppm</span>`;
 }
 
+/**
+ * Tillämpar ett a priori-förval på alla mätningar och på centreringsfelet.
+ *
+ * Skiljer sig från applyMatklass() genom att värdena är ett NORMKRAV på
+ * viktsättningen (TDOK 2014:0571 v6.0 §2.8 K25 Tabell 3), inte en mätklass ur
+ * SIS-TS Tabell A.9. Mätklassen lämnas därför orörd – den styr andra krav och
+ * kontrolleras separat i PM-rapporten (§2.8 K16).
+ */
+export function applyApriori(id) {
+  const f = APRIORI_FORVAL[id];
+  if (!f) return;
+  const { meas } = getState();
+  if (!meas.length) {
+    import('./toast.js').then(t => t.showToast('Inga mätningar att tillämpa förvalet på', '#ff9900'));
+    return;
+  }
+  meas.forEach(m => {
+    m.sigHz_mgon  = f.sigHz_mgon;
+    m.sigDist_mm  = f.sigDist_mm;
+    m.sigDist_ppm = f.sigDist_ppm;
+    m.instrPreset = 'custom';
+  });
+  setState({ centerErr: f.centerErr, simResult: null });
+  const ce = document.getElementById('center-err');
+  if (ce) ce.value = f.centerErr;
+  import('./toast.js').then(t => t.showToast(`✓ ${f.l} tillämpad på alla mätningar`, '#00ff88'));
+  draw();
+  renderTab();
+}
+
 export function applyMatklass(key) {
   if (!key || !MATKLASSER[key]) { setState({ activeMatklass: null }); return; }
   const mk = MATKLASSER[key];
@@ -805,6 +844,7 @@ export function initRightPanel() {
   window._delM             = delM;
   window._runSim           = () => { runSimulation(); suggestMeasurements(); import('./quality-panel.js').then(m => m.updateQualityPanel()); draw(); renderTab(); };
   window._applyMatklass    = applyMatklass;
+  window._applyApriori     = applyApriori;
   window._setDefaultInstr  = key => { setState({ defaultInstr: key }); updateGlobalInstrInfo(); };
   window._applyInstrToAll  = () => {
     const { meas, defaultInstr } = getState();

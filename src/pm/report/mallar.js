@@ -18,8 +18,8 @@ import {
   forsattsblad, foreskrifter, personal, referenssystem, kandaPunkter,
   planeradePunkter, allaPunkter, tillstandsbedomning, bild, stommatningsplan,
   tidplan, instrument, programvaror, matklass, genomforande, leverans,
-  simulering,
 } from './blocks.js';
+import { simulering, kontrolltabell } from './simulering.js';
 
 const TDOK = 'TDOK 2014:0571 v6.0';
 const SIS  = 'SIS-TS 21143:2016';
@@ -81,6 +81,8 @@ export function mallA(ctx) {
   h += H1('7. Simulering och kvalitetsbedömning', `${SIS} §6.2.5`);
   h += simulering(ctx, null, null);
   h += bild(ctx, 'r312', 'Lägesosäkerheter', `${SIS} §6.2.5`);
+  h += kontrolltabell(ctx, 'Automatiska kontroller mot TDOK 2014:0571 v6.0',
+                      `${TDOK} §2.8`);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -155,6 +157,8 @@ export function mallB(ctx) {
   h += bild(ctx, 'r32', 'Översikt av nätet', `${TDOK} §1.8 K2`);
   h += simulering(ctx, 'Simulering och kvalitetsbedömning', `${SIS} §6.2.5`);
   h += bild(ctx, 'r312', 'Lägesosäkerheter', `${SIS} §6.2.5`);
+  h += kontrolltabell(ctx, 'Automatiska kontroller mot TDOK 2014:0571 v6.0',
+                      `${TDOK} §2.8`);
   h += `</div>`;
 
   h += `<div class="rb">`;
@@ -244,6 +248,8 @@ export function mallC(ctx) {
                   bro ? `${TDOK} §2.11.2 K5 · ${SIS} §6.2.5`
                       : `${TDOK} §2.10.2 K2 · ${SIS} §6.2.5`);
   h += bild(ctx, 'r312', 'Lägesosäkerheter', `${SIS} §6.2.5`);
+  h += kontrolltabell(ctx, 'Automatiska kontroller mot TDOK 2014:0571 v6.0',
+                      bro ? `${TDOK} §2.11.2` : `${TDOK} §2.10.2`);
 
   // Nättypens egna hänvisningar till SIS-TS. Bara avsnittsnummer – SIS-TS är
   // licensierad och ingen normtext återges.

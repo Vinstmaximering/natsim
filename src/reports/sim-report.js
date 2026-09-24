@@ -1,6 +1,7 @@
 // Kopierad exakt från NätSim_Beta_2.html rad 2425–2500 (exportSimReport)
 // och rad 2680–2931 (exportCalcReport).
 import { getState } from '../state/store.js';
+import { klassificeraRtal } from '../core/constants.js';
 import { CRS_DEFS, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { nf, gon, komma } from '../core/format.js';
 import { rLabel } from '../core/redundancy.js';
@@ -78,12 +79,15 @@ KP = Koordinatpåverkan i mm\nEnheter: mm för längder, mgon för riktningar (H
     const nObs   = Math.round(myR.length/2);
     const maxR   = myR.length>0 ? Math.max(...myR.map(x=>x.ri)) : 0;
     const rMean_ = myR.length>0 ? myR.reduce((a,b)=>a+b.ri,0)/myR.length : null;
+    // Etapp 5: här låg en egen tregradig skala (0,15 / 0,35) med orden Svag,
+    // Acceptabel och God. Ingen norm graderar r-talet så, och "Acceptabel" satt
+    // dessutom på intervallet 0,15–0,35, som normen underkänner. Bedömningen
+    // kommer nu ur klassificeraRtal() – samma skala som kartan, valideringen,
+    // PM-rapporten och alla paneler.
     let rel;
-    if (myR.length===0) rel = "Ingen mätning";
-    else if (maxR<=0.05) rel = "⚠ Ej kontrollerbar – okänt fel möjligt";
-    else if (rMean_<0.15) rel = "Svag";
-    else if (rMean_<0.35) rel = "Acceptabel";
-    else rel = "God";
+    if (myR.length === 0) rel = "Ingen mätning";
+    else if (maxR <= 0.05) rel = "⚠ Ej kontrollerbar – okänt fel möjligt";
+    else rel = klassificeraRtal(rMean_).klass;
     r += `${pad(pr.id,14)} ${rpad(sm,8)} ${rpad(precOK,10)} ${rpad(nObs,4)} ${rpad(nf(rMean_, 3),11)} ${rel}\n`;
   });
   r += `\n${SEP}\n`;
@@ -234,7 +238,13 @@ export function exportCalcReport() {
   r += `Designmatris avstånd:   ∂D/∂E_i=-ex, ∂D/∂N_i=-ey, ∂D/∂E_j=+ex, ∂D/∂N_j=+ey\n`;
   r += `Designmatris riktning:  ∂r/∂E_i=+ey, ∂r/∂N_i=-ex, ∂r/∂E_j=-ey, ∂r/∂N_j=+ex, ∂r/∂z_k=-d\n`;
   r += `σ_D  = √((σ_Dmm + d×ppm)² + e_c²)   HMK Bilaga C.1.2 – A och B·L adderas linjärt\nMUF  = κ × σ / √r,   κ=${komma(sr.kappa)} (α=0,05, β=0,80, HMK Formel F.16)\nYT   = MUF × (1-r)\n\n`;
-  r += `REFERENSER\n${sep}\n[1] HMK – Stommätning, Appendix F, Lantmäteriet 2021.\n[2] SIS-TS 21143:2016 – Geodesi: Stomnät.\n[3] Baarda 1968, Pope 1976, Mikhail & Gracie 1981.\n${SEP}\n`;
+  r += `REFERENSER\n${sep}\n` +
+       `[1] HMK – Stommätning 2024, Bilaga F. Lantmäteriet.\n` +
+       `[2] SIS-TS 21143:2016 Byggmätning – Geodetisk mätning, beräkning och\n` +
+       `    redovisning av byggnadsverk och infrastruktur.\n` +
+       `[3] TDOK 2014:0571 version 6.0 Geodetiska mätningsarbeten och geografisk\n` +
+       `    lägesbestämning – Väg och järnväg. Trafikverket.\n` +
+       `[4] Baarda 1968, Pope 1976, Mikhail & Gracie 1981.\n${SEP}\n`;
 
   const a2 = document.createElement("a");
   a2.href = URL.createObjectURL(new Blob([r], { type:"text/plain;charset=utf-8" }));
