@@ -3,7 +3,7 @@
 //   title/aria-label som anger kortkommandot
 // – valt verktyg markeras; samma verktyg igen återgår till Panorera
 // – kortkommandon P/L, och när de inte ska slå till
-// – verktyg som ännu inte finns (S) är inaktiva och reagerar inte
+// – S är en växlare för snappningen (Etapp 5)
 // – telefon: de visuella verktygen finns i den mobila raden (#mtb)
 // – hjälptexten står under verktygsraden
 
@@ -86,10 +86,9 @@ describe('markup', () => {
     }
   });
 
-  // Ändrat i Etapp 3 och 4: Yta och Markera område finns nu.
-  it('verktyg som kommer i senare etapper är inaktiva', () => {
-    for (const id of ['btn-snap']) expect($(id).disabled).toBe(true);
-    for (const id of ['btn-select-area', 'btn-visual-point', 'btn-visual-line', 'btn-visual-area'])
+  // Ändrat i Etapp 3–5: alla knappar finns nu.
+  it('alla knappar är aktiva', () => {
+    for (const id of ['btn-select-area', 'btn-visual-point', 'btn-visual-line', 'btn-visual-area', 'btn-snap'])
       expect($(id).disabled).toBe(false);
   });
 
@@ -134,9 +133,11 @@ describe('val av verktyg', () => {
     expect($('hint').textContent).toContain('Esc');
   });
 
-  it('inaktiva knappar gör ingenting', () => {
+  // Ändrat i Etapp 5: snappknappen är en växlare, inget verktyg.
+  it('snappknappen byter inte verktyg', () => {
     $('btn-snap').click();
     expect(getState().tool).toBe('pan');
+    $('btn-snap').click();
   });
 });
 
@@ -151,9 +152,14 @@ describe('kortkommandon', () => {
   });
 
   // Ändrat i Etapp 3 och 4: Y väljer Yta, M väljer Markera område.
-  it('S gör ingenting så länge snappningsknappen saknas', () => {
+  // Ändrat i Etapp 5: S slår av och på snappningen.
+  it('S växlar snappningen och byter inte verktyg', () => {
+    const på = $('btn-snap').getAttribute('aria-pressed');
     key('s');
     expect(getState().tool).toBe('pan');
+    expect($('btn-snap').getAttribute('aria-pressed')).not.toBe(på);
+    key('s');
+    expect($('btn-snap').getAttribute('aria-pressed')).toBe(på);
   });
 
   it('M väljer Markera område', () => {

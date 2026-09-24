@@ -5,9 +5,12 @@
 // verktyg. Här kopplas bara händelserna.
 //
 // Kortkommandon (en bokstav, utan Ctrl/Alt/Cmd/Skift):
-//   P visuell punkt · L visuell linje
-//   M markera område (etapp 4) · Y yta (etapp 3) · S snappning (etapp 5)
+//   P visuell punkt · L visuell linje · Y yta · M markera område
+//   S snappning av/på (en växlare, inget verktyg; sparas per användare)
 //   Esc avbryter pågående ritning (hanteras i map/interactions.js)
+//   Alt nedtryckt stänger tillfälligt av snappningen medan man ritar. Alt:s
+//   keydown och keyup stoppas då (preventDefault), så att Windows-webbläsarna
+//   inte flyttar fokus till sin meny när Alt släpps.
 // Inga av bokstäverna var upptagna; de befintliga genvägarna är Ctrl+S,
 // Ctrl+Z och Ctrl+E, som alla har modifierare och därför inte krockar.
 // Genvägarna gäller inte när man skriver i ett fält, när en dialog är öppen,
@@ -16,7 +19,10 @@
 // Att välja det verktyg som redan är valt – med knappen eller bokstaven –
 // återgår till Panorera, så att samma tangent slår av och på.
 import { getState } from '../state/store.js';
-import { setTool, MAP_TOOLS } from './toolbar.js';
+import { setTool, buildTools, MAP_TOOLS } from './toolbar.js';
+import { toggleSnap, setAltHeld, isAltHeld } from '../map/snap.js';
+import { isDrawingVisual, refreshVisualSnap } from '../map/visual-drawing.js';
+import { draw } from '../map/leaflet-setup.js';
 
 const el = id => document.getElementById(id);
 
@@ -47,20 +53,51 @@ export function selectMapTool(tool) {
   setTool(getState().tool === tool ? 'pan' : tool);
 }
 
+/** Snappning av/på (knappen och S). */
+export function toggleSnapping() {
+  toggleSnap();
+  refreshVisualSnap();
+  buildTools();
+  draw();
+}
+
 /** Kopplar klick på verktygsradens knappar. */
 export function bindMapToolButtons(bar = el('map-tools')) {
   bar?.addEventListener('click', e => {
-    const b = e.target.closest('button[data-tool]');
+    const b = e.target.closest('button');
     if (!b || b.disabled) return;
-    selectMapTool(b.dataset.tool);
+    if (b.id === 'btn-snap') { toggleSnapping(); return; }
+    if (b.dataset.tool) selectMapTool(b.dataset.tool);
   });
+}
+
+// Alt: tillfälligt utan snappning, bara medan ett ritverktyg är valt – i
+// övrigt rör sidan inte Alt. Returnerar true om händelsen hanterades.
+export function handleAltKey(e) {
+  if (e.key !== 'Alt') return false;
+  const ner = e.type === 'keydown';
+  if (!isDrawingVisual()) { if (!ner) setAltHeld(false); return false; }
+  e.preventDefault();
+  if (isAltHeld() !== ner) { setAltHeld(ner); refreshVisualSnap(); draw(); }
+  return true;
 }
 
 export function initMapTools() {
   if (!el('map-tools')) return;
   bindMapToolButtons();
+  window._toggleSnap = toggleSnapping;
+
+  document.addEventListener('keydown', handleAltKey);
+  document.addEventListener('keyup', handleAltKey);
+  // Fönstret tappar fokus med Alt nere (t.ex. Alt+Tab): inget keyup kommer.
+  window.addEventListener('blur', () => { if (isAltHeld()) { setAltHeld(false); refreshVisualSnap(); } });
 
   document.addEventListener('keydown', e => {
+    if ((e.key === 's' || e.key === 'S') && shortcutAllowed(e)) {
+      e.preventDefault();
+      toggleSnapping();
+      return;
+    }
     const t = toolForKey(e.key);
     if (!t || !shortcutAllowed(e)) return;
     const b = el(t.btn);

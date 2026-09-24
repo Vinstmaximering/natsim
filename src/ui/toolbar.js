@@ -5,6 +5,7 @@ import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
 import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw,
          startVisualAreaDraw } from '../map/visual-drawing.js';
+import { isSnapEnabled } from '../map/snap.js';
 
 export { toggleMapLayer };
 
@@ -57,7 +58,9 @@ export function buildTools() {
     // ritverktygen ligger i stället här, sist i den mobila raden.
     MAP_TOOLS.filter(t => t.mobile).map(t =>
       `<button class="mtbb${tool===t.tool?" act":""}" style="--c:#cfd8dc" aria-pressed="${tool===t.tool}" title="${t.title}" onclick="window._setTool('${t.tool}')">${t.mobile}</button>`
-    ).join("");
+    ).join("") +
+    // Snappning av/på (Etapp 5) – en växlare, inget verktyg.
+    `<button class="mtbb${isSnapEnabled()?" act":""}" style="--c:#00ff88" aria-pressed="${isSnapEnabled()}" title="Snappning av/på" onclick="window._toggleSnap()">⌖ Snapp</button>`;
 
   // Uppdatera hinder-verktygsknappar
   const obsPolBtn = document.getElementById('btn-obs-polygon');
@@ -80,6 +83,12 @@ export function buildTools() {
     const on = tool === t.tool;
     b.classList.toggle('act', on);
     b.setAttribute('aria-pressed', String(on));
+  }
+  // Snappning är en växlare: markerad när den är på, oavsett verktyg.
+  const snapBtn = document.getElementById('btn-snap');
+  if (snapBtn) {
+    snapBtn.classList.toggle('act', isSnapEnabled());
+    snapBtn.setAttribute('aria-pressed', String(isSnapEnabled()));
   }
 
   // Omgång 2: punkttypernas namn kommer ur PT, så hjälpraden inte kan

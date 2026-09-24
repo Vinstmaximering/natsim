@@ -10,16 +10,23 @@
 // lämnar alltså inga lösa hörnpunkter efter sig, och en färdig yta är ett
 // ångra-steg.
 //
+// Snappning (Lager-verktyg Etapp 5): se map/snap.js. Målet räknas om vid varje
+// musrörelse för förhandsvisningen och på nytt vid klicket, så att ett tryck
+// på pekskärm – där det inte finns någon hovring – snappar på samma sätt. På
+// pekskärm visas målet efteråt en kort stund, eftersom det inte syns i förväg.
+//
 // Cirkulär import med leaflet-setup.js är OK – alla värden används i funktioner,
 // aldrig vid modul-initialisering.
-import { map, ENtoLatLng, latLngToEN } from './leaflet-setup.js';
+import { map, ENtoLatLng, latLngToEN, draw } from './leaflet-setup.js';
 import { getState, setState }          from '../state/store.js';
 import { saveUndo }                    from '../state/undo.js';
-import { addVisualPt, addVisualLine, addVisualArea, makeEndpoint, isVisualObjVisible,
+import { addVisualPt, addVisualLine, addVisualArea, makeEndpoint,
          ensureActiveVisualLayer } from '../state/visual.js';
 import { isSelfIntersecting } from '../state/area-geometry.js';
+import { findSnapTarget, snapActive, snapRadius, drawSnapMarker } from './snap.js';
 
-const SNAP_PX = 15;
+// Så länge snappmålet syns efter ett tryck på pekskärm.
+export const SNAP_FLASH_MS = 1200;
 // Klick så här nära ytans första hörn sluter ytan. Med finger (grov pekare)
 // är träffytan större – 10 px går inte att pricka på en telefon.
 export const AREA_CLOSE_PX = 10;
@@ -33,7 +40,9 @@ const AREA_DUP_PX = 3;
 let _mode    = 'idle';  // 'idle' | 'point' | 'line' | 'area'
 let _pending = null;    // {ref,id} – linjens startpunkt när ett segment påbörjats
 let _mouseEN = null;
-let _snap    = null;    // {ref, id, E, N} eller null
+let _snap    = null;    // snappmål (map/snap.js) eller null
+let _mouseCP = null;    // senaste muspositionen i skärmpixlar
+let _flash   = null;    // { target, until } – snappmålet efter ett tryck
 let _area    = [];      // ytans hörn under ritning: {ref,id,E,N} eller {E,N}
 
 export const getVisualDrawMode = () => _mode;
@@ -110,49 +119,63 @@ export function breakVisualChain() {
 
 export const hasPendingChain = () => _pending !== null;
 
-// ── Snap ─────────────────────────────────────────────────────────────────────
-// Snap mot både nätpunkter och visuella punkter. Träff på en nätpunkt ger en
-// endpoint med ref:'net' – det är så en visuell linje fästs i nätet.
-function _findSnap(px, py) {
-  if (!map) return null;
-  const { pts = [], visualPts = [] } = getState();
+// ── Snappning ────────────────────────────────────────────────────────────────
 
-  for (const p of visualPts) {
-    // Dolda lager snappar inte – annars fäster linjen i något osynligt.
-    if (!isVisualObjVisible(p)) continue;
-    const c = map.latLngToContainerPoint(ENtoLatLng(p.E, p.N));
-    if (Math.hypot(c.x - px, c.y - py) < SNAP_PX)
-      return { ref: 'visual', id: p.id, E: p.E, N: p.N };
-  }
-  for (const p of pts) {
-    const c = map.latLngToContainerPoint(ENtoLatLng(p.E, p.N));
-    if (Math.hypot(c.x - px, c.y - py) < SNAP_PX)
-      return { ref: 'net', id: p.id, E: p.E, N: p.N };
-  }
-  return null;
+function _snapAtPx(x, y) {
+  if (!map || !snapActive()) return null;
+  return findSnapTarget(getState(), x, y, _px_en, snapRadius());
 }
+const _px_en = (E, N) => _px({ E, N });
 
 export function updateVisualMousePos(latlng, containerPoint) {
   _mouseEN = latLngToEN(latlng);
-  _snap    = _findSnap(containerPoint.x, containerPoint.y);
+  _mouseCP = containerPoint ? { x: containerPoint.x, y: containerPoint.y } : null;
+  _snap    = _mouseCP ? _snapAtPx(_mouseCP.x, _mouseCP.y) : null;
 }
+
+/** Räknar om snappmålet vid samma musposition – när Alt eller S ändrats. */
+export function refreshVisualSnap() {
+  _snap = _mouseCP ? _snapAtPx(_mouseCP.x, _mouseCP.y) : null;
+}
+
+export const getVisualSnap = () => _snap;
+
+// Snappmålet för ett klick, räknat vid klickets position. På pekskärm finns
+// ingen hovring, så målet visas en kort stund efteråt.
+function _snapForClick(latlng) {
+  if (!map) return _snap;
+  const p = _px(latLngToEN(latlng));
+  const t = _snapAtPx(p.x, p.y);
+  _snap = t;
+  if (t && typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches) {
+    _flash = { target: t, until: Date.now() + SNAP_FLASH_MS };
+    setTimeout(() => { try { draw(); } catch { /* kartan borta */ } }, SNAP_FLASH_MS + 50);
+  }
+  return t;
+}
+
+// Position för ett klick: snappmålet, annars kartkoordinaten.
+const _posFor = (snap, latlng) => (snap ? { E: snap.E, N: snap.N } : latLngToEN(latlng));
 
 // ── Klickhantering ───────────────────────────────────────────────────────────
 
-// Ger endpoint för ett klick: befintligt objekt vid snap, annars en ny
-// visuell punkt på kartkoordinaten.
-function _endpointAt(latlng) {
-  if (_snap) return makeEndpoint(_snap.ref, _snap.id);
-  const en = latLngToEN(latlng);
+// Ger endpoint för ett klick: en befintlig punkt vid punktsnapp (ref:'net' för
+// en nätpunkt), annars en ny visuell punkt – på linjen vid kantsnapp, annars på
+// kartkoordinaten.
+function _endpointAt(latlng, snap) {
+  if (snap?.ref) return makeEndpoint(snap.ref, snap.id);
+  const en = _posFor(snap, latlng);
   return makeEndpoint('visual', addVisualPt({ E: en.E, N: en.N }));
 }
 
 // Returnerar {created} – vad klicket resulterade i, för toast/hint.
 export function handleVisualMapClick(latlng) {
+  const snap = _snapForClick(latlng);
+
   if (_mode === 'area') {
-    const v = _snap
-      ? { ref: _snap.ref, id: _snap.id, E: _snap.E, N: _snap.N }
-      : { ...latLngToEN(latlng) };
+    const v = snap?.ref
+      ? { ref: snap.ref, id: snap.id, E: snap.E, N: snap.N }
+      : { ..._posFor(snap, latlng) };
     if (nearFirstAreaVertex(v)) {
       const r = completeVisualArea();
       return { created: r.ok ? 'area' : null, ...r };
@@ -164,13 +187,15 @@ export function handleVisualMapClick(latlng) {
   }
 
   if (_mode === 'point') {
-    if (_snap && _snap.ref === 'visual') return { created: null }; // klick på befintlig
-    const en = latLngToEN(latlng);
+    // Klick på en befintlig visuell punkt skapar ingen dubblett. Snapp mot en
+    // nätpunkt eller en linje lägger den nya punkten exakt där.
+    if (snap?.ref === 'visual') return { created: null };
+    const en = _posFor(snap, latlng);
     return { created: 'point', id: addVisualPt({ E: en.E, N: en.N }) };
   }
 
   if (_mode === 'line') {
-    const ep = _endpointAt(latlng);
+    const ep = _endpointAt(latlng, snap);
     if (!_pending) { _pending = ep; return { created: null }; }
     // Klick på samma punkt igen bryter kedjan i stället för att skapa en
     // nollängdslinje.
@@ -261,17 +286,12 @@ export function drawVisualPreview(ctx) {
     ctx.setLineDash([]);
   }
 
-  // Snap-indikator – samma gröna ring som hinder-ritningen
-  if (_snap) {
-    const p = toPixel(_snap);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
-    ctx.strokeStyle = '#00ff88';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#00ff88';
-    ctx.fill();
-  }
+  // Snappmålet: grön ring (punkt) eller romb (på linje/kant) med en kort text.
+  if (_snap && snapActive()) drawSnapMarker(ctx, toPixel(_snap), _snap);
+
+  // Pekskärm: målet för det senaste trycket, en kort stund.
+  if (_flash && Date.now() < _flash.until) {
+    const kvar = (_flash.until - Date.now()) / SNAP_FLASH_MS;
+    drawSnapMarker(ctx, toPixel(_flash.target), _flash.target, { fade: Math.max(0.3, kvar) });
+  } else _flash = null;
 }
