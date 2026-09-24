@@ -39,7 +39,7 @@ export let map = null;
 let activeLayer = null;
 
 // ── UI-callbacks (registrerade av main.js i Fas 7) ──────────────────────────
-const drawCb = { updatePtList: null, renderTab: null, renderLayerPanel: null };
+const drawCb = { updatePtList: null, renderTab: null, renderLayerPanel: null, syncMobileDrawButtons: null };
 export function setDrawCallbacks(cbs) { Object.assign(drawCb, cbs); }
 
 // ── Koordinatkonvertering ─────────────────────────────────────────────────────
@@ -488,6 +488,7 @@ export function draw() {
   if (drawCb.updatePtList)     drawCb.updatePtList();
   if (drawCb.renderTab)        drawCb.renderTab();
   if (drawCb.renderLayerPanel) drawCb.renderLayerPanel();
+  if (drawCb.syncMobileDrawButtons) drawCb.syncMobileDrawButtons();
 }
 
 // ── Kartinitalisering ─────────────────────────────────────────────────────────

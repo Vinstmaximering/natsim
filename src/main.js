@@ -23,7 +23,8 @@ import { initOnboarding, hideOnboarding }       from './ui/onboarding.js';
 import { initQualityPanel, updateQualityPanel } from './ui/quality-panel.js';
 import { initTooltips }                      from './ui/tooltip.js';
 import { initMapLegend }                     from './ui/map-legend.js';
-import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer } from './ui/toolbar.js';
+import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer,
+         syncMobileDrawButtons } from './ui/toolbar.js';
 import { initTopbar }                            from './ui/topbar.js';
 import { initMapTools }                          from './ui/map-tools.js';
 import { initAreaCard }                          from './ui/area-card.js';
@@ -43,7 +44,7 @@ import { visualLayerPositions }                  from './state/visual.js';
 setAutoSimHandler(autoSim);
 
 // ── 2. Draw callbacks ───────────────────────────────────────────────────────
-setDrawCallbacks({ updatePtList, renderTab, renderLayerPanel });
+setDrawCallbacks({ updatePtList, renderTab, renderLayerPanel, syncMobileDrawButtons });
 
 // ── 3. Map interaction callbacks ────────────────────────────────────────────
 setInteractionCallbacks({ openEditPt, openMM, buildTools, setTab, showToast,

@@ -4,7 +4,7 @@ import { PT, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
 import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw,
-         startVisualAreaDraw } from '../map/visual-drawing.js';
+         startVisualAreaDraw, hasUndoableVertex, undoLastDrawVertex } from '../map/visual-drawing.js';
 import { isSnapEnabled } from '../map/snap.js';
 
 export { toggleMapLayer };
@@ -60,7 +60,12 @@ export function buildTools() {
       `<button class="mtbb${tool===t.tool?" act":""}" style="--c:#cfd8dc" aria-pressed="${tool===t.tool}" title="${t.title}" onclick="window._setTool('${t.tool}')">${t.mobile}</button>`
     ).join("") +
     // Snappning av/på (Etapp 5) – en växlare, inget verktyg.
-    `<button class="mtbb${isSnapEnabled()?" act":""}" style="--c:#00ff88" aria-pressed="${isSnapEnabled()}" title="Snappning av/på" onclick="window._toggleSnap()">⌖ Snapp</button>`;
+    `<button class="mtbb${isSnapEnabled()?" act":""}" style="--c:#00ff88" aria-pressed="${isSnapEnabled()}" title="Snappning av/på" onclick="window._toggleSnap()">⌖ Snapp</button>` +
+    // Pekskärmens Backspace: ta bort senaste hörnet i pågående linje eller
+    // yta. Visas bara när det finns ett hörn att ta bort – se
+    // syncMobileDrawButtons(), som körs vid varje omritning av kartan.
+    `<button class="mtbb" id="mtb-undo-vertex" style="--c:#ffb74d" title="Ta bort senaste hörnet" aria-label="Ta bort senaste hörnet" onclick="window._undoLastVertex()" hidden>↶ Hörn</button>`;
+  syncMobileDrawButtons();
 
   // Uppdatera hinder-verktygsknappar
   const obsPolBtn = document.getElementById('btn-obs-polygon');
@@ -119,6 +124,19 @@ export function buildTools() {
     if (tool === "measure" && measFrom) { mfb.style.display = "block"; mfb.textContent = `📏 Från: ${measFrom} — klicka TILL-punkt`; }
     else mfb.style.display = "none";
   }
+}
+
+/** Visar "↶ Hörn" bara medan en linje eller yta har ett hörn att ta bort. */
+export function syncMobileDrawButtons() {
+  const b = document.getElementById('mtb-undo-vertex');
+  if (b) b.hidden = !hasUndoableVertex();
+}
+
+/** "↶ Hörn" i den mobila raden. */
+export function undoLastVertexFromButton() {
+  if (!undoLastDrawVertex()) return false;
+  draw();
+  return true;
 }
 
 export function setTool(t) {
@@ -249,4 +267,5 @@ export function initToolbar() {
   window._closeAllPanels = closeAllPanels;
   window._clearAll       = clearAll;
   window._toggleMapLayer = toggleMapLayer;
+  window._undoLastVertex = undoLastVertexFromButton;
 }

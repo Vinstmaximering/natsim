@@ -21,7 +21,7 @@ import { map, ENtoLatLng, latLngToEN, draw } from './leaflet-setup.js';
 import { getState, setState }          from '../state/store.js';
 import { saveUndo }                    from '../state/undo.js';
 import { addVisualPt, addVisualLine, addVisualArea, makeEndpoint,
-         ensureActiveVisualLayer } from '../state/visual.js';
+         ensureActiveVisualLayer, removeVisualLine, removeVisualPt } from '../state/visual.js';
 import { isSelfIntersecting } from '../state/area-geometry.js';
 import { findSnapTarget, snapActive, snapRadius, drawSnapMarker } from './snap.js';
 
@@ -39,6 +39,9 @@ const AREA_DUP_PX = 3;
 
 let _mode    = 'idle';  // 'idle' | 'point' | 'line' | 'area'
 let _pending = null;    // {ref,id} – linjens startpunkt när ett segment påbörjats
+// Linjekedjans historik, för att kunna ta bort senaste hörnet ("↶ Hörn" på
+// pekskärm): { lineId, createdPtId, prev } per klick i kedjan.
+let _chain   = [];
 let _mouseEN = null;
 let _snap    = null;    // snappmål (map/snap.js) eller null
 let _mouseCP = null;    // senaste muspositionen i skärmpixlar
@@ -53,7 +56,7 @@ export function startVisualPointDraw() {
 }
 
 export function startVisualLineDraw() {
-  _mode = 'line';  _pending = null; _mouseEN = null; _snap = null;
+  _mode = 'line';  _pending = null; _mouseEN = null; _snap = null; _chain = [];
 }
 
 export function startVisualAreaDraw() {
@@ -61,7 +64,7 @@ export function startVisualAreaDraw() {
 }
 
 export function cancelVisualDraw() {
-  _mode = 'idle';  _pending = null; _mouseEN = null; _snap = null; _area = [];
+  _mode = 'idle';  _pending = null; _mouseEN = null; _snap = null; _area = []; _chain = [];
 }
 
 // ── Yta ──────────────────────────────────────────────────────────────────────
@@ -115,9 +118,39 @@ export function completeVisualArea() {
 // Avslutar en påbörjad linjekedja men stannar kvar i ritläget.
 export function breakVisualChain() {
   _pending = null;
+  _chain = [];
 }
 
 export const hasPendingChain = () => _pending !== null;
+
+/**
+ * Tar bort senaste hörnet i linjekedjan: senaste segmentet och den punkt som
+ * klicket skapade (inte en punkt som klicket snappade mot), och kedjan
+ * fortsätter från föregående hörn. Utan segment släpps startpunkten.
+ * Returnerar true om det fanns något att ta bort.
+ */
+export function undoLastLineVertex() {
+  if (_mode !== 'line' || !_chain.length) return false;
+  const e = _chain.pop();
+  if (e.lineId) removeVisualLine(e.lineId);
+  if (e.createdPtId) {
+    const { visualLines = [], visualAreas = [] } = getState();
+    const används = visualLines.some(l => [l.from, l.to].some(ep => ep?.ref === 'visual' && ep.id === e.createdPtId))
+      || visualAreas.some(a => (a.vertices || []).some(ep => ep?.ref === 'visual' && ep.id === e.createdPtId));
+    if (!används) removeVisualPt(e.createdPtId);
+  }
+  _pending = e.prev;
+  return true;
+}
+
+/** Finns det ett hörn att ta bort i pågående linje eller yta? */
+export const hasUndoableVertex = () =>
+  (_mode === 'line' && _chain.length > 0) || (_mode === 'area' && _area.length > 0);
+
+/** "↶ Hörn": senaste hörnet i pågående linje eller yta (motsvarar Backspace). */
+export function undoLastDrawVertex() {
+  return _mode === 'area' ? undoLastAreaVertex() : undoLastLineVertex();
+}
 
 // ── Snappning ────────────────────────────────────────────────────────────────
 
@@ -163,9 +196,10 @@ const _posFor = (snap, latlng) => (snap ? { E: snap.E, N: snap.N } : latLngToEN(
 // en nätpunkt), annars en ny visuell punkt – på linjen vid kantsnapp, annars på
 // kartkoordinaten.
 function _endpointAt(latlng, snap) {
-  if (snap?.ref) return makeEndpoint(snap.ref, snap.id);
+  if (snap?.ref) return { ep: makeEndpoint(snap.ref, snap.id), created: null };
   const en = _posFor(snap, latlng);
-  return makeEndpoint('visual', addVisualPt({ E: en.E, N: en.N }));
+  const id = addVisualPt({ E: en.E, N: en.N });
+  return { ep: makeEndpoint('visual', id), created: id };
 }
 
 // Returnerar {created} – vad klicket resulterade i, för toast/hint.
@@ -199,15 +233,21 @@ export function handleVisualMapClick(latlng) {
   }
 
   if (_mode === 'line') {
-    const ep = _endpointAt(latlng, snap);
-    if (!_pending) { _pending = ep; return { created: null }; }
+    const { ep, created } = _endpointAt(latlng, snap);
+    if (!_pending) {
+      _pending = ep;
+      _chain = [{ lineId: null, createdPtId: created, prev: null }];
+      return { created: null };
+    }
     // Klick på samma punkt igen bryter kedjan i stället för att skapa en
     // nollängdslinje.
     if (_pending.ref === ep.ref && _pending.id === ep.id) {
       _pending = null;
+      _chain = [];
       return { created: null };
     }
     const id = addVisualLine({ from: _pending, to: ep });
+    _chain.push({ lineId: id, createdPtId: created, prev: _pending });
     _pending = ep;   // kedjan fortsätter från senaste punkten
     return { created: 'line', id };
   }
