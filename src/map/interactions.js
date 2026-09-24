@@ -12,7 +12,7 @@ import { clearObstacleSelection, getObstacles } from '../state/obstacles.js';
 import {
   isDrawingVisual, handleVisualMapClick, cancelVisualDraw,
   updateVisualMousePos, hasPendingChain, breakVisualChain,
-  getVisualDrawMode, hasPendingArea, discardPendingArea, undoLastAreaVertex,
+  getVisualDrawMode, hasPendingArea, discardPendingArea, hasUndoableVertex, undoLastDrawVertex,
   completeVisualArea,
 } from './visual-drawing.js';
 import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
@@ -491,13 +491,15 @@ export function initInteractions(map) {
 
   // ── Tangentbord: Esc/Enter – prioritetsordning: ritläge > hinder > mätning ──
   document.addEventListener('keydown', e => {
-    // Backspace under ytritning tar bort senaste hörnet – inte när man skriver
-    // i ett fält, där Backspace ska sudda text.
-    if (e.key === 'Backspace' && hasPendingArea()) {
+    // Backspace under ritning av linje eller yta tar bort senaste hörnet, med
+    // samma regler som pekskärmens "↶ Hörn" (undoLastDrawVertex): punkter som
+    // klicket skapade tas bort, snappade punkter och nätpunkter aldrig. Inte
+    // när man skriver i ett fält, där Backspace ska sudda text.
+    if (e.key === 'Backspace' && hasUndoableVertex()) {
       const a = document.activeElement;
       if (a && (['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName) || a.isContentEditable)) return;
       e.preventDefault();
-      undoLastAreaVertex();
+      undoLastDrawVertex();
       draw();
       return;
     }

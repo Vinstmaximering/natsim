@@ -131,3 +131,54 @@ describe('ritning av yta', () => {
     expect(getState().tool).toBe('visual-area');
   });
 });
+
+// Efter STOPP 1 inför 0.6.0: Backspace tar bort senaste hörnet även i linjer,
+// med samma regler som pekskärmens "↶ Hörn".
+describe('Backspace i linjer', () => {
+  it('tar bort senaste segmentet och punkten klicket skapade; kedjan fortsätter', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0); klick(100, 100);
+    key('Backspace');
+    expect(getState().visualLines).toHaveLength(1);
+    expect(getState().visualPts.map(p => [p.E, p.N])).toEqual([[0, 0], [100, 0]]);
+    klick(0, 100);
+    const sista = getState().visualLines.at(-1);
+    const från = getState().visualPts.find(p => p.id === sista.from.id);
+    expect([från.E, från.N]).toEqual([100, 0]);
+  });
+
+  it('snappade punkter och nätpunkter tas aldrig bort', () => {
+    setState({ pts: [{ id: 'N1', type: 'known', E: 200, N: 0 }] });
+    const l = V.addVisualLayer({ name: 'L' });
+    const fri = V.addVisualPt({ E: 0, N: 200, layerId: l });
+    setTool('visual-line');
+    klick(1, 199);           // snappar mot den fria punkten
+    klick(201, 1);           // snappar mot nätpunkten
+    key('Backspace');
+    key('Backspace');
+    expect(getState().visualLines).toEqual([]);
+    expect(getState().pts.map(p => p.id)).toEqual(['N1']);
+    expect(getState().visualPts.map(p => p.id)).toEqual([fri]);
+    expect(D.hasPendingChain()).toBe(false);
+  });
+
+  it('inte när fokus är i ett fält', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    const inp = document.createElement('input');
+    document.body.appendChild(inp);
+    inp.focus();
+    key('Backspace');
+    expect(getState().visualLines).toHaveLength(1);
+    inp.blur();
+    key('Backspace');
+    expect(getState().visualLines).toEqual([]);
+  });
+
+  it('utan påbörjad kedja gör Backspace ingenting (och stoppas inte)', () => {
+    setTool('visual-line');
+    const e = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+    document.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(false);
+  });
+});

@@ -106,7 +106,7 @@ export function buildTools() {
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
-    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Högerklick: bryt kedjan · Esc: avsluta",
+    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Backspace: ta bort hörn · Högerklick: bryt kedjan · Esc: avsluta",
     'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
     'select-area':      "⬚ Dra → helt inuti · Dra ← inuti eller korsade · Klick: ett objekt · Skift: lägg till · Ctrl: ta bort · Esc: avmarkera" };
   // Pekskärm: inget tangentbord och ingen högerklick – ytan sluts genom att
