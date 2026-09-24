@@ -489,6 +489,27 @@ export function renameNetPointInVisual(oldId, newId) {
 }
 
 /**
+ * Vad som händer med de visuella objekten om nätpunkten id tas bort – för
+ * bekräftelsedialogen. Ren läsning, ändrar ingenting.
+ *   linesRemoved: linjer som får en ändpunkt för lite och tas bort helt
+ *   areasChanged: ytor som tappar hörnet men har minst tre kvar
+ *   areasRemoved: ytor som får färre än tre hörn och tas bort helt
+ *   obstacles:    kopplade hinder som försvinner med dem
+ */
+export function netPointVisualImpact(id, state = getState()) {
+  const anchored = ep => ep?.ref === 'net' && ep.id === id;
+  const linesRemoved = (state.visualLines || []).filter(l => anchored(l.from) || anchored(l.to));
+  const areasChanged = [], areasRemoved = [];
+  for (const a of state.visualAreas || []) {
+    const kvar = (a.vertices || []).filter(ep => !anchored(ep)).length;
+    if (kvar === (a.vertices || []).length) continue;
+    (kvar < 3 ? areasRemoved : areasChanged).push(a);
+  }
+  const obstacles = [...linesRemoved, ...areasRemoved].filter(x => x.linkedObsId).length;
+  return { linesRemoved, areasChanged, areasRemoved, obstacles };
+}
+
+/**
  * Nätpunkten id tas bort. Linjer som hängde i den tas bort (de kan inte ritas
  * med en ändpunkt), och deras hinder med dem. Ytor tappar hörnet; en yta med
  * färre än tre hörn kvar tas bort. Returnerar vad som hände, för dialogen.

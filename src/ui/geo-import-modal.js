@@ -188,7 +188,9 @@ function _linesSection(nLines, nClosed = 0) {
           <input type="radio" name="gi-closed" value="lines" style="width:auto;margin:0;"> linjer</label>
         <label class="tg" style="display:inline-flex;">
           <input type="radio" name="gi-closed" value="areas" style="width:auto;margin:0;"> ytor</label>
-        <div style="font-size:10px;color:var(--text-muted);">Ytor får area och omkrets; med Hinder blir de byggnadshinder.</div>
+        <div style="font-size:10px;color:var(--text-muted);line-height:1.5;">
+          Med Hinder: <b>linjer</b> blir väggar längs kanterna (som förut);
+          <b>ytor</b> blir byggnadshinder, som också blockerar sikter från punkter inuti ytan.</div>
       </div>` : ''}
       <div style="font-size:10px;color:var(--text-muted);margin-top:4px;line-height:1.5;">
         Linjernas hörn har egna koordinater i filen och är oberoende av punktvalet ovan.

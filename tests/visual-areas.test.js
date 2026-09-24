@@ -667,3 +667,43 @@ describe('pekskärm', () => {
     expect(D.handleVisualMapClick({ lat: 15, lng: 15 })).toMatchObject({ created: null, vertices: 4 });
   });
 });
+
+describe('.geo med Hinder: väggar eller ythinder', () => {
+  beforeEach(reset);
+
+  // En sluten fyrkant 0–10 m och en punkt mitt i den. Siktlinjen från punkten
+  // till en punkt utanför korsar en kant – den blockeras av båda varianterna.
+  // Siktlinjen mellan två punkter inuti korsar ingen kant – bara ythindret
+  // blockerar den, eftersom hasLineOfSight räknar en ändpunkt inuti en polygon
+  // som skymd.
+  const fil = () => ({
+    points: [], fileInfo: {},
+    lines: [{ name: 'HUS', closed: true, vertices: [[0, 0], [10, 0], [10, 10], [0, 10]]
+      .map(([E, N], i) => ({ name: `${i}`, E, N, H: null })) }],
+  });
+  const inne1 = { E: 3, N: 5 }, inne2 = { E: 7, N: 5 }, ute = { E: 20, N: 5 };
+
+  it('förval (slutna linjer som linjer): väggar längs kanterna, som i v0.5', () => {
+    const opts = { ...defaultGeoImportOptions(fil(), 'a.geo', 'sweref99tm'), lines: 'obstacle' };
+    expect(opts.closedAs).toBe('lines');
+    const r = applyGeoImport(fil(), opts);
+    expect(r.areasCreated).toBe(0);
+    expect(getState().visualAreas).toEqual([]);
+    const obs = getState().obstacles;
+    expect(obs).toHaveLength(4);
+    expect(obs.every(o => o.type === 'line')).toBe(true);
+    expect(hasLineOfSight(inne1, ute, obs).visible).toBe(false);
+    expect(hasLineOfSight(inne1, inne2, obs).visible).toBe(true);    // väggar skymmer inte inuti
+  });
+
+  it('slutna linjer som ytor: ett ythinder, som även skymmer sikter inuti', () => {
+    const opts = { ...defaultGeoImportOptions(fil(), 'a.geo', 'sweref99tm'), lines: 'obstacle', closedAs: 'areas' };
+    const r = applyGeoImport(fil(), opts);
+    expect(r.areasCreated).toBe(1);
+    const obs = getState().obstacles;
+    expect(obs).toHaveLength(1);
+    expect(obs[0].type).toBe('polygon');
+    expect(hasLineOfSight(inne1, ute, obs).visible).toBe(false);
+    expect(hasLineOfSight(inne1, inne2, obs).visible).toBe(false);   // punkt inuti ytan
+  });
+});

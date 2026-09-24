@@ -6,7 +6,8 @@ import { nf, gon, komma, degToGonInput, gonToDeg } from '../core/format.js';
 import { calcM } from '../core/designmatrix.js';
 import { saveUndo } from '../state/undo.js';
 import { draw } from '../map/leaflet-setup.js';
-import { syncLinkedObstacles, renameNetPointInVisual, dropNetPointFromVisual } from '../state/visual.js';
+import { syncLinkedObstacles, renameNetPointInVisual, dropNetPointFromVisual,
+         netPointVisualImpact } from '../state/visual.js';
 
 function mi() { return document.getElementById("mi"); }
 
@@ -204,9 +205,37 @@ export function savePM(id) {
   draw();
 }
 
+/**
+ * Bekräftelsetexten för att ta bort en nätpunkt, eller null när inget annat än
+ * punkten själv berörs (då frågas inte). Räknar mätningar och de visuella
+ * linjer och ytor som hänger i punkten, och säger vilka som tas bort helt.
+ */
+export function delPtConfirmText(id, state = getState()) {
+  const nMeas = (state.meas || []).filter(m => m.from === id || m.to === id).length;
+  const v = netPointVisualImpact(id, state);
+  const namn = xs => xs.map(x => x.name || x.id).join(', ');
+  const rader = [];
+  if (nMeas) rader.push(`• ${nMeas} ${nMeas === 1 ? 'mätning' : 'mätningar'} tas bort.`);
+  if (v.linesRemoved.length)
+    rader.push(`• ${v.linesRemoved.length} visuell${v.linesRemoved.length === 1 ? '' : 'a'} linje${v.linesRemoved.length === 1 ? '' : 'r'} ` +
+      `tas bort helt – de saknar då en ändpunkt: ${namn(v.linesRemoved)}.`);
+  const nYtor = v.areasChanged.length + v.areasRemoved.length;
+  if (nYtor) {
+    rader.push(`• ${nYtor} ${nYtor === 1 ? 'yta påverkas' : 'ytor påverkas'}:`);
+    if (v.areasChanged.length)
+      rader.push(`   – ${v.areasChanged.length} tappar hörnet: ${namn(v.areasChanged)}.`);
+    if (v.areasRemoved.length)
+      rader.push(`   – ${v.areasRemoved.length} tas bort helt – färre än tre hörn kvar: ${namn(v.areasRemoved)}.`);
+  }
+  if (v.obstacles)
+    rader.push(`• ${v.obstacles} kopplat${v.obstacles === 1 ? '' : 'e'} hinder försvinner – siktberäkningen ändras.`);
+  return rader.length ? [`Ta bort punkt ${id}?`, '', ...rader, '', 'Går att ångra.'].join('\n') : null;
+}
+
 export function delPt(id) {
   const { pts, meas } = getState();
-  if (meas.filter(m => m.from === id || m.to === id).length && !confirm("Ta bort punkt och alla dess mätningar?")) return;
+  const fråga = delPtConfirmText(id);
+  if (fråga && !confirm(fråga)) return;
   saveUndo(`Ta bort punkt ${id}`);
   // Visuella linjer som hängde i punkten kan inte längre ritas och tas bort,
   // med sina hinder. Ytor tappar hörnet; en yta med färre än tre hörn kvar tas
