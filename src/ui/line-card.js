@@ -23,6 +23,8 @@ import {
   lineVertexNames, convertLineToArea,
 } from '../state/visual.js';
 import { lineStats, formatMeters, formatGon } from '../state/line-geometry.js';
+import { renderOffsetControls } from './offset-panel.js';
+import { clearOffsetPreview } from '../map/offset-tool.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -63,11 +65,15 @@ export function renderLineCard(state = getState()) {
   const line = selectedLine(state);
   if (!line) {
     card.hidden = true;
+    if (_shownId) clearOffsetPreview('line-card');
     _shownId = null;
     return;
   }
   // Byggs också om när kortets innehåll saknas (elementet har bytts ut).
-  if (_shownId !== line.id || !card.querySelector('.lc-tab')) { build(card, line); _shownId = line.id; }
+  if (_shownId !== line.id || !card.querySelector('.lc-tab')) {
+    clearOffsetPreview('line-card');
+    build(card, line); _shownId = line.id;
+  }
   card.hidden = false;
   update(line, state);
 }
@@ -96,10 +102,12 @@ function build(card, line) {
       <button type="button" class="lc-btn" data-lc="area" title="Skapar en yta med samma hörn och tar bort linjen">▱ Slut linjen → yta</button>
       <button type="button" class="lc-btn" data-lc="geo" title="Linjen som en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
     </div>
+    <details class="of-sec"><summary>⇉ Offset</summary><div class="of-ctl"></div></details>
     <div class="ac-foot">
       <button type="button" class="ac-del" data-lc="delete">🗑 Ta bort</button>
     </div>`;
   wire(card, line.id);
+  wireOffset(card, line.id, 'line-card');
 }
 
 function update(line, state) {
@@ -176,6 +184,19 @@ function wire(card, id) {
     const hinder = n ? `\nDess ${n === 1 ? 'hinder' : `${n} hinder`} försvinner också – siktberäkningen ändras.` : '';
     if (!confirm(`Ta bort linjen ${label()}?${hinder}`)) return;
     commit('Ta bort linje', () => removeVisualLine(id));
+  });
+}
+
+/**
+ * Offset-delen i kortet (Polylinjer Etapp 4): kontrollerna byggs när delen
+ * fälls ut, och förhandsvisningen syns bara medan den är utfälld. Delas med
+ * ytans kort.
+ */
+export function wireOffset(card, id, owner) {
+  const sec = card.querySelector('.of-sec');
+  sec.addEventListener('toggle', () => {
+    if (sec.open) renderOffsetControls(sec.querySelector('.of-ctl'), id, { owner });
+    else { clearOffsetPreview(owner); draw(); }
   });
 }
 

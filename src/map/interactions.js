@@ -19,6 +19,8 @@ import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
 import { isMeasuring, handleMeasureClick, updateMeasureMouse, resetMeasure,
          cancelMeasure } from './measure-tool.js';
 import { renderMeasureBox } from '../ui/measure-box.js';
+import { isOffsetTool, handleOffsetClick, releaseOffsetSource, cancelOffsetTool } from './offset-tool.js';
+import { renderOffsetBox, createFromOffsetBox } from '../ui/offset-panel.js';
 import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
 import {
   beginSelectDrag, updateSelectDrag, endSelectDrag, cancelSelectDrag,
@@ -262,6 +264,14 @@ export function initInteractions(map) {
   map.on("click", e => {
     if (dragMoved) { dragMoved = false; return; }
 
+    // Offset (O): klicket väljer linjen eller ytan som ska offsetas.
+    if (isOffsetTool()) {
+      handleOffsetClick(e.latlng);
+      renderOffsetBox();
+      draw();
+      return;
+    }
+
     // Mätverktyget D: klicket är en mätpunkt, inget annat.
     if (isMeasuring()) {
       handleMeasureClick(e.latlng);
@@ -426,7 +436,7 @@ export function initInteractions(map) {
     // Dubbelklick sluter en yta och avslutar en linje under ritning. Linjens
     // dubbelklick har oftast redan avslutats av sitt andra klick (klick på
     // senaste hörnet), och då finns inget kvar att göra här.
-    if (isMeasuring()) return;
+    if (isMeasuring() || isOffsetTool()) return;
     if (isDrawingVisual()) {
       if (getVisualDrawMode() === 'area') { _areaDone(completeVisualArea()); draw(); }
       if (getVisualDrawMode() === 'line' && hasPendingLine()) { completeVisualLine(); draw(); }
@@ -470,6 +480,14 @@ export function initInteractions(map) {
   // ── Högerklick → ta bort hörn på hinder, annars openEditPt ──
   map.on("contextmenu", e => {
     if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
+    // Offset: högerklick släpper vald linje, som Esc.
+    if (isOffsetTool()) {
+      e.originalEvent.preventDefault();
+      if (!releaseOffsetSource()) { cancelOffsetTool(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+      renderOffsetBox();
+      draw();
+      return;
+    }
     // Mätverktyget: högerklick börjar om, som Esc.
     if (isMeasuring()) {
       e.originalEvent.preventDefault();
@@ -550,6 +568,11 @@ export function initInteractions(map) {
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();
         draw();
+      } else if (isOffsetTool()) {
+        // Offset: Esc släpper vald linje; utan vald linje lämnas verktyget.
+        if (!releaseOffsetSource()) { cancelOffsetTool(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+        renderOffsetBox();
+        draw();
       } else if (isMeasuring()) {
         // Mätverktyget: Esc börjar om; utan påbörjad mätning lämnas verktyget.
         if (!resetMeasure()) { cancelMeasure(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
@@ -576,6 +599,9 @@ export function initInteractions(map) {
         if (cb.renderTab) cb.renderTab();
         draw();
       }
+    } else if (e.key === 'Enter' && isOffsetTool() && !_typing()) {
+      // Enter skapar offseten (i avståndsfältet sköter fältet det själv).
+      if (createFromOffsetBox()) e.preventDefault();
     } else if (e.key === 'Enter' && hasPendingLine() && !_typing()) {
       // Enter avslutar en linje under ritning, som dubbelklick.
       e.preventDefault();

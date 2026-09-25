@@ -19,6 +19,7 @@ import { getDragSnapTarget } from './obstacle-editing.js';
 import { drawVisualLayer } from './visual-canvas.js';
 import { drawVisualPreview } from './visual-drawing.js';
 import { drawMeasure } from './measure-tool.js';
+import { drawOffsetPreview } from './offset-tool.js';
 import { drawSelectRect } from './select-area.js';
 import { viewNet } from '../state/optimizer-proposal.js';
 
@@ -464,6 +465,7 @@ export function draw() {
   drawVisualLayer(ctx, state, { map, ENtoLatLng, symSize: symSize ?? 10 });
   drawVisualPreview(ctx);
   drawMeasure(ctx);
+  drawOffsetPreview(ctx);
   drawSelectRect(ctx);
 
   // ── Punkter ──

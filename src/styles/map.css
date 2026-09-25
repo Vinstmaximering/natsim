@@ -170,6 +170,20 @@ canvas { display: block; touch-action: none; }
 .gx-note   { font-size:11px;margin:8px 0 4px;line-height:1.45; }
 .gx-sum    { font-size:12px;color:var(--text-value);margin:6px 0; }
 
+/* ── Offset (Polylinjer Etapp 4) ── i verktygets ruta och i korten. */
+.offset-box { border-left-color:#4dd0e1;min-width:270px; }
+.of-sec   { margin-top:8px;border-top:1px solid var(--border-default);padding-top:5px; }
+.of-sec > summary { cursor:pointer;color:var(--text-value);font-size:12px; }
+.of-row   { display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:4px 0;font-size:12px;color:var(--text-value); }
+.of-k     { width:58px;flex-shrink:0;color:var(--text-muted);font-size:11px; }
+.of-dist  { width:80px;padding:3px 6px;font-size:12px;background:var(--bg-input);border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px; }
+.of-u     { color:var(--text-muted);font-size:11px; }
+.of-opt   { display:flex;align-items:center;gap:3px;cursor:pointer; }
+.of-opt input { accent-color:var(--accent); }
+.of-status { margin:5px 0;font-size:11px;line-height:1.45;color:var(--text-secondary); }
+.of-status.of-bad { color:var(--color-caution); }
+.of-foot  { display:flex;justify-content:flex-end; }
+
 /* Mobile toolbar (synlighet styrs av responsive.css) */
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }

@@ -67,17 +67,18 @@ describe('markup', () => {
   });
 
   // Polylinjer Etapp 2: mätverktyget D står bredvid Markera område.
-  it('har knapparna i ordning med avgränsare: M D | P L Y | S', () => {
+  // Etapp 4: Offset (O) efter Yta.
+  it('har knapparna i ordning med avgränsare: M D | P L Y O | S', () => {
     const ids = [...bar.matchAll(/id="(btn-[a-z-]+)"|class="(mt-sep)"/g)].map(m => m[1] || m[2]);
     expect(ids).toEqual(['btn-select-area', 'btn-measure-dist', 'mt-sep', 'btn-visual-point', 'btn-visual-line',
-      'btn-visual-area', 'mt-sep', 'btn-snap']);
+      'btn-visual-area', 'btn-offset', 'mt-sep', 'btn-snap']);
   });
 
   it('bara symboler: varje knapp har svg, title och aria-label med kortkommandot', () => {
     const doc = new DOMParser().parseFromString(HTML, 'text/html');
     const knappar = [...doc.querySelectorAll('#map-tools button')];
-    expect(knappar).toHaveLength(6);
-    const tangent = { 'btn-select-area': 'M', 'btn-measure-dist': 'D', 'btn-visual-point': 'P', 'btn-visual-line': 'L',
+    expect(knappar).toHaveLength(7);
+    const tangent = { 'btn-select-area': 'M', 'btn-measure-dist': 'D', 'btn-offset': 'O', 'btn-visual-point': 'P', 'btn-visual-line': 'L',
                       'btn-visual-area': 'Y', 'btn-snap': 'S' };
     for (const b of knappar) {
       expect(b.querySelector('svg')).not.toBeNull();

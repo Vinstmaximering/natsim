@@ -286,6 +286,11 @@
                 title="Yta (Y) – klicka hörn i aktivt lager, dubbelklick sluter; ingår inte i beräkningen" aria-label="Yta (Y)">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 14.5 L5.5 4 L14.5 2.5 L17.5 11.5 L10 17.5 Z" fill="currentColor" fill-opacity="0.35" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
         </button>
+        <button type="button" class="mt-btn" id="btn-offset" data-tool="offset" data-key="O"
+                aria-pressed="false"
+                title="Offset (O) – klicka en linje eller yta: parallell linje på valt avstånd, i aktivt lager" aria-label="Offset (O)">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 8 L8 3.5 L17.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M2.5 15 L10 9 L17.5 9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.2 1.8" stroke-linejoin="round"/><path d="M13 12.5v4.5M11 15l2 2 2-2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        </button>
         <span class="mt-sep" aria-hidden="true"></span>
         <button type="button" class="mt-btn mt-toggle" id="btn-snap" data-key="S"
                 aria-pressed="true"
@@ -343,6 +348,8 @@
   <div class="area-card line-card" id="line-card" role="dialog" aria-label="Linje" hidden></div>
   <!-- Polylinjer Etapp 2: resultatrutan för mätverktyget D (ui/measure-box.js). -->
   <div class="measure-box" id="measure-box" role="status" aria-live="polite" hidden></div>
+  <!-- Polylinjer Etapp 4: rutan för verktyget Offset (ui/offset-panel.js). -->
+  <div class="measure-box offset-box" id="offset-box" role="dialog" aria-label="Offset" hidden></div>
 
   <!-- Åtgärdsrad för markerade objekt (Lager-verktyg Etapp 4). Byggs av
        ui/select-bar.js; visas när något är markerat, och på pekskärm också

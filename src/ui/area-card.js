@@ -20,6 +20,8 @@ import {
   updateVisualArea, setVisualAreaBlocksSight, removeVisualArea,
 } from '../state/visual.js';
 import { areaStats, formatPlanArea, formatPlanLength } from '../state/area-geometry.js';
+import { wireOffset } from './line-card.js';
+import { clearOffsetPreview } from '../map/offset-tool.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -44,10 +46,11 @@ export function renderAreaCard(state = getState()) {
   const area = selectedArea(state);
   if (!area) {
     card.hidden = true;
+    if (_shownId) clearOffsetPreview('area-card');
     _shownId = null;
     return;
   }
-  if (_shownId !== area.id) { build(card, area); _shownId = area.id; }
+  if (_shownId !== area.id) { clearOffsetPreview('area-card'); build(card, area); _shownId = area.id; }
   card.hidden = false;
   update(area, state);
 }
@@ -81,6 +84,7 @@ function build(card, area) {
         `<option value="${p}">${PATTERN_LABELS[p]}</option>`).join('')}</select></label>
     <label class="ac-block"><input type="checkbox" class="ac-bs">
       <span>Blockerar sikt (hinder)<span class="ac-hint">Ytan blir ett byggnadshinder i siktberäkningen.</span></span></label>
+    <details class="of-sec"><summary>⇉ Offset</summary><div class="of-ctl"></div></details>
     <div class="lc-actions">
       <button type="button" class="lc-btn" data-ac="geo" title="Ytan som en sluten linje i en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
     </div>
@@ -88,6 +92,7 @@ function build(card, area) {
       <button type="button" class="ac-del" data-ac="delete">🗑 Ta bort</button>
     </div>`;
   wire(card, area.id);
+  wireOffset(card, area.id, 'area-card');
 }
 
 function update(area, state) {

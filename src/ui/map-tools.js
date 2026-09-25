@@ -6,7 +6,7 @@
 //
 // Kortkommandon (en bokstav, utan Ctrl/Alt/Cmd/Skift):
 //   P visuell punkt · L visuell linje · Y yta · M markera område
-//   D mät avstånd (Polylinjer Etapp 2)
+//   D mät avstånd (Polylinjer Etapp 2) · O offset (Etapp 4)
 //   S snappning av/på (en växlare, inget verktyg; sparas per användare)
 //   Esc avbryter pågående ritning (hanteras i map/interactions.js)
 //   Alt nedtryckt stänger tillfälligt av snappningen medan man ritar. Alt:s

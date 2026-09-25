@@ -211,6 +211,8 @@
   .lc-btn { min-height: 40px; }
   /* Mätrutan: hela bredden ovanför FAB-knapparna. */
   .measure-box { left: 8px; right: 60px; transform: none; min-width: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
+  .of-dist { min-height: 40px; }
+  .of-opt { min-height: 36px; }
   .zb   { top: 92px !important; right: 8px; font-size: 12px; }
 
   /* ── Kvalitetspanel: kompakt, uppe till höger ── */
