@@ -288,10 +288,10 @@ webbläsaren. Progress visas i dialogen i båda fallen.
 
 ## Visuella lager
 
-Punkter, linjer och ytor enbart för dokumentation: vägkanter, ritningskontur,
-planerade objekt, byggnadsverk. De ligger i egna state-fält (`visualPts`,
-`visualLines`, `visualAreas`, `visualLayers`) helt skilda från `pts` och
-`meas`, och simuleringen läser dem aldrig. Den enda vägen in i beräkningen är
+Punkter, linjer, ytor och cirklar enbart för dokumentation: vägkanter,
+ritningskontur, planerade objekt, byggnadsverk. De ligger i egna state-fält
+(`visualPts`, `visualLines`, `visualAreas`, `visualCircles`, `visualLayers`)
+helt skilda från `pts` och `meas`, och simuleringen läser dem aldrig. Den enda vägen in i beräkningen är
 ett hinder som projiceras ur en linje eller yta (se *Koppling till hinder*).
 Visuella objekt ritas med ihåliga cirklar och streckade linjer så att de inte
 förväxlas med nätpunkter och mätningar.
@@ -311,9 +311,9 @@ ett lager som heter **Handritat**.
 - **BERÄKNING**: *Nät* och *Hinder*, med öga och grön bock. Ögat döljer dem bara
   på kartan; beräkningen och siktlinjerna rör sig inte.
 - **VISUELLA · INGÅR EJ I BERÄKNING**: en rad per lager med öga, färgruta, namn,
-  antal (punkter · linjer · ytor; hörn räknas inte som punkter), knappen **Aa**
-  och ⋮-menyn (byt namn, byt färg, *Namn på punkter och ytor*, gör aktivt,
-  zooma till, radera). Klick på raden gör lagret aktivt.
+  antal (punkter · linjer · ytor, och cirklar när det finns några; hörn räknas
+  inte som punkter), knappen **Aa** och ⋮-menyn (byt namn, byt färg, *Namn på
+  punkter och ytor*, gör aktivt, zooma till, *Exportera lager (.geo)*, radera). Klick på raden gör lagret aktivt.
 - **+ Nytt visuellt lager** och **Importera till lager…** (öppnar .geo- eller
   .dxf-dialogen efter filändelse).
 
@@ -343,9 +343,12 @@ Uppe till höger i kartytan, bara symboler; varje knapp har `title` och
 | Knapp | Tangent | |
 |---|---|---|
 | Markera område | **M** | se *Markera område* |
-| Visuell punkt | **P** | varje klick placerar en punkt |
-| Visuell linje | **L** | klick efter klick kedjar ihop linjesegment |
+| Mät avstånd | **D** | se *Mätverktyget* |
+| Visuell punkt | **P** | varje klick placerar en punkt (ett ångra-steg per punkt) |
+| Visuell linje | **L** | se *Polylinjer* |
 | Yta | **Y** | se *Ytor* |
+| Cirkel | **C** | se *Cirklar* |
+| Offset | **O** | se *Offset* |
 | Snappning av/på | **S** | se *Snappning* |
 
 Valt verktyg markeras. Samma verktyg igen, med knapp eller tangent, återgår till
@@ -355,12 +358,12 @@ under raden. Kartans överkant är en flexrad: kartkontrollerna (CRS, kartlager,
 Hem, Koordinatlista) står till vänster och bryter rad när kartan är smal; zoom-
 etiketten och nordpilen har egen plats längst till höger.
 
-Punkt- och linjeläget står kvar tills du avslutar med **Escape** eller
-**högerklick**; i linjeläget bryter det första högerklicket kedjan.
+Ritlägena står kvar tills du lämnar dem med **Escape** eller **högerklick**.
 **Backspace** – på pekskärm **↶ Hörn** i den mobila raden – tar bort senaste
-hörnet i en linje eller yta under ritning: punkter som klicket skapade tas bort,
-snappade punkter och nätpunkter aldrig. Allt ritas i det aktiva lagret. Dubbelklick på ett visuellt objekt öppnar dess dialog (för
-ytor egenskapskortet).
+hörnet i en linje eller yta under ritning; ingenting sparas förrän objektet är
+klart, så snappade punkter och nätpunkter rörs aldrig. Allt ritas i det aktiva
+lagret. Dubbelklick på ett visuellt objekt öppnar dess dialog (för linjer, ytor
+och cirklar egenskapskortet).
 
 På telefon döljs raden och verktygen ligger sist i den mobila verktygsraden, som
 rullar i sidled.
@@ -371,6 +374,118 @@ rullar i sidled.
 tillfälligt, till exempel när Markera område är valt och ett vänsterdrag annars
 ritar en rektangel. Mellanslag gäller inte när fokus är i ett fält, en lista
 eller en vanlig knapp. På pekskärm panorerar och zoomar två fingrar.
+
+### Polylinjer
+
+En visuell linje är en **polylinje**: hörn i ordning, öppen eller sluten
+(`closed`), med samma hörnmodell som ytorna (`{ref:'visual'|'net', id}`).
+
+**Rita** med **L**: klicka hörnen. **Dubbelklick**, **Enter**, högerklick eller
+klick på **sista hörnet igen** avslutar linjen – ett dubbelklick ger aldrig ett
+extra hörn. Klick på **första hörnet** (minst tre hörn) sluter linjen; den blir
+en sluten linje, inte en yta. **Escape** kastar en påbörjad linje, nästa Escape
+lämnar verktyget. Byte av verktyg avbryter. En färdig linje är ett ångra-steg,
+och dess nya hörn får `role:'vertex'` (namnen styrs av lagrets *Aa*). På
+pekskärm avslutar **✓ Klar** i den mobila raden, eller ett tryck på sista
+hörnet (22 px).
+
+**Markering, snappning och radering** gäller hela polylinjen: ett klick på
+ett segment markerar linjen, snappning mot linje tar närmaste segment. Tas en
+nätpunkt eller fri punkt bort som är mitthörn tappar linjen hörnet och sluter
+gapet; under två hörn tas linjen bort, och en sluten linje med två hörn kvar
+blir öppen. Bekräftelsen säger vilka linjer som ändras och vilka som
+försvinner.
+
+**Egenskapskortet** (samma plats som ytans) visas när linjen markeras: namn,
+lager, antal hörn, öppen/sluten, **total längd (plan)** och en tabell per
+segment – `FP1–2`, längd (plan) och riktning (plan). Hörnen heter som punkten
+när den har ett namn, annars efter löpnummer. Knappar: *Dela in i punkter…*,
+*Exportera (.geo)*, *Använd som vägg / Koppla loss hindren*, *Slut linjen →
+yta* (en yta med samma hörn ersätter linjen, ett ångra-steg), *Ta bort*, och
+delen *⇉ Offset*.
+
+**Segmentlängder** ritas längs den markerade linjen, alltid läsbara oavsett
+riktning. Bara för den markerade linjen, så att kartan inte fylls; *Dölj namn*
+döljer också längderna.
+
+Längder, riktningar och areor räknas i koordinatsystemets **projektionsplan**
+och märks "(plan)". Riktning i gon, medurs från norr, fyra decimaler; längder
+i meter med tre decimaler.
+
+### Mätverktyget
+
+**D**, klicka två punkter (med snappning). Rutan nere i mitten visar **S
+(plan)**, **riktning (plan)**, **ΔN**, **ΔE** och **ΔH**. Punkterna visas med
+namn när snappningen träffat en punkt; ett hörn utan eget namn visas som
+"hörn 3 i Kantbalk N". Nytt klick, **Escape** eller högerklick börjar om;
+Escape utan påbörjad mätning lämnar verktyget. Ingenting sparas.
+
+### Höjder
+
+En visuell punkt utan höjd har **H = null**. En nätpunkt med **H = 0** räknas
+som att den saknar höjd (så har nätets punkter alltid lagrats). ΔH i
+mätverktyget visas bara när båda punkterna har höjd, annars "–". I .geo-exporten
+skrivs saknad höjd som ett tomt fält. Projekt sparade före polylinjerna hade 0
+för "ingen höjd" på visuella punkter; de får null när projektet laddas.
+
+### Offset
+
+Parallella linjer på ett givet avstånd. Två vägar: verktyget **O** (klicka en
+linje eller yta – eller markera den och tryck O – ange avstånd, sida och hörn i
+rutan, **Enter** eller *Skapa*), eller delen *⇉ Offset* i linjens och ytans
+kort. Förhandsvisningen är streckad och följer värdet.
+
+- **Sida**: höger, vänster eller båda – höger om linjens riktning från första
+  till sista hörnet. Sluten linje och yta: utåt, inåt eller båda.
+- **Hörn**: *skarpa* förlänger kanterna till skärningen. Vid spetsiga vinklar
+  begränsas förlängningen till **4 × avståndet** – spetsigare än 28,96° mellan
+  kanterna fasas hörnet av med två punkter. *Rundade* ger bågar enligt
+  bågtoleransen.
+- Om offsetlinjen **korsar sig själv**, eller avståndet är större än en krök
+  eller ett kort segment rymmer på insidan, ritas förhandsvisningen **röd**,
+  rutan säger varför, och **ingenting skapas**.
+- Resultatet är en ny polylinje (en ny yta för en yta) i **aktivt lager** med
+  egna hörn, lagrets färg och namnet **`<original> +2,000 H`** (V, ut, in). Den
+  är inte kopplad till originalet. Ett ångra-steg.
+
+### Cirklar
+
+**C**: klicka **centrum** (med snappning), sedan en **punkt på cirkeln**, eller
+skriv **radien** i rutan och tryck Enter. Rutan visar omkrets och antal hörn.
+Cirkeln lagras exakt – centrum och radie – och ritas och exporteras som en
+polygon enligt bågtoleransen. Ett centrum som snappat mot en nätpunkt eller
+visuell punkt följer punkten; tas punkten bort stannar cirkeln kvar där den var.
+
+**Egenskapskortet**: namn, lager, centrum, radie (går att ändra), omkrets
+(plan), antal hörn med vald tolerans, *Dela in i punkter…*, *Exportera (.geo)*,
+*Gör om till polylinje* och *Ta bort*.
+
+**Vägg och offset för en cirkel** görs genom att först göra om den till
+polylinje (en sluten linje med cirkelns hörn); sedan finns *Använd som vägg*
+och *⇉ Offset* i linjens kort.
+
+### Dela in i punkter
+
+Från linjens, ytans och cirkelns kort. Välj **antal punkter** eller **fast
+avstånd** längs linjen, **startvinkel** i gon för en cirkel (från centrum,
+medurs från norr), för en öppen linje om **start- och slutpunkt** ska tas med,
+och ett **namnprefix** (P1–P8). Dialogen visar den faktiska delningen innan du
+skapar – i meter, för en cirkel också i gon, och resten vid fast avstånd.
+Punkterna blir fria punkter i aktivt lager (inte hörn), ett ångra-steg. På en
+sluten linje, yta och cirkel går punkterna runt från starten, och start och
+slut är samma punkt.
+
+### Bågtolerans
+
+En gemensam inställning för hur tätt bågar delas i hörn: kordan mellan två hörn
+avviker högst toleransen från den verkliga bågen. **1 mm** är förval; **5** och
+**10 mm** går att välja i offsetrutan, cirkelrutan och cirkelns kort, och valet
+sparas per användare. Toleransen styr **rundade offsethörn** och **cirklar** –
+hur de ritas, hur många hörn en cirkel får när den görs om till polylinje, och
+hur de exporteras. Antalet hörn växer ungefär som √(radie / tolerans): en
+cirkel med radien 500 m får 1 571 hörn vid 1 mm, 703 vid 5 mm och 497 vid
+10 mm. För stora cirklar och stora offsetavstånd ger **5–10 mm betydligt färre
+hörn**.
 
 ### Ytor
 
@@ -442,9 +557,14 @@ Gäller när du ritar visuell punkt, linje och yta – inte när du drar i någo
 ### Koppling till hinder
 
 Högerklick på en visuell linje ger **Använd som vägg** och **Använd som
-blockeringslinje**; för en yta finns **Blockerar sikt (hinder)** i kortet och i
-högerklicksmenyn. Alla skapar ett riktigt hinder i hinder-systemet – en linje
-blir en vägg, en yta ett byggnadshinder (polygon). Ett byggnadshinder blockerar
+blockeringslinje** (också i linjens kort); för en yta finns **Blockerar sikt
+(hinder)** i kortet och i högerklicksmenyn. Alla skapar riktiga hinder i
+hinder-systemet – en linje blir väggar, en yta ett byggnadshinder (polygon).
+
+Siktberäkningen i `src/core/` läser två punkter per linjehinder, så en polylinje
+blir **ett linjehinder per segment** (`linkedObsIds`, etiketten "Vägg (VL3)
+2/5"). Ändras antalet segment läggs hinder till eller tas bort; raderas ett av
+dem i hinder-panelen kopplas linjen loss och de övriga tas bort. Ett byggnadshinder blockerar
 även sikter **från punkter inuti ytan**, vilket en vägg längs kanterna inte gör.
 
 Hindret är en **projektion**, inte en kopia: dess koordinater räknas om ur
@@ -456,10 +576,50 @@ ytan. Ingenting av detta rör `src/core/`.
 Autosparningen tar med hindren, så att kopplingarna överlever en omladdning.
 Blir webbläsarens lagring full meddelas det i statusfältet.
 
-### Export
+### Export till .geo
 
-PXY-export av visuella punkter är inte implementerad ännu — den väntar på en
-exempelfil från SBG Geo för att formatet ska bli rätt.
+SBG Object Text v2.01, samma format som Geo skriver, via `src/io/write-geo.js`.
+Tre vägar: **Exportera (.geo)** i linjens, ytans och cirkelns kort (det
+objektet), lagrets ⋮-meny (**Exportera lager**) och **Data → Visuella lager
+(.geo)…**, där man väljer lager eller *endast markerade objekt* och vad som tas
+med (punkter, linjer, ytor, cirklar).
+
+- UTF-8 utan BOM, CRLF, tabbar, `PointList ` / `LineList ` / `AttributeList `
+  med blanksteg; en tom lista skrivs utan begin/end.
+- Punkter: `Point "id",N,E,H,,,` med fyra decimaler; saknad höjd är ett tomt
+  fält. Fria punkter hamnar i `PointList` med sitt namn (annars id).
+- Linjer: `Line "namn",,,` med egna hörn 01, 02, … En **sluten linje, en yta
+  och en cirkel** skrivs med **första hörnet upprepat sist** med nästa löpnummer
+  (01–05 i en fyrhörning, 05 = 01) och tomt flaggfält – som Geo Professional
+  2026 gör.
+- Koordinatsystem `Sweref 99 <zon> / RH2000 (SWEN17)`. Strängen är provad mot
+  Geo för zonerna 15 45 och 20 15; för TM och övriga zoner skrivs samma mönster
+  med en varning i dialogen.
+- Ett namn med `"` eller radbrytning stoppar exporten med ett felmeddelande.
+
+**Provat i GeoPad:** exporterade filer läses in rätt – slutna linjer med
+upprepat första hörn, ytor, tomma höjder och koordinatsystemet.
+
+**Nätpunkter (.geo)** i Data-menyn använder samma skrivare sedan polylinjerna:
+fyra decimaler i stället för tre, koordinatsystemet som ovan, och H = 0 som
+tomt fält.
+
+### Projekt från före polylinjerna
+
+Projektfiler och autosparningar från v0.6.0 och tidigare migreras när de laddas
+(`visualVer` saknas i filen):
+
+- **Linjesegment slås ihop till polylinjer** när de hänger ihop ände mot ände –
+  samma punkt, i samma lager, med samma färg. Där tre eller fler segment möts
+  bryts kedjan. En kedja som sluter sig blir en sluten polylinje, inte en yta.
+  Kartan ser likadan ut och simuleringen ger samma resultat.
+- **Väggsegment från äldre importer** har vart sitt hinder och slås därför inte
+  ihop; de ligger kvar som korta polylinjer med två hörn. (Att foga ihop linjer
+  är en möjlig senare funktion.) Angränsande `Line`/`LINE` ur samma importfil
+  utan hinder slås däremot ihop, eftersom migreringen inte vet var filens
+  objekt gick.
+- **Visuella punkter med H = 0 får H = null** – före polylinjerna betydde 0
+  "ingen höjd". Nätpunkter ändras inte.
 
 ## Import av ritningsunderlag
 
@@ -479,8 +639,9 @@ I dialogen väljs:
   till nätet väljs punkttyp uttryckligen, och vid ID-krock *Hoppa över*,
   *Uppdatera koordinater* eller *Byt namn* med suffix `_2`.
 - **Linjerna**, oberoende av punktvalet: *Visuella linjer*, *Hinder* (väggar
-  som blockerar sikt) eller *Hoppa över*. Hörnen dedupliceras på koordinat, så
-  att en kontur blir en sammanhängande kedja i stället för lösa segment.
+  som blockerar sikt) eller *Hoppa över*. Varje `Line` blir en polylinje med
+  linjens namn, sluten om flaggan är satt eller första hörnet upprepas sist.
+  Hörnen dedupliceras på koordinat, så att linjer som möts delar hörn.
 - **Slutna linjer som linjer / ytor** (visas när filen har slutna linjer –
   flagga 1 eller första hörnet upprepat sist). Förval *linjer*, som förut. Med
   *ytor* blir de visuella ytor med area; tillsammans med *Hinder* blir de
@@ -492,7 +653,8 @@ varning i dialogen.
 ### DXF (.dxf)
 
 Endast ASCII-DXF; binär DXF avvisas med besked. Stödda objekt är `LINE`,
-`LWPOLYLINE`, `POLYLINE`/`VERTEX` och `POINT`. Övriga typer räknas per lager
+`LWPOLYLINE`, `POLYLINE`/`VERTEX` och `POINT`; varje `LINE` och polylinje blir
+en polylinje. Övriga typer räknas per lager
 och hoppas över med varning. Bågsegment (bulge) ritas som raka linjer.
 
 En DXF bär ingen information om koordinatsystem, och ofta inte heller om enhet
@@ -509,7 +671,8 @@ linjer / ytor*, förval *linjer*.
 ## Toppmeny
 
 - **Data** — import (.geo, .dxf, Excel/CSV, byggnader från OSM), export av
-  nätpunkter (.geo), och projekthantering: Spara (Ctrl+S), Ladda, Excel-mall.
+  nätpunkter och visuella lager (.geo), och projekthantering: Spara (Ctrl+S),
+  Ladda, Excel-mall.
 - **Visa** — kartinnehåll och punkttyper i två kolumner, samt symbolstorlek och
   felellipsskala.
 - **Rapport** — alla dokument och exporter, i tre grupper:

@@ -5,7 +5,8 @@ splittas upp i moduler. Claude Code följer denna struktur vid migration.
 
 Mapp-layouten nedan är migrationens plan och inte en fullständig lista över
 alla filer. Moduler som tillkommit i v0.6.0 är inlagda i trädet och beskrivna
-i avsnittet [Tillkommet i v0.6.0](#tillkommet-i-v060).
+i avsnittet [Tillkommet i v0.6.0](#tillkommet-i-v060); polylinjearbetet i
+[Polylinjer, mätning, export, offset och cirklar](#polylinjer-mätning-export-offset-och-cirklar).
 
 ## Mapp-layout
 
@@ -26,7 +27,12 @@ natsim/
 │   │   ├── persistence.js        # localStorage autosave
 │   │   ├── visual.js             # Visuella lager, punkter, linjer, ytor
 │   │   ├── area-geometry.js      # v0.6.0: area, omkrets, självkorsning (plan)
-│   │   └── visual-selection.js   # v0.6.0: urvalsregler för Markera område
+│   │   ├── visual-selection.js   # v0.6.0: urvalsregler för Markera område
+│   │   ├── line-geometry.js      # polylinjer: längd, riktning i gon, mätvärden (plan)
+│   │   ├── offset-geometry.js    # polylinjer: offset, gering/avfasning, bågar
+│   │   ├── offset.js             # polylinjer: offset som nya linjer/ytor
+│   │   ├── arc-tolerance.js      # polylinjer: gemensam bågtolerans (1/5/10 mm)
+│   │   └── divide.js             # polylinjer: Dela in i punkter
 │   ├── data/
 │   │   └── tdok-apriori.js       # v0.6.0: a priori-förval ur TDOK 2014:0571 v6.0
 │   ├── core/                     # ⚠️ Beräkningskärnan – BACKAS UPP MED TESTER
@@ -48,6 +54,9 @@ natsim/
 │   │   ├── visual-drawing.js     # Ritlägen: visuell punkt, linje, yta
 │   │   ├── select-area.js        # v0.6.0: Markera område (dragning, klick)
 │   │   ├── snap.js               # v0.6.0: snappning vid ritning
+│   │   ├── measure-tool.js       # polylinjer: mätverktyget D
+│   │   ├── offset-tool.js        # polylinjer: verktyget O och förhandsvisningen
+│   │   ├── circle-tool.js        # polylinjer: cirkelverktyget C
 │   │   └── pan-gestures.js       # v0.6.0: mittenknapp och mellanslag panorerar
 │   ├── ui/
 │   │   ├── toolbar.js            # Verktygsval, hjälptext, mobil verktygsrad
@@ -55,6 +64,12 @@ natsim/
 │   │   ├── layer-panel.js        # Innehållet i Lager-menyn
 │   │   ├── map-tools.js          # v0.6.0: verktygsraden på kartan, kortkommandon
 │   │   ├── area-card.js          # v0.6.0: egenskapskort för en yta
+│   │   ├── line-card.js          # polylinjer: egenskapskort för en linje
+│   │   ├── circle-card.js        # polylinjer: cirkelns kort och verktygsruta
+│   │   ├── measure-box.js        # polylinjer: mätverktygets ruta
+│   │   ├── offset-panel.js       # polylinjer: offsetkontrollerna
+│   │   ├── divide-dialog.js      # polylinjer: dialogen Dela in i punkter
+│   │   ├── geo-export.js         # polylinjer: export av visuella lager (.geo)
 │   │   ├── select-bar.js         # v0.6.0: åtgärdsrad för markerade objekt
 │   │   ├── antal.js              # v0.6.0: böjning av antal ("1 yta", "2 ytor")
 │   │   ├── left-panel.js         # Punktlista, mätlista
@@ -83,7 +98,9 @@ natsim/
 │   │   │   └── simulering.js     #   standard- och utökad osäkerhet, kravjämförelse
 │   │   └── report-generator.js   # Bygger A4-rapporten
 │   ├── io/
-│   │   ├── import-geo.js         # Läs in .geo-filer
+│   │   ├── import-geo.js         # Läs in .geo-filer, exportera nätpunkter
+│   │   ├── write-geo.js          # polylinjer: skrivare för SBG Object Text v2.01
+│   │   ├── export-visual-geo.js  # polylinjer: urval och modell för .geo-exporten
 │   │   ├── import-csv.js         # Läs in punktlistor från CSV
 │   │   ├── export-project.js     # Sparar .json med pts, meas, settings
 │   │   └── export-pdf.js         # Simuleringsrapport PDF
@@ -187,9 +204,9 @@ när en post är inaktiv) och `index.html`.
 | Modul | Innehåll |
 |---|---|
 | `src/ui/layer-panel.js` | Innehållet i Lager-menyn (flyttat från vänsterpanelen): beräkningslagren, de visuella lagren, punktnamn per lager, etiketten för aktivt lager. Menyns öppna/stäng/lås-beteende bor i `topbar.js`. |
-| `src/ui/map-tools.js` | Verktygsraden på kartan: klick och kortkommandon (M, P, L, Y, S), Alt för tillfälligt avstängd snappning. Markeringen av valt verktyg sätts av `buildTools()` i `toolbar.js`. |
+| `src/ui/map-tools.js` | Verktygsraden på kartan: klick och kortkommandon (M, D, P, L, Y, C, O, S), Alt för tillfälligt avstängd snappning. Markeringen av valt verktyg sätts av `buildTools()` i `toolbar.js`. |
 | `src/state/area-geometry.js` | Plangeometri för ytor: skosnöresformeln, omkrets, självkorsning, tyngdpunkt och formatering ("1 214 m² (plan)"). Rena funktioner. |
-| `src/ui/area-card.js` | Egenskapskortet för en markerad yta: namn, area, omkrets, färg, mönster och *Blockerar sikt*. |
+| `src/ui/area-card.js` | Egenskapskortet för en markerad yta: namn, area, omkrets, färg, mönster och *Blockerar sikt*; sedan polylinjerna också Dela in, Exportera och Offset. |
 | `src/state/visual-selection.js` | Urvalsreglerna för Markera område: helt inuti / inuti eller korsade, Skift/Ctrl, antal per typ. Rena funktioner. |
 | `src/map/select-area.js` | Verktyget Markera område: dragning, klick och rektangelns utseende, för mus och finger. |
 | `src/ui/select-bar.js` | Åtgärdsraden för markerade objekt: flytta till lager, dölj/visa namn, zooma till, ta bort, och pekskärmens växlare. |
@@ -201,3 +218,50 @@ Ytor, markering och snappning bygger på den befintliga modellen i
 `src/state/visual.js` (lager, punkter, linjer och nu ytor) och når
 beräkningen bara via hinder som projiceras med `linkedObsId` och
 `syncLinkedObstacles()`.
+
+## Polylinjer, mätning, export, offset och cirklar
+
+Arbetet rör inte `src/core/`. Visuella objekt når siktberäkningen bara via
+hinder, genom den befintliga mekanismen (`syncLinkedObstacles()` i
+`src/state/visual.js`). Den enda ändringen i hinderkoden är
+`nextObstacleId()` i `src/state/obstacles.js`, för segmenthinder som läggs in
+utan att ändra markeringen.
+
+### Datamodellen (`src/state/visual.js`)
+
+- **Polylinjer** i `visualLines`: `{ id, layerId, name?, vertices:[{ref,id}, …],
+  closed, color, hideLabel?, linkedObsIds:[] }` – samma hörnmodell som ytorna.
+  `core/visibility.js` läser två punkter per linjehinder, så polylinjen
+  projiceras på ett linjehinder per segment (`linkedObsIds`, i ordning).
+- **Cirklar** i `visualCircles`: `{ id, layerId, name?, center, radius, color,
+  hideLabel? }`, där `center` är `{ref,id}` eller `{E,N}`. Lagras exakt; polygonen
+  räknas med `visualCircleCoords()` enligt bågtoleransen.
+- **Höjd**: `H: null` betyder saknad höjd för visuella punkter.
+- **Laddning**: `_loadVisual()` sanerar, migrerar lager och – för filer utan
+  `visualVer` (före polylinjerna) – slår ihop segment (`_mergeLegacyLines()`)
+  och gör H = 0 till null. Projektfil och autosparning skriver `visualVer: 2`.
+  `tests/fixtures/projekt-v060/` är ett projekt skapat med v0.6.0:s egen kod,
+  med facit, och `tests/polylinjer-migrering.test.js` prövar migreringen mot det.
+
+### Moduler
+
+| Modul | Innehåll |
+|---|---|
+| `src/state/line-geometry.js` | Längd och riktning i plan (gon, medurs från norr), mätvärden S/ΔN/ΔE/ΔH och formatering. Rena funktioner. |
+| `src/state/offset-geometry.js` | Offset av en polylinje: inre hörn skärs, yttre hörn med gering (högst 4 × avståndet, annars avfasning) eller bågar; kontroll av segment som vänder och av självkorsning. Rena funktioner. |
+| `src/state/offset.js` | Offset av en linje eller yta som nya objekt i aktivt lager, med namn `<original> +2,000 H`. |
+| `src/state/arc-tolerance.js` | Bågtoleransen 1/5/10 mm, sparad per användare; vinkelsteg och antal hörn för en cirkel. |
+| `src/state/divide.js` | Dela in i punkter: lägen längs polylinje, sluten linje, yta och cirkel, och skapandet. |
+| `src/io/write-geo.js` | Ren skrivare för SBG Object Text v2.01, verifierad mot Geo och GeoPad. Koordinatsystemets sträng, filnamn och nedladdning. |
+| `src/io/export-visual-geo.js` | Urvalet (lager, markerade objekt, typer) som skrivarens modell; nätpunkternas fil. |
+| `src/map/measure-tool.js` | Mätverktyget D: två punkter med snappning, höjdreglerna. |
+| `src/map/offset-tool.js` | Verktyget O och förhandsvisningen av offset (också för korten). |
+| `src/map/circle-tool.js` | Cirkelverktyget C: centrum, radie ur ett klick eller inskriven. |
+| `src/ui/line-card.js` | Linjens egenskapskort: segmenttabell, längd, vägg, slut till yta, export, offset. |
+| `src/ui/circle-card.js` | Cirkelns kort och verktygsruta. |
+| `src/ui/measure-box.js`, `src/ui/offset-panel.js`, `src/ui/divide-dialog.js`, `src/ui/geo-export.js` | Rutorna och dialogerna för mätning, offset, indelning och export. |
+
+Ritningen av polylinjer bor i `src/map/visual-drawing.js` (hörnen samlas i
+minnet och sparas när linjen avslutas), rendering och träfftest i
+`src/map/visual-canvas.js`, markering i `src/state/visual-selection.js` och
+snappning i `src/map/snap.js`.
