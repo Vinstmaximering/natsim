@@ -9,6 +9,7 @@
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
 //   visualLayers (Etapp 1): saknas → objekten samlas i lagret "Handritat"
 //   visualAreas (Lager-verktyg Etapp 3): saknas → inga ytor
+//   visualCircles (Polylinjer Etapp 5): saknas → inga cirklar
 //   visualVer (Polylinjer Etapp 1): saknas → linjesegmenten slås ihop till
 //     polylinjer och visuella punkter med H = 0 får H = null (saknad höjd)
 //   visualLayers[].labels/vertexLabels (Lager-verktyg Etapp 1): saknas →
@@ -37,6 +38,8 @@ export function _buildSnapshot() {
     visualPts:   JSON.parse(JSON.stringify(s.visualPts   || [])),
     visualLines: JSON.parse(JSON.stringify(s.visualLines || [])),
     visualAreas: JSON.parse(JSON.stringify(s.visualAreas || [])),
+    // Polylinjer Etapp 5: cirklar. Filer utan fältet laddas utan cirklar.
+    visualCircles: JSON.parse(JSON.stringify(s.visualCircles || [])),
     // Etapp 1: lagerlistan. Filer utan fältet laddas med allt i "Handritat".
     visualLayers:        JSON.parse(JSON.stringify(s.visualLayers || [])),
     activeVisualLayerId: s.activeVisualLayerId ?? null,
@@ -58,6 +61,7 @@ export function _buildSnapshot() {
     nVid:           s.nVid           ?? 1,
     nVlid:          s.nVlid          ?? 1,
     nVaid:          s.nVaid          ?? 1,
+    nVcid:          s.nVcid          ?? 1,
     nVlyid:         s.nVlyid         ?? 1,
     mapCenter: (() => {
       try {
@@ -121,7 +125,7 @@ export function _applySnapshot(s) {
   // Etapp 1: objekt utan giltigt layerId hamnar i "Handritat", så att en
   // projektfil sparad före lagren laddas med allt innehåll i behåll.
   // Polylinjer Etapp 1: segment ur äldre filer slås ihop till polylinjer.
-  const { visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId, nVlyid } =
+  const { visualPts, visualLines, visualAreas, visualCircles, visualLayers, activeVisualLayerId, nVlyid } =
     _loadVisual(s);
 
   setState({
@@ -144,6 +148,7 @@ export function _applySnapshot(s) {
     visualPts,
     visualLines,
     visualAreas,
+    visualCircles,
     visualLayers,
     activeVisualLayerId,
     // Samma resonemang som för nVid/nVlid: räknaren härleds ur innehållet.
@@ -153,6 +158,7 @@ export function _applySnapshot(s) {
     nVid:           Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
     nVlid:          Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
     nVaid:          Math.max(s.nVaid ?? 1, _nextCounter(visualAreas, 'VA')),
+    nVcid:          Math.max(s.nVcid ?? 1, _nextCounter(visualCircles, 'VC')),
     selVisualId:    null,
     visualSelection: [],
     // Etapp 5: ritsynligheten hör till sessionen och sparas inte. En laddad

@@ -12,8 +12,8 @@
 // kvitteringen varnar för att strängen inte är verifierad.
 import { getState } from '../state/store.js';
 import { showToast } from './toast.js';
-import { antalPunkter, antalLinjer, antalYtor } from './antal.js';
-import { getVisualLayers, findVisualLayer, findVisualLine, findVisualArea } from '../state/visual.js';
+import { antalPunkter, antalLinjer, antalYtor, ochCirklar } from './antal.js';
+import { getVisualLayers, findVisualLayer, findVisualLine, findVisualArea, findVisualCircle } from '../state/visual.js';
 import { buildVisualGeo, layersDescription, GEO_INCLUDE_ALL } from '../io/export-visual-geo.js';
 import { geoCoordinateSystem, downloadGeo, geoFilename } from '../io/write-geo.js';
 
@@ -30,7 +30,7 @@ export function markedObjectIds(state = getState()) {
   return [...new Set([...(state.visualSelection || []), ...(state.selVisualId ? [state.selVisualId] : [])])];
 }
 
-const summa = c => `${antalPunkter(c.points)}, ${antalLinjer(c.lines)} och ${antalYtor(c.areas)}`;
+const summa = c => `${antalPunkter(c.points)}, ${antalLinjer(c.lines)} och ${antalYtor(c.areas)}${ochCirklar(c.circles)}`;
 
 /**
  * Bygger och laddar ner filen. Returnerar resultatet (för tester) eller null
@@ -39,7 +39,7 @@ const summa = c => `${antalPunkter(c.points)}, ${antalLinjer(c.lines)} och ${ant
 export function exportVisualGeo(urval, description, filename, state = getState()) {
   const r = buildVisualGeo(state, urval, description);
   if (r.error) { alert(`Exporten stoppades.\n\n${r.error}`); return null; }
-  const n = r.counts.points + r.counts.lines + r.counts.areas;
+  const n = r.counts.points + r.counts.lines + r.counts.areas + (r.counts.circles || 0);
   if (!n) { showToast('Inget att exportera', '#7090a8'); return null; }
   downloadGeo(geoFilename(filename), r.text);
   const varning = r.crsVerified ? '' : ' · ⚠ koordinatsystemets namn ej verifierat';
@@ -48,9 +48,9 @@ export function exportVisualGeo(urval, description, filename, state = getState()
   return r;
 }
 
-/** Egenskapskortet: den markerade linjen eller ytan. */
+/** Egenskapskortet: den markerade linjen, ytan eller cirkeln. */
 export function exportObjectGeo(id) {
-  const o = findVisualLine(id) || findVisualArea(id);
+  const o = findVisualLine(id) || findVisualArea(id) || findVisualCircle(id);
   if (!o) return null;
   const namn = o.name || o.id;
   return exportVisualGeo({ objectIds: [id], include: GEO_INCLUDE_ALL }, namn, namn);
@@ -76,6 +76,7 @@ function valIDialogen() {
     points: !!el('gx-inc-points')?.checked,
     lines:  !!el('gx-inc-lines')?.checked,
     areas:  !!el('gx-inc-areas')?.checked,
+    circles: !!el('gx-inc-circles')?.checked,
   };
   const layerIds = [...document.querySelectorAll('#gx-layers input:checked')].map(i => i.value);
   return markerat
@@ -95,7 +96,7 @@ function filnamn(v, state = getState()) {
 function uppdatera() {
   const v = valIDialogen();
   const r = buildVisualGeo(getState(), v.urval, beskrivning(v));
-  const n = r.counts.points + r.counts.lines + r.counts.areas;
+  const n = r.counts.points + r.counts.lines + r.counts.areas + r.counts.circles;
   el('gx-sum').textContent = n ? `Tas med: ${summa(r.counts)}.` : 'Inget att exportera med de här valen.';
   el('gx-err').hidden = !r.error;
   el('gx-err').textContent = r.error || '';
@@ -127,11 +128,13 @@ export function openVisualGeoExport() {
       <label class="gx-row"><input type="checkbox" id="gx-inc-points" checked> Punkter</label>
       <label class="gx-row"><input type="checkbox" id="gx-inc-lines" checked> Linjer</label>
       <label class="gx-row"><input type="checkbox" id="gx-inc-areas" checked> Ytor</label>
+      <label class="gx-row"><input type="checkbox" id="gx-inc-circles" checked> Cirklar</label>
     </div>
     <div class="gx-sub">Koordinatsystem i filen</div>
     <div class="gx-crs">${esc(crs.text || '–')}</div>
     ${crs.verified ? '' : `<div class="val-warn gx-warn">⚠ ${UNVERIFIED_CRS_TEXT}</div>`}
-    <div class="val-muted gx-note">Sluten linje och yta skrivs med första hörnet upprepat sist.
+    <div class="val-muted gx-note">Sluten linje, yta och cirkel skrivs med första hörnet upprepat sist;
+      cirkeln med hörn enligt bågtoleransen.
       Hörnen heter 01, 02 … i varje linje. Höjd saknas: tomt fält.</div>
     <div id="gx-sum" class="gx-sum"></div>
     <div id="gx-err" class="val-warn gx-warn" hidden></div>

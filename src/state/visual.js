@@ -10,6 +10,8 @@
 //                    color, hideLabel?, linkedObsIds: [] }]
 //   visualAreas:  [{ id, layerId, name?, vertices: [{ref,id}, …], color,
 //                    fillOpacity, pattern, blocksSight, linkedObsId }]
+//   visualCircles: [{ id, layerId, name?, center: {ref,id} | {E,N}, radius,
+//                    color, hideLabel? }]            (Polylinjer Etapp 5)
 //
 // H är null när punkten saknar höjd. Före polylinjerna (visualVer 2) skrevs
 // 0 för "ingen höjd"; sådana punkter får null när projektet laddas.
@@ -61,6 +63,7 @@
 import { getState, setState } from './store.js';
 import { normalizeHexColor }  from '../core/colors.js';
 import { addObstacle, nextObstacleId } from './obstacles.js';
+import { getArcTolerance, circleVertexCount } from './arc-tolerance.js';
 
 // Standardfärger när objektet saknar egen färg.
 export const VISUAL_DEFAULT_COLOR = '#cfd8dc';
@@ -160,8 +163,10 @@ export function updateVisualLayer(id, changes) {
 // mutationsfunktionerna, så att kopplade hinder städas bort på samma väg som
 // vid en manuell radering. Bekräftelsedialogen ligger i UI:t, inte här.
 export function removeVisualLayer(id) {
-  if (!findVisualLayer(id)) return { pts: 0, lines: 0, areas: 0 };
+  if (!findVisualLayer(id)) return { pts: 0, lines: 0, areas: 0, circles: 0 };
   const st = getState();
+  const circleIds = (st.visualCircles || []).filter(c => c.layerId === id).map(c => c.id);
+  circleIds.forEach(removeVisualCircle);
   const areaIds = (st.visualAreas || []).filter(a => a.layerId === id).map(a => a.id);
   const lineIds = (st.visualLines || []).filter(l => l.layerId === id).map(l => l.id);
 
@@ -179,7 +184,7 @@ export function removeVisualLayer(id) {
     activeVisualLayerId: getState().activeVisualLayerId === id
       ? (rest[0]?.id ?? null) : getState().activeVisualLayerId,
   });
-  return { pts: ptIds.length, lines: lineIds.length, areas: areaIds.length };
+  return { pts: ptIds.length, lines: lineIds.length, areas: areaIds.length, circles: circleIds.length };
 }
 
 // Ett dolt lager ritas inte och går inte att träffa på kartan. Objekt vars
@@ -239,6 +244,7 @@ export function visualLayerCounts(layerId, state = getState()) {
     pts:   (state.visualPts   || []).filter(p => p.layerId === layerId && p.role !== 'vertex').length,
     lines: (state.visualLines || []).filter(l => l.layerId === layerId).length,
     areas: (state.visualAreas || []).filter(a => a.layerId === layerId).length,
+    circles: (state.visualCircles || []).filter(c => c.layerId === layerId).length,
   };
 }
 
@@ -264,6 +270,10 @@ export function visualLayerPositions(layerId, state = getState()) {
   for (const a of state.visualAreas || []) if (a.layerId === layerId) eps.push(...(a.vertices || []));
   for (const ep of eps)
     if (ep?.id) add(`${ep.ref === 'net' ? 'net' : 'visual'}:${ep.id}`, resolveEndpoint(ep, state));
+  // Cirklar: hela omkretsen hör till lagrets geometri (polygonens hörn).
+  for (const c of state.visualCircles || [])
+    if (c.layerId === layerId)
+      (visualCircleCoords(c, state) || []).forEach(([E, N], i) => add(`circle:${c.id}:${i}`, { E, N }));
   return out;
 }
 
@@ -604,6 +614,7 @@ function _unusedVisualPtIds(candidates, state = getState()) {
     for (const ep of l.vertices || []) if (ep?.ref === 'visual') used.add(ep.id);
   for (const a of state.visualAreas || [])
     for (const ep of a.vertices || []) if (ep?.ref === 'visual') used.add(ep.id);
+  for (const c of state.visualCircles || []) if (c.center?.ref === 'visual') used.add(c.center.id);
   return candidates.filter(id => !used.has(id));
 }
 
@@ -695,6 +706,117 @@ export function linesAfterPointRemoval(ptKeys, state = getState(), skip = new Se
   return { linesChanged, linesRemoved };
 }
 
+// ── Cirklar (Polylinjer Etapp 5) ─────────────────────────────────────────────
+// En cirkel lagras exakt: centrum och radie. Centrum är en punkt
+// ({ref:'net'|'visual', id} – cirkeln följer punkten) eller en fast
+// koordinat ({E, N}). Den ritas och exporteras som en polygon med så många
+// hörn att kordan avviker högst bågtoleransen (state/arc-tolerance.js).
+// Hörnen börjar i norr och går medurs, som riktningarna i gon.
+
+/** Centrumets läge {E, N, H}, eller null om centrumpunkten saknas. */
+export function circleCenter(c, state = getState()) {
+  const ce = c?.center;
+  if (!ce) return null;
+  if (typeof ce.id === 'string') return resolveEndpoint(ce, state);
+  return Number.isFinite(ce.E) && Number.isFinite(ce.N) ? { E: ce.E, N: ce.N, H: null } : null;
+}
+
+/** Cirkelns polygon [[E,N], …] (utan upprepat sluthörn), eller null. */
+export function visualCircleCoords(c, state = getState(), tol = getArcTolerance()) {
+  const m = circleCenter(c, state);
+  if (!m || !(c.radius > 0)) return null;
+  const n = circleVertexCount(c.radius, tol);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = (2 * Math.PI * i) / n;
+    out.push([m.E + c.radius * Math.sin(t), m.N + c.radius * Math.cos(t)]);
+  }
+  return out;
+}
+
+const _center = ce => {
+  if (ce && typeof ce.id === 'string') return { ref: ce.ref === 'net' ? 'net' : 'visual', id: ce.id };
+  if (ce && Number.isFinite(ce.E) && Number.isFinite(ce.N)) return { E: ce.E, N: ce.N };
+  return null;
+};
+
+export const getVisualCircles = () => getState().visualCircles || [];
+export function findVisualCircle(id) { return getVisualCircles().find(c => c.id === id) || null; }
+
+export function addVisualCircle({ center, radius, layerId = null, name = null, color = null }) {
+  const ce = _center(center);
+  const r = Number(radius);
+  if (!ce || !(r > 0) || !Number.isFinite(r)) return null;
+  const lid = (layerId && findVisualLayer(layerId)) ? layerId : ensureActiveVisualLayer();
+  const { visualCircles = [], nVcid = 1 } = getState();
+  const id = `VC${nVcid}`;
+  const circle = { id, layerId: lid, center: ce, radius: r, color: normalizeHexColor(color) };
+  if (typeof name === 'string' && name.trim()) circle.name = name.trim();
+  _commit({ visualCircles: [...visualCircles, circle], nVcid: nVcid + 1 });
+  return id;
+}
+
+export function updateVisualCircle(id, changes) {
+  const { visualCircles = [] } = getState();
+  const c = {};
+  if ('name' in changes) c.name = typeof changes.name === 'string' ? changes.name.trim() : '';
+  if ('color' in changes) c.color = normalizeHexColor(changes.color);
+  if ('radius' in changes && Number(changes.radius) > 0) c.radius = Number(changes.radius);
+  if ('center' in changes && _center(changes.center)) c.center = _center(changes.center);
+  if ('layerId' in changes && findVisualLayer(changes.layerId)) c.layerId = changes.layerId;
+  if ('hideLabel' in changes) c.hideLabel = changes.hideLabel === true;
+  _commit({ visualCircles: visualCircles.map(o => {
+    if (o.id !== id) return o;
+    const n = { ...o, ...c };
+    if (n.name === '') delete n.name;
+    if (n.hideLabel === false) delete n.hideLabel;
+    return n;
+  }) });
+}
+
+/** Tar bort cirkeln. Centrumpunkten rörs inte. */
+export function removeVisualCircle(id) {
+  const { visualCircles = [], selVisualId } = getState();
+  if (!visualCircles.some(c => c.id === id)) return;
+  _commit({
+    visualCircles: visualCircles.filter(c => c.id !== id),
+    selVisualId: selVisualId === id ? null : selVisualId,
+  });
+}
+
+// Centrumpunkten ref:id försvinner: cirklarna behåller sitt läge som en fast
+// koordinat. Anropas medan punkten finns. Returnerar antalet cirklar.
+function _freezeCircleCenters(ref, id, state = getState()) {
+  const träff = c => c.center?.ref === ref && c.center?.id === id;
+  const berörda = (state.visualCircles || []).filter(träff);
+  if (!berörda.length) return 0;
+  setState({ visualCircles: state.visualCircles.map(c => {
+    if (!träff(c)) return c;
+    const m = circleCenter(c, state);
+    return m ? { ...c, center: { E: m.E, N: m.N } } : c;
+  }) });
+  return berörda.length;
+}
+
+/**
+ * "Gör om till polylinje": en sluten polylinje med cirkelns hörn (enligt
+ * bågtoleransen), namn, lager och färg; cirkeln tas bort. Ångra-steget sparar
+ * anroparen. Returnerar linjens id.
+ */
+export function convertCircleToLine(id, tol = getArcTolerance()) {
+  const c = findVisualCircle(id);
+  const coords = c && visualCircleCoords(c, getState(), tol);
+  if (!coords) return null;
+  const vertices = coords.map(([E, N]) =>
+    makeEndpoint('visual', addVisualPt({ E, N, layerId: c.layerId, role: 'vertex' })));
+  const lineId = addVisualLine({ vertices, closed: true, layerId: c.layerId, name: c.name ?? null, color: c.color });
+  removeVisualCircle(id);
+  setState({ selVisualId: lineId });
+  return lineId;
+}
+
+const anchoredCircle = id => c => c.center?.ref === 'net' && c.center.id === id;
+
 // ── Åtgärder på en markering (Lager-verktyg Etapp 4) ─────────────────────────
 // Varje funktion tar en lista med id:n (punkter, linjer och ytor blandat) och
 // går genom samma mutationer som enskilda objekt, så att kopplade hinder
@@ -723,9 +845,11 @@ export function removeVisualObjects(ids) {
   const areas = (st.visualAreas || []).filter(a => set.has(a.id));
   const lines = (st.visualLines || []).filter(l => set.has(l.id));
   const pts   = (st.visualPts   || []).filter(p => set.has(p.id) && p.role !== 'vertex');
+  const circles = (st.visualCircles || []).filter(c => set.has(c.id));
   const följd = linesAfterPointRemoval(pts.map(p => `visual:${p.id}`), st, set);
   const hörn = _vertexPtIdsOf(lines, [], st);
 
+  circles.forEach(c => removeVisualCircle(c.id));
   areas.forEach(a => removeVisualArea(a.id));
   lines.forEach(l => removeVisualLine(l.id));
   pts.forEach(p => removeVisualPt(p.id));
@@ -733,7 +857,7 @@ export function removeVisualObjects(ids) {
   const finns = new Set((getState().visualPts || []).map(p => p.id));
   const bort = new Set(_unusedVisualPtIds(hörn.filter(id => finns.has(id))));
   if (bort.size) _commit({ visualPts: getState().visualPts.filter(p => !bort.has(p.id)) });
-  return { pts: pts.length, lines: lines.length, areas: areas.length,
+  return { pts: pts.length, lines: lines.length, areas: areas.length, circles: circles.length,
            extraLines: följd.linesRemoved.length, changedLines: följd.linesChanged.length };
 }
 
@@ -767,6 +891,7 @@ export function moveVisualToLayer(ids, layerId) {
       (set.has(p.id) && p.role !== 'vertex') ? flytta(p) : följer.has(p.id) ? { ...p, layerId } : p),
     visualLines: (st.visualLines || []).map(l => set.has(l.id) ? flytta(l) : l),
     visualAreas: (st.visualAreas || []).map(a => set.has(a.id) ? flytta(a) : a),
+    visualCircles: (st.visualCircles || []).map(c => set.has(c.id) ? flytta(c) : c),
   });
   return n;
 }
@@ -795,6 +920,7 @@ export function setVisualLabelsHidden(ids, hidden) {
     visualPts:   (st.visualPts   || []).map(p => pts.has(p.id) ? sätt(p) : p),
     visualLines: (st.visualLines || []).map(l => set.has(l.id) ? sätt(l) : l),
     visualAreas: (st.visualAreas || []).map(a => set.has(a.id) ? sätt(a) : a),
+    visualCircles: (st.visualCircles || []).map(c => set.has(c.id) ? sätt(c) : c),
   });
 }
 
@@ -808,7 +934,8 @@ export function anyVisualLabelShown(ids, state = getState()) {
     ..._vertexPtIdsOf(lines, areas, state),
   ]);
   return (state.visualPts || []).some(p => pts.has(p.id) && p.hideLabel !== true)
-      || areas.some(a => a.hideLabel !== true);
+      || areas.some(a => a.hideLabel !== true)
+      || (state.visualCircles || []).some(c => set.has(c.id) && c.hideLabel !== true);
 }
 
 // ── Nätpunkter som linjer och ytor hänger i ──────────────────────────────────
@@ -817,11 +944,12 @@ export function anyVisualLabelShown(ids, state = getState()) {
 
 /** Nätpunkten oldId heter nu newId: flytta alla {ref:'net'}-referenser. */
 export function renameNetPointInVisual(oldId, newId) {
-  const { visualLines = [], visualAreas = [] } = getState();
+  const { visualLines = [], visualAreas = [], visualCircles = [] } = getState();
   const remap = ep => (ep?.ref === 'net' && ep.id === oldId) ? { ...ep, id: newId } : ep;
   setState({
     visualLines: visualLines.map(l => ({ ...l, vertices: (l.vertices || []).map(remap) })),
     visualAreas: visualAreas.map(a => ({ ...a, vertices: (a.vertices || []).map(remap) })),
+    visualCircles: visualCircles.map(c => ({ ...c, center: remap(c.center) })),
   });
 }
 
@@ -845,7 +973,9 @@ export function netPointVisualImpact(id, state = getState()) {
   }
   const obstacles = linesRemoved.reduce((n, l) => n + (l.linkedObsIds?.length || 0), 0)
     + areasRemoved.filter(x => x.linkedObsId).length;
-  return { linesChanged, linesRemoved, areasChanged, areasRemoved, obstacles };
+  // Cirklar med punkten som centrum behåller sitt läge som fast koordinat.
+  const circlesFrozen = (state.visualCircles || []).filter(anchoredCircle(id));
+  return { linesChanged, linesRemoved, areasChanged, areasRemoved, circlesFrozen, obstacles };
 }
 
 /**
@@ -856,10 +986,11 @@ export function netPointVisualImpact(id, state = getState()) {
  * nya formen.
  */
 export function dropNetPointFromVisual(id) {
+  const circles = _freezeCircleCenters('net', id);
   const lines = _dropVertexFromLines('net', id);
   const areas = _dropVertexFromAreas('net', id);
   return { lines: lines.removed.length, linesChanged: lines.changed.length,
-           areasChanged: areas.changed.length, areasRemoved: areas.removed.length };
+           areasChanged: areas.changed.length, areasRemoved: areas.removed.length, circlesFrozen: circles };
 }
 
 // Tar bort en visuell punkt. Linjer och ytor tappar hörnet och sluter gapet;
@@ -869,6 +1000,7 @@ export function removeVisualPt(id) {
   // Linjerna och ytorna först, medan punkten finns: annars ser
   // syncLinkedObstacles ett oupplösligt hörn och kastar hindret i stället för
   // att följa den nya formen.
+  _freezeCircleCenters('visual', id);
   _dropVertexFromAreas('visual', id);
   const lines = _dropVertexFromLines('visual', id);
   const { visualPts = [], selVisualId } = getState();
@@ -1154,9 +1286,29 @@ export function _loadVisual(s) {
     : sanitized.visualPts;
   const r = _migrateVisualLayers(pts, sanitized.visualLines,
                                  s?.visualLayers, s?.activeVisualLayerId,
-                                 _sanitizeVisualAreas(s?.visualAreas));
+                                 _sanitizeVisualAreas(s?.visualAreas),
+                                 _sanitizeVisualCircles(s?.visualCircles));
   if (äldre) r.visualLines = _mergeLegacyLines(r.visualLines);
   return r;
+}
+
+// Cirklar ur en fil (Etapp 5). Saknas fältet – äldre filer – finns inga
+// cirklar. En cirkel utan giltigt centrum eller med radie ≤ 0 kastas.
+export function _sanitizeVisualCircles(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter(c => c && typeof c.id === 'string' && _center(c.center) && Number(c.radius) > 0)
+    .map(c => {
+      const out = {
+        id: c.id,
+        layerId: typeof c.layerId === 'string' ? c.layerId : null,
+        center: _center(c.center),
+        radius: Number(c.radius),
+        color: normalizeHexColor(c.color),
+      };
+      if (typeof c.name === 'string' && c.name.trim()) out.name = c.name.trim();
+      if (c.hideLabel === true) out.hideLabel = true;
+      return out;
+    });
 }
 
 // Ytor ur en fil. Hörnen saneras som linjernas endpoints; en yta med färre än
@@ -1202,7 +1354,7 @@ export function _nextCounter(items, prefix) {
 // projektfil sparad före Etapp 1 – samlas i lagret "Handritat".
 // Returnerar hela uppsättningen inklusive nästa lediga lager-räknare.
 export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activeVisualLayerId,
-                                     visualAreas = []) {
+                                     visualAreas = [], visualCircles = []) {
   const layers = (visualLayers || [])
     .filter(l => l && typeof l.id === 'string')
     .map(l => ({
@@ -1219,12 +1371,13 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
   const pts   = [...(visualPts   || [])];
   const lines = [...(visualLines || [])];
   const areas = [...(visualAreas || [])];
+  const circles = [...(visualCircles || [])];
   const known = new Set(layers.map(l => l.id));
   const orphan = o => !(typeof o.layerId === 'string' && known.has(o.layerId));
 
   let nVlyid = _nextCounter(layers, 'VLY');
 
-  if (pts.some(orphan) || lines.some(orphan) || areas.some(orphan)) {
+  if (pts.some(orphan) || lines.some(orphan) || areas.some(orphan) || circles.some(orphan)) {
     // Återanvänd ett befintligt "Handritat" i stället för att skapa ett till.
     let fallback = layers.find(l => l.name === VISUAL_LAYER_FALLBACK_NAME);
     if (!fallback) {
@@ -1243,11 +1396,12 @@ export function _migrateVisualLayers(visualPts, visualLines, visualLayers, activ
     for (const o of pts)   if (orphan(o)) o.layerId = fallback.id;
     for (const o of lines) if (orphan(o)) o.layerId = fallback.id;
     for (const o of areas) if (orphan(o)) o.layerId = fallback.id;
+    for (const o of circles) if (orphan(o)) o.layerId = fallback.id;
   }
 
   const active = (typeof activeVisualLayerId === 'string' && known.has(activeVisualLayerId))
     ? activeVisualLayerId : (layers[0]?.id ?? null);
 
-  return { visualPts: pts, visualLines: lines, visualAreas: areas, visualLayers: layers,
+  return { visualPts: pts, visualLines: lines, visualAreas: areas, visualCircles: circles, visualLayers: layers,
            activeVisualLayerId: active, nVlyid };
 }

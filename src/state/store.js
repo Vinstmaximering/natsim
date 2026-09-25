@@ -26,6 +26,8 @@ let _state = {
   visualLines: [],
   // Lager-verktyg Etapp 3: ytor. Samma separation som punkter och linjer.
   visualAreas: [],
+  // Polylinjer Etapp 5: cirklar (centrum och radie).
+  visualCircles: [],
   selVisualId: null,
   // Lager-verktyg Etapp 4: markering med Markera område. Sessionen, inte
   // projektet – sparas inte och ångras inte.
@@ -33,6 +35,7 @@ let _state = {
   nVid: 1,
   nVlid: 1,
   nVaid: 1,
+  nVcid: 1,
 
   // ── Nätoptimering (Etapp E) ──
   // Vikterna styr optimeringens avvägning mellan sänkt punktosäkerhet och

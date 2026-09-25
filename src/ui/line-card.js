@@ -100,6 +100,7 @@ function build(card, line) {
     <div class="lc-actions">
       <button type="button" class="lc-btn" data-lc="wall"></button>
       <button type="button" class="lc-btn" data-lc="area" title="Skapar en yta med samma hörn och tar bort linjen">▱ Slut linjen → yta</button>
+      <button type="button" class="lc-btn" data-lc="divide" title="Punkter längs linjen: ett antal eller ett fast avstånd">⋯ Dela in i punkter…</button>
       <button type="button" class="lc-btn" data-lc="geo" title="Linjen som en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
     </div>
     <details class="of-sec"><summary>⇉ Offset</summary><div class="of-ctl"></div></details>
@@ -173,6 +174,8 @@ function wire(card, id) {
     commit('Slut linjen till yta:', () => convertLineToArea(id));
   });
 
+  card.querySelector('[data-lc="divide"]').addEventListener('click',
+    () => import('./divide-dialog.js').then(m => m.openDivideDialog(id)));
   // Laddas vid behov, som Data-menyns och lagermenyns export.
   card.querySelector('[data-lc="geo"]').addEventListener('click',
     () => import('./geo-export.js').then(m => m.exportObjectGeo(id)));

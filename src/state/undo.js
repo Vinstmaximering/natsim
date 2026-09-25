@@ -32,9 +32,9 @@ export function setAutoSim(on) {
 // ── Undo-stack – rad 367–395 exakt ──
 export function saveUndo(label = "") {
   const { pts, meas, nMid, nId,
-          obstacles = [], visualPts = [], visualLines = [], visualAreas = [],
+          obstacles = [], visualPts = [], visualLines = [], visualAreas = [], visualCircles = [],
           visualLayers = [], activeVisualLayerId = null,
-          nVid, nVlid, nVaid, nVlyid } = getState();
+          nVid, nVlid, nVaid, nVcid, nVlyid } = getState();
   _undoStack.push({
     label,
     pts:  JSON.parse(JSON.stringify(pts)),
@@ -46,11 +46,12 @@ export function saveUndo(label = "") {
     visualPts:   JSON.parse(JSON.stringify(visualPts)),
     visualLines: JSON.parse(JSON.stringify(visualLines)),
     visualAreas: JSON.parse(JSON.stringify(visualAreas)),
+    visualCircles: JSON.parse(JSON.stringify(visualCircles)),
     // Etapp 1: lagren hör ihop med objekten – ångras de inte tillsammans kan
     // ett återställt objekt peka på ett lager som inte finns.
     visualLayers: JSON.parse(JSON.stringify(visualLayers)),
     activeVisualLayerId,
-    nMid, nId, nVid, nVlid, nVaid, nVlyid
+    nMid, nId, nVid, nVlid, nVaid, nVcid, nVlyid
   });
   if (_undoStack.length > UNDO_MAX) _undoStack.shift();
   updateUndoBtn();
@@ -73,6 +74,7 @@ export function undo() {
     visualPts:   s.visualPts   ?? cur.visualPts,
     visualLines: s.visualLines ?? cur.visualLines,
     visualAreas: s.visualAreas ?? cur.visualAreas,
+    visualCircles: s.visualCircles ?? cur.visualCircles,
     visualLayers:        s.visualLayers        ?? cur.visualLayers,
     // null är ett giltigt värde här (inget aktivt lager), så ?? duger inte –
     // fältets närvaro avgör om stack-posten har något att säga.
@@ -82,6 +84,7 @@ export function undo() {
     nVid:  s.nVid  ?? cur.nVid,
     nVlid: s.nVlid ?? cur.nVlid,
     nVaid: s.nVaid ?? cur.nVaid,
+    nVcid: s.nVcid ?? cur.nVcid,
     nVlyid: s.nVlyid ?? cur.nVlyid,
     selObsId:    null,
     selVisualId: null,

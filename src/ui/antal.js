@@ -6,3 +6,6 @@ export const antal = (n, en, fler) => `${n} ${n === 1 ? en : fler}`;
 export const antalPunkter = n => antal(n, 'punkt', 'punkter');
 export const antalLinjer  = n => antal(n, 'linje', 'linjer');
 export const antalYtor    = n => antal(n, 'yta', 'ytor');
+export const antalCirklar = n => antal(n, 'cirkel', 'cirklar');
+/** " · 2 cirklar" – bara när det finns cirklar, så att äldre texter står kvar. */
+export const ochCirklar   = n => (n ? ` · ${antalCirklar(n)}` : '');

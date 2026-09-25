@@ -10,7 +10,8 @@
 // Hörnpunkter (role 'vertex') hör till sin linje eller yta och markeras med
 // den, inte för sig. Nätpunkter, mätningar och hinder markeras inte i den här
 // versionen – de ingår i beräkningen och har egna verktyg.
-import { visualLineCoords, visualAreaCoords, isVisualObjVisible, lineSegments } from './visual.js';
+import { visualLineCoords, visualAreaCoords, isVisualObjVisible, lineSegments,
+         visualCircleCoords } from './visual.js';
 
 /** Dragriktningen avgör läget. Ingen horisontell rörelse räknas som 'window'. */
 export const modeFromDrag = (x0, x1) => (x1 < x0 ? 'crossing' : 'window');
@@ -108,6 +109,19 @@ export function objectsInRect(state, rect, mode, project) {
     }
     if (träff) out.push(ar.id);
   }
+
+  // Cirklar (Polylinjer Etapp 5): som en sluten linje; en rektangel helt
+  // inuti cirkeln korsar den inte.
+  for (const c of state.visualCircles || []) {
+    if (!synlig(c)) continue;
+    const coords = visualCircleCoords(c, state);
+    if (!coords) continue;
+    const poly = coords.map(([E, N]) => project(E, N));
+    const träff = mode === 'window'
+      ? poly.every(p => inside(p, r))
+      : poly.some(p => inside(p, r)) || poly.some((p, i) => segHitsRect(p, poly[(i + 1) % poly.length], r));
+    if (träff) out.push(c.id);
+  }
   return out;
 }
 
@@ -118,6 +132,7 @@ export function selectionSummary(state, ids) {
   const pts   = (state.visualPts   || []).filter(o => set.has(o.id) && o.role !== 'vertex' && synlig(o));
   const lines = (state.visualLines || []).filter(o => set.has(o.id) && synlig(o));
   const areas = (state.visualAreas || []).filter(o => set.has(o.id) && synlig(o));
-  return { pts, lines, areas, total: pts.length + lines.length + areas.length,
-           ids: [...pts, ...lines, ...areas].map(o => o.id) };
+  const circles = (state.visualCircles || []).filter(o => set.has(o.id) && synlig(o));
+  return { pts, lines, areas, circles, total: pts.length + lines.length + areas.length + circles.length,
+           ids: [...pts, ...lines, ...areas, ...circles].map(o => o.id) };
 }

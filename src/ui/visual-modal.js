@@ -10,7 +10,7 @@ import { draw }               from '../map/leaflet-setup.js';
 import { showToast }          from './toast.js';
 import {
   VISUAL_COLORS, visualObjColor,
-  findVisualPt, findVisualLine, findVisualArea, findVisualLayer,
+  findVisualPt, findVisualLine, findVisualArea, findVisualLayer, findVisualCircle, removeVisualCircle,
   updateVisualPt, updateVisualLine, removeVisualPt, removeVisualLine,
   removeVisualArea, setVisualAreaBlocksSight,
   LINE_OBSTACLE_ROLES, linkVisualLineObstacles, unlinkVisualLineObstacles, visualLineSegments,
@@ -82,10 +82,42 @@ function openAreaMenu(area, clientX, clientY) {
   document.addEventListener('keydown', _onMenuKey, true);
 }
 
+// Cirklar (Polylinjer Etapp 5): menyn pekar mot egenskapskortet.
+function openCircleMenu(c, clientX, clientY) {
+  const el = document.createElement('div');
+  el.className = 'lyr-pop visual-ctx';
+  el.innerHTML = `
+    <div class="lyr-pop-head">◯ Cirkel ${esc(c.name || c.id)}</div>
+    <button data-act="props" class="lyr-mi">✎ Egenskaper</button>
+    <div class="lyr-pop-sep"></div>
+    <button data-act="delete" class="lyr-mi"><span class="lyr-danger">🗑 Ta bort</span></button>`;
+  document.body.appendChild(el);
+  _menuEl = el;
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.min(clientX, window.innerWidth  - r.width  - 8) + 'px';
+  el.style.top  = Math.min(clientY, window.innerHeight - r.height - 8) + 'px';
+  el.addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]');
+    if (!b) return;
+    closeVisualMenu();
+    if (b.dataset.act === 'props') { setState({ selVisualId: c.id }); draw(); }
+    if (b.dataset.act === 'delete') {
+      if (!confirm(`Ta bort cirkeln ${c.name || c.id}?`)) return;
+      saveUndo(`Ta bort cirkel ${c.name || c.id}`);
+      removeVisualCircle(c.id);
+      draw();
+    }
+  });
+  document.addEventListener('mousedown', _onDocDown, true);
+  document.addEventListener('keydown', _onMenuKey, true);
+}
+
 export function openVisualMenu(id, clientX, clientY) {
   closeVisualMenu();
   const area = findVisualArea(id);
   if (area) { openAreaMenu(area, clientX, clientY); return; }
+  const circle = findVisualCircle(id);
+  if (circle) { openCircleMenu(circle, clientX, clientY); return; }
   const obj = findVisual(id);
   if (!obj) return;
   const line = isLine(id);
@@ -206,7 +238,7 @@ function renderPalette() {
 
 export function openEditVisual(id) {
   // En yta redigeras i sitt egenskapskort, som visas när ytan är markerad.
-  if (findVisualArea(id)) { setState({ selVisualId: id }); draw(); return; }
+  if (findVisualArea(id) || findVisualCircle(id)) { setState({ selVisualId: id }); draw(); return; }
   const obj = findVisual(id);
   if (!obj) return;
   _editId    = id;

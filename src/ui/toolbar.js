@@ -9,6 +9,7 @@ import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLin
 import { isSnapEnabled } from '../map/snap.js';
 import { startMeasure, cancelMeasure } from '../map/measure-tool.js';
 import { startOffsetTool, cancelOffsetTool } from '../map/offset-tool.js';
+import { startCircleTool, cancelCircleTool } from '../map/circle-tool.js';
 import { isOffsetSource } from '../state/offset.js';
 
 export { toggleMapLayer };
@@ -27,6 +28,8 @@ export const MAP_TOOLS = [
     title: 'Visuell linje – ritas i aktivt lager' },
   { btn: 'btn-visual-area',  tool: 'visual-area',  key: 'y', mobile: '▱ Yta',
     title: 'Yta – ritas i aktivt lager' },
+  { btn: 'btn-visual-circle', tool: 'visual-circle', key: 'c', mobile: '◯ Cirkel',
+    title: 'Cirkel – klicka centrum och en punkt på cirkeln' },
   { btn: 'btn-offset',       tool: 'offset',       key: 'o', mobile: '⇉ Offset',
     title: 'Offset – klicka en linje eller yta' },
 ];
@@ -118,6 +121,7 @@ export function buildTools() {
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
     'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Dubbelklick/Enter: avsluta · Klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
     'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
+    'visual-circle':    "◯ Klicka centrum · sedan en punkt på cirkeln, eller skriv radien + Enter · Esc: nytt centrum",
     'offset':           "⇉ Klicka en linje eller yta · Avstånd, sida och hörn i rutan · Enter: skapa · Esc: välj en annan",
     'measure-dist':     "📐 Klicka två punkter: avstånd och riktning (plan) · Snappar mot punkter och linjer · Esc: börja om",
     'select-area':      "⬚ Dra → helt inuti · Dra ← inuti eller korsade · Klick: ett objekt · Skift: lägg till · Ctrl: ta bort · Esc: avmarkera" };
@@ -126,6 +130,7 @@ export function buildTools() {
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   if (touch) {
     hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
+    hints['visual-circle'] = "◯ Tryck centrum · sedan en punkt på cirkeln, eller skriv radien";
     hints['offset'] = "⇉ Tryck en linje eller yta · Avstånd, sida och hörn i rutan · ⇉ Skapa";
     hints['measure-dist'] = "📐 Tryck två punkter: avstånd och riktning (plan) · Nytt tryck: börja om";
     hints['visual-line'] = "⤺ Tryck hörn: linje i aktivt lager · ✓ Klar eller tryck på sista hörnet: avsluta · Första hörnet: slut · ⤺ Linje igen: avbryt";
@@ -173,6 +178,7 @@ export function setTool(t) {
   if (isDrawingVisual()) cancelVisualDraw();
   cancelMeasure();
   cancelOffsetTool();
+  cancelCircleTool();
 
   if (t !== "measure") setState({ measFrom: null });
   setState({ tool: t });
@@ -184,6 +190,7 @@ export function setTool(t) {
   else if (t === 'visual-line')  startVisualLineDraw();
   else if (t === 'visual-area')  startVisualAreaDraw();
   else if (t === 'measure-dist') startMeasure();
+  else if (t === 'visual-circle') startCircleTool();
   else if (t === 'offset') {
     // En markerad linje eller yta blir verktygets val direkt; kortet stängs,
     // så att det inte skymmer förhandsvisningen.

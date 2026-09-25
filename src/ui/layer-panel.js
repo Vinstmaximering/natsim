@@ -33,7 +33,7 @@ const esc = v => String(v ?? '')
 
 const el = id => document.getElementById(id);
 const eye = on => on ? '👁' : '🚫';
-import { antalPunkter, antalLinjer, antalYtor } from './antal.js';
+import { antalPunkter, antalLinjer, antalYtor, ochCirklar } from './antal.js';
 
 // ── Rendering ────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ export function renderLayerPanel() {
     const on = l.visible !== false;
     const vl = l.vertexLabels === true;
     const vlTxt = vl ? 'Dölj namn på linje- och ythörn' : 'Visa namn på linje- och ythörn';
-    const antal = `${antalPunkter(c.pts)} · ${antalLinjer(c.lines)} · ${antalYtor(c.areas)}`;
+    const antal = `${antalPunkter(c.pts)} · ${antalLinjer(c.lines)} · ${antalYtor(c.areas)}${ochCirklar(c.circles)}`;
     return `
       <div class="lyr-row lyr-vis${l.id === active ? ' lyr-act' : ''}" data-layer="${esc(l.id)}"
            title="Klicka för att göra lagret aktivt">
@@ -242,7 +242,7 @@ export function openLayerSettings(layerId, fokus = 'rename') {
     <div style="font-size:14px;color:${l.color || VISUAL_DEFAULT_COLOR};font-weight:bold;margin-bottom:2px;">
       Lagerinställningar</div>
     <div class="val-muted" style="font-size:11px;margin-bottom:10px;">
-      ${antalPunkter(c.pts)} · ${antalLinjer(c.lines)} · ${antalYtor(c.areas)} · ingår inte i simuleringen</div>
+      ${antalPunkter(c.pts)} · ${antalLinjer(c.lines)} · ${antalYtor(c.areas)}${ochCirklar(c.circles)} · ingår inte i simuleringen</div>
     ${src}
     <div style="font-size:11px;color:var(--text-muted);margin-bottom:2px;">Namn</div>
     <input type="text" id="lyr-name" maxlength="60" value="${esc(l.name)}">
@@ -298,7 +298,7 @@ export function openLayerDelete(layerId) {
       🗑 Radera lagret ${esc(l.name)}?</div>
     <div style="font-size:12px;color:var(--text-secondary);line-height:1.7;background:var(--bg-card);
                 padding:8px 10px;border-radius:3px;margin-bottom:8px;">
-      ${antalPunkter(c.pts)}, ${antalLinjer(c.lines)} och ${antalYtor(c.areas)} tas bort (med sina hörn).
+      ${antalPunkter(c.pts)}, ${antalLinjer(c.lines)} och ${antalYtor(c.areas)}${ochCirklar(c.circles)} tas bort (med sina hörn).
       ${nObs ? `<br><span class="val-warn">⚠ ${nObs} kopplade hinder försvinner också –
         siktberäkningen ändras.</span>` : ''}
       <br><span class="val-muted">Går att ångra.</span>

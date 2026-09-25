@@ -138,7 +138,7 @@ canvas { display: block; touch-action: none; }
 .lc-tab td + td, .lc-tab th + th { text-align:right; }
 .lc-tab tbody tr:nth-child(even) td { background:color-mix(in srgb,var(--bg-card) 60%,transparent); }
 .lc-actions { display:flex;flex-wrap:wrap;gap:5px;margin-top:6px; }
-.lc-btn   { padding:4px 8px;font-size:11px;background:transparent;border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;cursor:pointer; }
+.lc-btn   { padding:4px 8px;font-size:11px;white-space:normal;text-align:left;background:transparent;border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;cursor:pointer; }
 .lc-btn:hover:not(:disabled) { border-color:var(--accent);color:var(--accent); }
 .lc-btn:disabled { opacity:.45;cursor:not-allowed; }
 
@@ -161,6 +161,8 @@ canvas { display: block; touch-action: none; }
 .gx-row    { display:flex;align-items:center;justify-content:flex-start;gap:6px;margin:3px 0;font-size:12px;color:var(--text-value);cursor:pointer; }
 /* Dialogens .mo input ger fältbredd 100 % – inte för kryssrutor och radioknappar. */
 .mo .gx-row input { width:auto;flex:none;padding:0;accent-color:var(--accent); }
+/* Textfälten i dialogerna (Dela in i punkter) behåller sin bredd. */
+.mo .gx-row input.of-dist { width:90px;padding:3px 6px; }
 .gx-layers { margin:2px 0 6px 20px;max-height:160px;overflow-y:auto; }
 .gx-layers.gx-off { opacity:.45;pointer-events:none; }
 .gx-sub    { color:var(--text-muted);font-size:11px;margin:8px 0 2px; }

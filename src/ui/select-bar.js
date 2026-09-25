@@ -14,11 +14,11 @@ import { getState, setState, subscribe } from '../state/store.js';
 import { draw, fitViewToENBounds } from '../map/leaflet-setup.js';
 import { saveUndo } from '../state/undo.js';
 import { showToast } from './toast.js';
-import { antalPunkter, antalLinjer, antalYtor } from './antal.js';
+import { antalPunkter, antalLinjer, antalYtor, ochCirklar } from './antal.js';
 import { selectionSummary } from '../state/visual-selection.js';
 import { getTouchSelectOp, setTouchSelectOp } from '../map/select-area.js';
 import {
-  VISUAL_DEFAULT_COLOR, getVisualLayers, visualLineCoords, visualAreaCoords,
+  VISUAL_DEFAULT_COLOR, getVisualLayers, visualLineCoords, visualAreaCoords, visualCircleCoords,
   removeVisualObjects, moveVisualToLayer, setVisualLabelsHidden, anyVisualLabelShown,
   linesAfterPointRemoval,
 } from '../state/visual.js';
@@ -37,7 +37,7 @@ const OPS = [['replace', 'Ny'], ['add', 'Lägg till'], ['remove', 'Dra ifrån']]
 export function selectionText(sum) {
   const n = sum.total;
   return `${n} objekt ${n === 1 ? 'markerat' : 'markerade'} · ${sum.pts.length} pkt · ` +
-         `${sum.lines.length} linj. · ${antalYtor(sum.areas.length)}`;
+         `${sum.lines.length} linj. · ${antalYtor(sum.areas.length)}${ochCirklar(sum.circles?.length)}`;
 }
 
 // Utbredning, med minst 20 m sida så att en enda punkt inte zoomas till max.
@@ -50,6 +50,7 @@ export function selectionBounds(state, sum) {
   sum.pts.forEach(p => ta([p.E, p.N]));
   sum.lines.forEach(l => (visualLineCoords(l, state) || []).forEach(ta));
   sum.areas.forEach(a => (visualAreaCoords(a, state) || []).forEach(ta));
+  (sum.circles || []).forEach(c => (visualCircleCoords(c, state) || []).forEach(ta));
   if (!Number.isFinite(minE)) return null;
   const MIN = 20;
   const pad = (lo, hi) => (hi - lo >= MIN ? [lo, hi] : [(lo + hi) / 2 - MIN / 2, (lo + hi) / 2 + MIN / 2]);
@@ -140,7 +141,7 @@ function onClick(e) {
       const följer = följd.linesRemoved.length, ändras = följd.linesChanged.length;
       const rader = [
         `Ta bort ${sum.total} markerade objekt?`,
-        `${antalPunkter(sum.pts.length)}, ${antalLinjer(sum.lines.length)} och ${antalYtor(sum.areas.length)}.`,
+        `${antalPunkter(sum.pts.length)}, ${antalLinjer(sum.lines.length)} och ${antalYtor(sum.areas.length)}${ochCirklar(sum.circles?.length)}.`,
         ...(ändras ? [`${antalLinjer(ändras)} tappar ett hörn i de markerade punkterna.`] : []),
         ...(följer ? [`${antalLinjer(följer)} som hänger i de markerade punkterna tas också bort – färre än två hörn kvar.`] : []),
         ...(hinder ? [`${hinder} ${hinder === 1 ? 'kopplat hinder' : 'kopplade hinder'} försvinner – siktberäkningen ändras.`] : []),
@@ -150,7 +151,7 @@ function onClick(e) {
       saveUndo(`Ta bort ${sum.total} objekt`);
       const n = removeVisualObjects(sum.ids);
       setState({ visualSelection: [] });
-      showToast(`🗑 ${antalPunkter(n.pts)}, ${antalLinjer(n.lines + n.extraLines)}, ${antalYtor(n.areas)} borttagna`, '#cfd8dc');
+      showToast(`🗑 ${antalPunkter(n.pts)}, ${antalLinjer(n.lines + n.extraLines)}, ${antalYtor(n.areas)}${ochCirklar(n.circles)} borttagna`, '#cfd8dc');
       draw();
       break;
     }

@@ -12,6 +12,7 @@
 import { getState, setState } from './store.js';
 import { groupThousands } from './area-geometry.js';
 import { offsetPolyline, offsetSides } from './offset-geometry.js';
+import { getArcTolerance } from './arc-tolerance.js';
 import {
   findVisualLine, findVisualArea, visualLineCoords, visualAreaCoords,
   ensureActiveVisualLayer, addVisualPt, addVisualLine, addVisualArea, makeEndpoint,
@@ -44,7 +45,8 @@ export function offsetSource(id, state = getState()) {
 
 /**
  * Offsetresultaten för en källa, utan att skapa något.
- * @param {{distance:number, side:string, corners:'sharp'|'round'}} params
+ * @param {{distance:number, side:string, corners:'sharp'|'round', arcTol?:number}} params
+ *   arcTol: bågtolerans för rundade hörn; utan värde gäller användarens inställning.
  *   side: 'right' | 'left' | 'both' för öppen linje, 'out' | 'in' | 'both'
  *   för sluten linje och yta. En öppen sida på en sluten källa (och tvärtom)
  *   tolkas som motsvarande: höger ↔ utåt, vänster ↔ inåt.
@@ -58,7 +60,8 @@ export function buildOffsets(id, params, state = getState()) {
   const val = normalizeSide(params.side, src.closed);
   const källnamn = src.obj.name || src.obj.id;
   const results = offsetSides(src.coords, src.closed, val).map(s => {
-    const r = offsetPolyline(src.coords, { distance: d, side: s.side, corners: params.corners, closed: src.closed });
+    const r = offsetPolyline(src.coords, { distance: d, side: s.side, corners: params.corners, closed: src.closed,
+                                           arcTol: params.arcTol ?? getArcTolerance() });
     return { key: s.key, name: offsetName(källnamn, d, s.key), coords: r.coords,
              closed: src.closed, kind: src.kind, problem: r.problem };
   });

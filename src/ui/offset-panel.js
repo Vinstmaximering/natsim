@@ -15,6 +15,7 @@ import {
   OFFSET_DEFAULTS, SIDE_LABELS, PROBLEM_TEXT, buildOffsets, createOffsets, offsetSource,
 } from '../state/offset.js';
 import { MITER_LIMIT } from '../state/offset-geometry.js';
+import { arcToleranceSelectHtml, setArcTolerance } from '../state/arc-tolerance.js';
 import {
   isOffsetTool, getOffsetToolSource, setOffsetPreview, clearOffsetPreview,
 } from '../map/offset-tool.js';
@@ -45,7 +46,8 @@ export function offsetStatus(sourceId, params = _params, state = getState()) {
     const sida = r && results.length > 1 ? ` (${SIDE_LABELS[r.key]})` : '';
     return { ok: false, text: `⚠ ${PROBLEM_TEXT[problem]}${sida}` };
   }
-  return { ok: true, text: `Skapar ${results.map(r => `"${r.name}"`).join(' och ')} i aktivt lager.` };
+  const hörn = r => `${r.coords.length} hörn`;
+  return { ok: true, text: `Skapar ${results.map(r => `"${r.name}" (${hörn(r)})`).join(' och ')} i aktivt lager.` };
 }
 
 /**
@@ -68,10 +70,14 @@ export function renderOffsetControls(container, sourceId, { owner, preview = tru
     <div class="of-row"><span class="of-k">Hörn</span>
       <label class="of-opt" title="Kanterna förlängs; spetsigare än 29° fasas av (högst ${MITER_LIMIT} × avståndet)">
         <input type="radio" name="${namn}-corners" value="sharp" ${_params.corners !== 'round' ? 'checked' : ''}> skarpa</label>
-      <label class="of-opt" title="Bågar, med hörn inom 1 mm">
-        <input type="radio" name="${namn}-corners" value="round" ${_params.corners === 'round' ? 'checked' : ''}> rundade</label></div>
+      <label class="of-opt" title="Bågar, med hörn inom bågtoleransen">
+        <input type="radio" name="${namn}-corners" value="round" ${_params.corners === 'round' ? 'checked' : ''}> rundade</label>
+      <label class="of-opt" title="Bågtolerans">inom ${arcToleranceSelectHtml('of-tol')}</label></div>
     <div class="of-status"></div>
     <div class="of-foot"><button type="button" class="lc-btn of-create">⇉ Skapa</button></div>`;
+
+  // Bågtoleransen är användarens gemensamma inställning (också för cirklar).
+  container.querySelector('.of-tol').addEventListener('change', e => setArcTolerance(e.target.value));
 
   const läs = () => {
     const d = parseFloat(String(container.querySelector('.of-dist').value).replace(',', '.'));

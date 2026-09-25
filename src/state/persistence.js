@@ -15,12 +15,13 @@ let _asTimer = null;
 //   obstacles (Lager-verktyg): saknas → inga hinder, vilket var vad en
 //     omladdning alltid gav innan hindren togs med
 //   visualAreas (Lager-verktyg Etapp 3): saknas → inga ytor
+//   visualCircles (Polylinjer Etapp 5): saknas → inga cirklar
 //   visualVer (Polylinjer Etapp 1): saknas → linjerna är segment som slås
 //     ihop till polylinjer, och visuella punkter med H = 0 får H = null
 export function _buildAutosaveSnapshot(state = getState()) {
   const { pts, meas, centerErr, nMid, obstacles = [],
-          visualPts = [], visualLines = [], visualAreas = [], visualLayers = [],
-          activeVisualLayerId = null, nVid, nVlid, nVaid, nVlyid } = state;
+          visualPts = [], visualLines = [], visualAreas = [], visualCircles = [], visualLayers = [],
+          activeVisualLayerId = null, nVid, nVlid, nVaid, nVcid, nVlyid } = state;
   return {
     ver: 2,
     savedAt: new Date().toISOString(),
@@ -35,12 +36,14 @@ export function _buildAutosaveSnapshot(state = getState()) {
     visualPts:           JSON.parse(JSON.stringify(visualPts)),
     visualLines:         JSON.parse(JSON.stringify(visualLines)),
     visualAreas:         JSON.parse(JSON.stringify(visualAreas)),
+    visualCircles:       JSON.parse(JSON.stringify(visualCircles)),
     visualLayers:        JSON.parse(JSON.stringify(visualLayers)),
     activeVisualLayerId,
     visualVer: VISUAL_MODEL_VERSION,
     nVid:   nVid   ?? 1,
     nVlid:  nVlid  ?? 1,
     nVaid:  nVaid  ?? 1,
+    nVcid:  nVcid  ?? 1,
     nVlyid: nVlyid ?? 1,
   };
 }
@@ -120,7 +123,7 @@ export function loadAutosave() {
     if (!s || (s.ver !== 2 && s.ver !== 1)) return false;
     // Samma migrering som vid laddning av projektfil: objekt utan layerId
     // samlas i "Handritat", äldre linjesegment slås ihop till polylinjer.
-    const { visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId, nVlyid } =
+    const { visualPts, visualLines, visualAreas, visualCircles, visualLayers, activeVisualLayerId, nVlyid } =
       _loadVisual(s);
     // Autosparningar från före hindren saknar fältet → inga hinder, som förut.
     const obstacles = _sanitizeObstacles(s.obstacles);
@@ -131,10 +134,11 @@ export function loadAutosave() {
       obstacles,
       centerErr: s.centerErr != null ? s.centerErr : 1.0,
       nMid:      s.nMid      ?? 1,
-      visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId,
+      visualPts, visualLines, visualAreas, visualCircles, visualLayers, activeVisualLayerId,
       nVid:   Math.max(s.nVid  ?? 1, _nextCounter(visualPts,   'V')),
       nVlid:  Math.max(s.nVlid ?? 1, _nextCounter(visualLines, 'VL')),
       nVaid:  Math.max(s.nVaid ?? 1, _nextCounter(visualAreas, 'VA')),
+      nVcid:  Math.max(s.nVcid ?? 1, _nextCounter(visualCircles, 'VC')),
       nVlyid: Math.max(s.nVlyid ?? 1, nVlyid),
     });
     syncLinkedObstacles();

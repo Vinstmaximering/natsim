@@ -232,6 +232,9 @@ export function delPtConfirmText(id, state = getState()) {
     if (v.areasRemoved.length)
       rader.push(`   – ${v.areasRemoved.length} tas bort helt – färre än tre hörn kvar: ${namn(v.areasRemoved)}.`);
   }
+  if (v.circlesFrozen?.length)
+    rader.push(`• ${v.circlesFrozen.length} ${v.circlesFrozen.length === 1 ? 'cirkel har' : 'cirklar har'} punkten som centrum ` +
+      `och stannar kvar där den är: ${namn(v.circlesFrozen)}.`);
   if (v.obstacles)
     rader.push(`• ${v.obstacles} kopplat${v.obstacles === 1 ? '' : 'e'} hinder försvinner – siktberäkningen ändras.`);
   return rader.length ? [`Ta bort punkt ${id}?`, '', ...rader, '', 'Går att ångra.'].join('\n') : null;

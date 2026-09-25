@@ -63,7 +63,7 @@ describe('skrivaren, byte för byte', () => {
     const lay = blandatLager();
     const r = X.buildVisualGeo(getState(), { layerIds: [lay] }, 'Testlager');
     expect(r.error).toBeNull();
-    expect(r.counts).toEqual({ points: 2, lines: 2, areas: 1 });
+    expect(r.counts).toEqual({ points: 2, lines: 2, areas: 1, circles: 0 });
     expect(Buffer.from(r.text, 'utf8').equals(Buffer.from(FÖRVÄNTAD, 'utf8'))).toBe(true);
     expect(r.text).toBe(FÖRVÄNTAD);
   });

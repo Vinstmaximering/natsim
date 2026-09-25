@@ -3,7 +3,7 @@
 // streckade linjer, så att visuella objekt aldrig förväxlas med mätdata.
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
 import { visualLineSegments, visualAreaCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
-         visualPtShowsLabel } from '../state/visual.js';
+         visualPtShowsLabel, visualCircleCoords, circleCenter } from '../state/visual.js';
 import { areaStats, polygonCentroid, formatPlanArea } from '../state/area-geometry.js';
 import { planDistance, formatMeters } from '../state/line-geometry.js';
 import { hexToRgba } from '../core/colors.js';
@@ -29,7 +29,8 @@ export function drawVisualLayer(ctx, state, helpers) {
   const pts   = (state.visualPts   || []).filter(p => isVisualObjVisible(p, state));
   const lines = (state.visualLines || []).filter(l => isVisualObjVisible(l, state));
   const areas = (state.visualAreas || []).filter(a => isVisualObjVisible(a, state));
-  if (!pts.length && !lines.length && !areas.length) return;
+  const circles = (state.visualCircles || []).filter(c => isVisualObjVisible(c, state));
+  if (!pts.length && !lines.length && !areas.length && !circles.length) return;
 
   const sel = state.selVisualId;
   // Markering med Markera område (Etapp 4): accentfärgad gloria runt objektet.
@@ -95,6 +96,53 @@ export function drawVisualLayer(ctx, state, helpers) {
         ctx.fillStyle = st.selfIntersecting && i === rader.length - 1 ? '#ffb74d' : col;
         ctx.fillText(t, p.x, y);
       });
+    }
+  }
+
+  // ── Cirklar (Polylinjer Etapp 5): polygonen enligt bågtoleransen, streckad
+  // som linjerna, med ett litet kryss i centrum. Namnet vid centrum. ──
+  for (const c of circles) {
+    const coords = visualCircleCoords(c, state);
+    if (!coords) continue;
+    const px = coords.map(([E, N]) => xy(E, N));
+    const col = visualColor(c, state);
+    const isSel = c.id === sel;
+    const path = () => {
+      ctx.beginPath();
+      ctx.moveTo(px[0].x, px[0].y);
+      for (const p of px.slice(1)) ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+    };
+    path();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = isSel ? 3 : 1.8;
+    ctx.setLineDash(DASH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (isSel || marked.has(c.id)) {
+      path();
+      ctx.strokeStyle = marked.has(c.id) ? HALO : 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+    }
+    const m = circleCenter(c, state);
+    const mp = xy(m.E, m.N);
+    ctx.beginPath();
+    ctx.moveTo(mp.x - 4, mp.y); ctx.lineTo(mp.x + 4, mp.y);
+    ctx.moveTo(mp.x, mp.y - 4); ctx.lineTo(mp.x, mp.y + 4);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    const layer = layerById.get(c.layerId);
+    if (c.name && layer?.labels !== false && c.hideLabel !== true) {
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(7,13,24,0.7)';
+      ctx.strokeText(c.name, mp.x, mp.y + 6);
+      ctx.fillStyle = col;
+      ctx.fillText(c.name, mp.x, mp.y + 6);
     }
   }
 
@@ -265,6 +313,25 @@ export function hitTestVisualLine(px, py, state, map, ENtoLatLng) {
     if (!isVisualObjVisible(line, state)) continue;
     const segs = visualLineSegments(line, state);
     if (segs?.some(([p, q]) => segDistPx(px, py, pix(p), pix(q)) <= LINE_HIT_PX)) return line;
+  }
+  return null;
+}
+
+// Träff på cirkelns omkrets, eller på centrumkrysset. Cirklar provas före
+// ytor: en cirkel är en linje, inte en fylld yta.
+export function hitTestVisualCircle(px, py, state, map, ENtoLatLng) {
+  const pix = ([E, N]) => map.latLngToContainerPoint(ENtoLatLng(E, N));
+  const list = (state.visualCircles || []).filter(c => isVisualObjVisible(c, state));
+  for (let k = list.length - 1; k >= 0; k--) {
+    const c = list[k];
+    const coords = visualCircleCoords(c, state);
+    if (!coords) continue;
+    const m = circleCenter(c, state);
+    const mp = pix([m.E, m.N]);
+    if (Math.hypot(px - mp.x, py - mp.y) <= LINE_HIT_PX) return c;
+    const p = coords.map(pix);
+    for (let i = 0; i < p.length; i++)
+      if (segDistPx(px, py, p[i], p[(i + 1) % p.length]) <= LINE_HIT_PX) return c;
   }
   return null;
 }

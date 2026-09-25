@@ -73,7 +73,7 @@ describe('lager som datamodell', () => {
     const l = addVisualLine({ from: makeEndpoint('visual', p), to: makeEndpoint('visual', q) });
     expect(findVisualPt(p).layerId).toBe(b);
     expect(findVisualLine(l).layerId).toBe(b);
-    expect(visualLayerCounts(b)).toEqual({ pts: 2, lines: 1, areas: 0 });
+    expect(visualLayerCounts(b)).toEqual({ pts: 2, lines: 1, areas: 0, circles: 0 });
   });
 
   it('explicit layerId vid import vinner över aktivt lager', () => {
@@ -193,7 +193,7 @@ describe('radering av lager', () => {
     const q = addVisualPt({ E: 9, N: 9, layerId: b });
 
     const n = removeVisualLayer(a);
-    expect(n).toEqual({ pts: 2, lines: 1, areas: 0 });   // areas: Lager-verktyg Etapp 3
+    expect(n).toEqual({ pts: 2, lines: 1, areas: 0, circles: 0 });   // areas: Etapp 3, circles: Polylinjer Etapp 5
     expect(getVisualLayers().map(l => l.id)).toEqual([b]);
     expect(getState().visualPts.map(p => p.id)).toEqual([q]);
     expect(getState().visualLines).toEqual([]);
@@ -234,7 +234,7 @@ describe('radering av lager', () => {
   it('okänt lager-id gör ingenting', () => {
     const a = addVisualLayer({ name: 'A' });
     addVisualPt({ E: 0, N: 0, layerId: a });
-    expect(removeVisualLayer('VLY99')).toEqual({ pts: 0, lines: 0, areas: 0 });
+    expect(removeVisualLayer('VLY99')).toEqual({ pts: 0, lines: 0, areas: 0, circles: 0 });
     expect(getState().visualPts).toHaveLength(1);
   });
 });
@@ -326,8 +326,8 @@ describe('migrering av äldre projektfil', () => {
 
   it('_migrateVisualLayers tål tomma indata', () => {
     expect(_migrateVisualLayers(undefined, undefined, undefined, undefined))
-      .toEqual({ visualPts: [], visualLines: [], visualAreas: [], visualLayers: [],
-                 activeVisualLayerId: null, nVlyid: 1 });   // visualAreas: Etapp 3
+      .toEqual({ visualPts: [], visualLines: [], visualAreas: [], visualCircles: [], visualLayers: [],
+                 activeVisualLayerId: null, nVlyid: 1 });   // visualAreas: Etapp 3, visualCircles: Polylinjer Etapp 5
   });
 
   it('_sanitizeVisual bär med layerId och kastar det som inte är en sträng', () => {

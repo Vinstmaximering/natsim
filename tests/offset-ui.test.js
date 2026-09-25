@@ -22,10 +22,13 @@ const { renderAreaCard } = await import('../src/ui/area-card.js');
 const { setTool, MAP_TOOLS } = await import('../src/ui/toolbar.js');
 const { getState, setState } = await import('../src/state/store.js');
 const { undo, getUndoStack } = await import('../src/state/undo.js');
+const A = await import('../src/state/arc-tolerance.js');
 
 const vis = id => V.makeEndpoint('visual', id);
 
 beforeEach(() => {
+  localStorage.removeItem('natsim_arc_tol');
+  A._reloadArcTolerance();
   T.cancelOffsetTool();
   T.clearOffsetPreview();
   P.setOffsetParams({ distance: 2, side: 'right', corners: 'sharp' });
@@ -63,7 +66,7 @@ describe('offset-delen i linjens kort', () => {
     renderLineCard();
     const sec = öppna();
     expect([...sec.querySelectorAll('input[type=radio][name$="-side"]')].map(i => i.value)).toEqual(['right', 'left', 'both']);
-    expect(sec.querySelector('.of-status').textContent).toBe('Skapar "Kant +2,000 H" i aktivt lager.');
+    expect(sec.querySelector('.of-status').textContent).toBe('Skapar "Kant +2,000 H" (3 hörn) i aktivt lager.');
     expect(T.getOffsetPreview()).toMatchObject({ owner: 'line-card', sourceId: id, params: { distance: 2, side: 'right' } });
   });
 
@@ -76,7 +79,7 @@ describe('offset-delen i linjens kort', () => {
     d.value = '0,5';
     d.dispatchEvent(new Event('input', { bubbles: true }));
     sec.querySelector('input[value="both"]').click();
-    expect(sec.querySelector('.of-status').textContent).toBe('Skapar "Kant +0,500 H" och "Kant +0,500 V" i aktivt lager.');
+    expect(sec.querySelector('.of-status').textContent).toBe('Skapar "Kant +0,500 H" (3 hörn) och "Kant +0,500 V" (3 hörn) i aktivt lager.');
     expect(T.getOffsetPreview().params).toMatchObject({ distance: 0.5, side: 'both' });
   });
 
@@ -209,5 +212,53 @@ describe('verktyget O', () => {
     T.setOffsetPreview('card', u, { distance: 3, side: 'right', corners: 'sharp' });
     T.drawOffsetPreview(ctx);
     expect(färger).toEqual(['#ff5050']);
+  });
+});
+
+// Etapp 5: bågtoleransen är en gemensam inställning, 1 mm förval.
+describe('bågtolerans', () => {
+  it('förval 1 mm; 5 och 10 mm går att välja och sparas per användare', () => {
+    expect(A.getArcTolerance()).toBe(0.001);
+    expect(A.ARC_TOLERANCES.map(t => t.label)).toEqual(['1 mm', '5 mm', '10 mm']);
+    A.setArcTolerance(0.005);
+    expect(localStorage.getItem('natsim_arc_tol')).toBe('0.005');
+    A._reloadArcTolerance();
+    expect(A.getArcTolerance()).toBe(0.005);
+    A.setArcTolerance(0.2);                         // okänt värde: oförändrat
+    expect(A.getArcTolerance()).toBe(0.005);
+    localStorage.setItem('natsim_arc_tol', 'skräp');
+    A._reloadArcTolerance();
+    expect(A.getArcTolerance()).toBe(0.001);
+  });
+
+  it('kordan avviker högst toleransen; grövre tolerans ger färre hörn', () => {
+    for (const tol of [0.001, 0.005, 0.01]) {
+      const r = 50, n = A.circleVertexCount(r, tol), φ = 2 * Math.PI / n;
+      expect(r * (1 - Math.cos(φ / 2))).toBeLessThanOrEqual(tol + 1e-12);
+      expect(r * (1 - Math.cos(Math.PI / (n - 1)))).toBeGreaterThan(tol);   // ett hörn färre räcker inte
+    }
+    expect(A.circleVertexCount(50, 0.001)).toBeGreaterThan(A.circleVertexCount(50, 0.005));
+    expect(A.circleVertexCount(50, 0.005)).toBeGreaterThan(A.circleVertexCount(50, 0.01));
+  });
+
+  it('offsetrutan: valet ändrar inställningen, antalet hörn och förhandsvisningen', () => {
+    const id = linje();
+    setState({ selVisualId: id });
+    renderLineCard();
+    const sec = document.querySelector('#line-card .of-sec');
+    sec.open = true;
+    sec.dispatchEvent(new Event('toggle'));
+    const d = sec.querySelector('.of-dist');
+    d.value = '50';
+    d.dispatchEvent(new Event('input', { bubbles: true }));
+    sec.querySelector('input[value="round"]').click();
+    const antal = () => Number(/\((\d+) hörn\)/.exec(sec.querySelector('.of-status').textContent)[1]);
+    const fin = antal();
+    const sel = sec.querySelector('.of-tol');
+    sel.value = '0.01';
+    sel.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(A.getArcTolerance()).toBe(0.01);
+    expect(antal()).toBeLessThan(fin);
+    expect(T.getOffsetPreview().params.corners).toBe('round');
   });
 });

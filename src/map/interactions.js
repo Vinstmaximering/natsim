@@ -21,7 +21,10 @@ import { isMeasuring, handleMeasureClick, updateMeasureMouse, resetMeasure,
 import { renderMeasureBox } from '../ui/measure-box.js';
 import { isOffsetTool, handleOffsetClick, releaseOffsetSource, cancelOffsetTool } from './offset-tool.js';
 import { renderOffsetBox, createFromOffsetBox } from '../ui/offset-panel.js';
-import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
+import { isCircleTool, handleCircleClick, updateCircleMouse, resetCircleCenter,
+         cancelCircleTool } from './circle-tool.js';
+import { renderCircleBox, updateCircleInfo } from '../ui/circle-card.js';
+import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea, hitTestVisualCircle } from './visual-canvas.js';
 import {
   beginSelectDrag, updateSelectDrag, endSelectDrag, cancelSelectDrag,
   isSelectDragging, selectDragMoved, clickSelect,
@@ -168,6 +171,11 @@ export function initInteractions(map) {
       updateMeasureMouse(e.latlng);
       draw();
     }
+    if (isCircleTool()) {
+      updateCircleMouse(e.latlng);
+      updateCircleInfo();
+      draw();
+    }
 
     // Uppdatera förhandsvisning under hinder-ritning
     if (isDrawing()) {
@@ -263,6 +271,14 @@ export function initInteractions(map) {
   // ── Klick – rad 1293–1356 ──
   map.on("click", e => {
     if (dragMoved) { dragMoved = false; return; }
+
+    // Cirkel (C): centrum, sedan en punkt på cirkeln.
+    if (isCircleTool()) {
+      handleCircleClick(e.latlng);
+      renderCircleBox();
+      draw();
+      return;
+    }
 
     // Offset (O): klicket väljer linjen eller ytan som ska offsetas.
     if (isOffsetTool()) {
@@ -378,6 +394,7 @@ export function initInteractions(map) {
     // en yta lägga punkten, inte markera ytan.
     const hitV = hitTestVisualPt(px.x, px.y, stateNow, map, ENtoLatLng)
               || hitTestVisualLine(px.x, px.y, stateNow, map, ENtoLatLng)
+              || hitTestVisualCircle(px.x, px.y, stateNow, map, ENtoLatLng)
               || (tool === 'pan' ? hitTestVisualArea(px.x, px.y, stateNow, map, ENtoLatLng) : null);
     if (hitV) {
       // Ett enskilt val ersätter en markering från Markera område.
@@ -436,7 +453,7 @@ export function initInteractions(map) {
     // Dubbelklick sluter en yta och avslutar en linje under ritning. Linjens
     // dubbelklick har oftast redan avslutats av sitt andra klick (klick på
     // senaste hörnet), och då finns inget kvar att göra här.
-    if (isMeasuring() || isOffsetTool()) return;
+    if (isMeasuring() || isOffsetTool() || isCircleTool()) return;
     if (isDrawingVisual()) {
       if (getVisualDrawMode() === 'area') { _areaDone(completeVisualArea()); draw(); }
       if (getVisualDrawMode() === 'line' && hasPendingLine()) { completeVisualLine(); draw(); }
@@ -473,6 +490,7 @@ export function initInteractions(map) {
     const st   = getState();
     const hitV = hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng)
               || hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualCircle(px.x, px.y, st, map, ENtoLatLng)
               || hitTestVisualArea(px.x, px.y, st, map, ENtoLatLng);
     if (hitV && cb.openEditVisual) cb.openEditVisual(hitV.id);
   });
@@ -480,6 +498,14 @@ export function initInteractions(map) {
   // ── Högerklick → ta bort hörn på hinder, annars openEditPt ──
   map.on("contextmenu", e => {
     if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
+    // Cirkel: högerklick släpper centrum, som Esc.
+    if (isCircleTool()) {
+      e.originalEvent.preventDefault();
+      if (!resetCircleCenter()) { cancelCircleTool(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+      renderCircleBox();
+      draw();
+      return;
+    }
     // Offset: högerklick släpper vald linje, som Esc.
     if (isOffsetTool()) {
       e.originalEvent.preventDefault();
@@ -532,6 +558,7 @@ export function initInteractions(map) {
     // Högerklick på visuellt objekt → kontextmeny (Etapp D4)
     const st   = getState();
     const hitV = hitTestVisualLine(px.x, px.y, st, map, ENtoLatLng)
+              || hitTestVisualCircle(px.x, px.y, st, map, ENtoLatLng)
               || hitTestVisualPt(px.x, px.y, st, map, ENtoLatLng)
               || hitTestVisualArea(px.x, px.y, st, map, ENtoLatLng);
     if (hitV && cb.openVisualMenu) {
@@ -567,6 +594,11 @@ export function initInteractions(map) {
         cancelVisualDraw();
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();
+        draw();
+      } else if (isCircleTool()) {
+        // Cirkel: Esc släpper centrum; utan centrum lämnas verktyget.
+        if (!resetCircleCenter()) { cancelCircleTool(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+        renderCircleBox();
         draw();
       } else if (isOffsetTool()) {
         // Offset: Esc släpper vald linje; utan vald linje lämnas verktyget.

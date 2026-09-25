@@ -20,7 +20,8 @@
 //
 // Av/på sparas per användare (localStorage), förval på. Alt nedtryckt stänger
 // av tillfälligt.
-import { visualLineSegments, visualAreaCoords, isVisualObjVisible, visualPtLabel } from '../state/visual.js';
+import { visualLineSegments, visualAreaCoords, isVisualObjVisible, visualPtLabel,
+         visualCircleCoords } from '../state/visual.js';
 
 export const SNAP_PX = 10;
 export const SNAP_PX_TOUCH = 22;
@@ -107,7 +108,8 @@ export function findSnapTarget(state, px, py, project, radius) {
     // Kartprojektionen är lokalt affin, så samma t gäller i plan.
     pröva(d, { kind, ref: null, id: null, objId: obj.id,
       E: a[0] + t * (b[0] - a[0]), N: a[1] + t * (b[1] - a[1]),
-      label: kind === 'line' ? `på linje ${obj.name || obj.id}` : `på ytkant ${obj.name || obj.id}` });
+      label: kind === 'line' ? `på linje ${obj.name || obj.id}`
+        : kind === 'circle' ? `på cirkel ${obj.name || obj.id}` : `på ytkant ${obj.name || obj.id}` });
   };
   for (const l of state.visualLines || []) {
     if (!isVisualObjVisible(l, state)) continue;
@@ -118,6 +120,13 @@ export function findSnapTarget(state, px, py, project, radius) {
     const c = visualAreaCoords(a, state);
     if (!c) continue;
     for (let i = 0; i < c.length; i++) segment(c[i], c[(i + 1) % c.length], 'edge', a);
+  }
+  // Cirklar: närmaste punkt på omkretsen (polygonen enligt bågtoleransen).
+  for (const ci of state.visualCircles || []) {
+    if (!isVisualObjVisible(ci, state)) continue;
+    const c = visualCircleCoords(ci, state);
+    if (!c) continue;
+    for (let i = 0; i < c.length; i++) segment(c[i], c[(i + 1) % c.length], 'circle', ci);
   }
   return best;
 }

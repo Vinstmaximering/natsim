@@ -147,7 +147,7 @@ describe('datamodell', () => {
 
   it('lagerraden räknar ytor', () => {
     const { layer } = yta(REKT);
-    expect(V.visualLayerCounts(layer)).toEqual({ pts: 0, lines: 0, areas: 1 });
+    expect(V.visualLayerCounts(layer)).toEqual({ pts: 0, lines: 0, areas: 1, circles: 0 });
   });
 
   it('PM:ets lägen innehåller ytans hörn, också nätpunkter', () => {

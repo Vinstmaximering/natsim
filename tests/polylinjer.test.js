@@ -91,7 +91,7 @@ describe('modell', () => {
 
   it('lagret räknar polylinjer, inte segment', () => {
     const { lay } = linje();
-    expect(V.visualLayerCounts(lay)).toEqual({ pts: 0, lines: 1, areas: 0 });
+    expect(V.visualLayerCounts(lay)).toEqual({ pts: 0, lines: 1, areas: 0, circles: 0 });
   });
 });
 

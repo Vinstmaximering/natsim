@@ -86,6 +86,7 @@ function build(card, area) {
       <span>Blockerar sikt (hinder)<span class="ac-hint">Ytan blir ett byggnadshinder i siktberäkningen.</span></span></label>
     <details class="of-sec"><summary>⇉ Offset</summary><div class="of-ctl"></div></details>
     <div class="lc-actions">
+      <button type="button" class="lc-btn" data-ac="divide" title="Punkter längs ytans kant">⋯ Dela in i punkter…</button>
       <button type="button" class="lc-btn" data-ac="geo" title="Ytan som en sluten linje i en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
     </div>
     <div class="ac-foot">
@@ -174,6 +175,8 @@ function wire(card, id) {
     });
   });
 
+  card.querySelector('[data-ac="divide"]').addEventListener('click',
+    () => import('./divide-dialog.js').then(m => m.openDivideDialog(id)));
   // Laddas vid behov, som Data-menyns och lagermenyns export.
   card.querySelector('[data-ac="geo"]').addEventListener('click',
     () => import('./geo-export.js').then(m => m.exportObjectGeo(id)));

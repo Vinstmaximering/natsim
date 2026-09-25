@@ -9,7 +9,8 @@
 //     vinkel, mindre än 28,96° mellan kanterna – fasas hörnet av i stället:
 //     två punkter, där kanterna slutar.
 //   Yttre hörn, rundade: en båge runt hörnet med radien d, approximerad med
-//     hörn så tätt att kordan avviker högst ARC_TOL (1 mm) från bågen.
+//     hörn så tätt att kordan avviker högst bågtoleransen från bågen
+//     (state/arc-tolerance.js: 1, 5 eller 10 mm; förval 1 mm).
 //
 // Resultatet kontrolleras:
 //   'collapsed' – något segment vänder riktning i offsetlinjen. Händer när
@@ -18,9 +19,10 @@
 //   'self'      – offsetlinjen korsar sig själv.
 // Ett resultat med problem ska inte skapas; förhandsvisningen visar varför.
 import { signedArea, isSelfIntersecting, segmentsTouch } from './area-geometry.js';
+import { arcStep, ARC_TOLERANCE_DEFAULT } from './arc-tolerance.js';
 
 export const MITER_LIMIT = 4;      // gering högst 4 · d från hörnet, annars avfasning
-export const ARC_TOL = 0.001;      // m – kordans största avvikelse från bågen
+export const ARC_TOL = ARC_TOLERANCE_DEFAULT;   // m – förval för kordans avvikelse från bågen
 
 const EPS = 1e-12;
 const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
@@ -43,20 +45,14 @@ function städa(coords, closed) {
   return out;
 }
 
-/** Hur tätt en båge med radien r måste delas för att kordan ska avvika högst tol. */
-export function arcStep(r, tol = ARC_TOL) {
-  if (r <= tol) return Math.PI / 2;
-  return 2 * Math.acos(1 - tol / r);
-}
-
 /**
  * Offset av en polylinje.
  * @param {number[][]} coords  [[E,N], …], utan upprepat sluthörn
- * @param {{ distance:number, side:1|-1, corners?:'sharp'|'round', closed?:boolean }} p
- *   side +1 = höger om riktningen, −1 = vänster.
+ * @param {{ distance:number, side:1|-1, corners?:'sharp'|'round', closed?:boolean, arcTol?:number }} p
+ *   side +1 = höger om riktningen, −1 = vänster. arcTol: bågtolerans i meter.
  * @returns {{ coords:number[][], closed:boolean, problem:null|'collapsed'|'self'|'few' }}
  */
-export function offsetPolyline(coords, { distance: d, side, corners = 'sharp', closed = false }) {
+export function offsetPolyline(coords, { distance: d, side, corners = 'sharp', closed = false, arcTol = ARC_TOL }) {
   const pts = städa(coords, closed);
   const n = pts.length;
   if (n < 2 || (closed && n < 3) || !(d > 0)) return { coords: [], closed, problem: 'few' };
@@ -90,7 +86,7 @@ export function offsetPolyline(coords, { distance: d, side, corners = 'sharp', c
     if (corners === 'round') {
       const vinkel = Math.abs(kr) < EPS ? side * Math.PI : Math.atan2(cross(na, nb), dot(na, nb));
       const a0 = Math.atan2(na[1], na[0]);
-      const steg = Math.max(1, Math.ceil(Math.abs(vinkel) / arcStep(d)));
+      const steg = Math.max(1, Math.ceil(Math.abs(vinkel) / arcStep(d, arcTol)));
       for (let s = 0; s <= steg; s++) {
         const a = a0 + (vinkel * s) / steg;
         out.push(add(P, [d * Math.cos(a), d * Math.sin(a)]));
