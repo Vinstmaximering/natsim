@@ -108,7 +108,8 @@ describe('mål och prioritet', () => {
     D.startVisualLineDraw();
     D.handleVisualMapClick({ lat: 50, lng: 50 });
     D.handleVisualMapClick({ lat: 0, lng: 0 });
-    expect(getState().visualLines[0].to).toEqual({ ref: 'net', id: 'FP1' });
+    D.completeVisualLine();
+    expect(getState().visualLines[0].vertices[1]).toEqual({ ref: 'net', id: 'FP1' });
   });
 
   it('släckta lager snappar inte', () => {
@@ -186,9 +187,10 @@ describe('av, på och Alt', () => {
     expect(S.snapActive()).toBe(true);
     // Nu snappar den – mot FP1, som ligger närmare än punkten från första klicket.
     D.handleVisualMapClick({ lat: 1, lng: 1 });
+    D.completeVisualLine();
     const [linje] = getState().visualLines;
-    expect(linje.from.ref).toBe('visual');               // första klicket: ny punkt
-    expect(linje.to).toEqual({ ref: 'net', id: 'FP1' });
+    expect(linje.vertices[0].ref).toBe('visual');        // första klicket: ny punkt
+    expect(linje.vertices[1]).toEqual({ ref: 'net', id: 'FP1' });
   });
 });
 
@@ -198,16 +200,18 @@ describe('ritverktygen använder snappningen', () => {
   it('linje: snapp mot nätpunkt ger ref:"net"', () => {
     D.startVisualLineDraw();
     klick(50, 50); klick(3, 4);
-    expect(getState().visualLines[0].to).toEqual({ ref: 'net', id: 'FP1' });
+    D.completeVisualLine();
+    expect(getState().visualLines[0].vertices[1]).toEqual({ ref: 'net', id: 'FP1' });
   });
 
   it('linje: snapp mot en annan linje lägger en ny punkt på linjen', () => {
     scen();
     D.startVisualLineDraw();
     klick(130, 60); klick(130, 6);
+    D.completeVisualLine();
     const p = getState().visualPts.at(-1);
     expect(p).toMatchObject({ E: 130, N: 0 });
-    expect(getState().visualLines.at(-1).to).toEqual({ ref: 'visual', id: p.id });
+    expect(getState().visualLines.at(-1).vertices[1]).toEqual({ ref: 'visual', id: p.id });
   });
 
   it('yta: hörn i nätpunkt blir ref:"net", hörn på en kant hamnar på kanten', () => {
@@ -234,7 +238,8 @@ describe('ritverktygen använder snappningen', () => {
     D.startVisualLineDraw();
     D.updateVisualMousePos({ lat: 500, lng: 500 }, { x: 500, y: -500 });   // hovring långt bort
     klick(50, 50); klick(3, 4);
-    expect(getState().visualLines[0].to).toEqual({ ref: 'net', id: 'FP1' });
+    D.completeVisualLine();
+    expect(getState().visualLines[0].vertices[1]).toEqual({ ref: 'net', id: 'FP1' });
   });
 
   it('pekskärm: målet visas en kort stund efter trycket', () => {

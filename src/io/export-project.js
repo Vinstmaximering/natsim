@@ -9,6 +9,8 @@
 //   visualPts / visualLines (Etapp D): saknas → tomt visuellt lager
 //   visualLayers (Etapp 1): saknas → objekten samlas i lagret "Handritat"
 //   visualAreas (Lager-verktyg Etapp 3): saknas → inga ytor
+//   visualVer (Polylinjer Etapp 1): saknas → linjesegmenten slås ihop till
+//     polylinjer och visuella punkter med H = 0 får H = null (saknad höjd)
 //   visualLayers[].labels/vertexLabels (Lager-verktyg Etapp 1): saknas →
 //                                          punktnamn på, hörnnamn av
 //   optimizerConfig (Etapp E): saknas → vikterna 50/50
@@ -20,8 +22,7 @@ import { CRS_DEFS } from '../core/constants.js';
 import { normalizeWeights } from '../core/optimizer.js';
 import { showToast } from '../ui/toast.js';
 import { _syncObstacleCounter, _sanitizeObstacleColors } from '../state/obstacles.js';
-import { _sanitizeVisual, _sanitizeVisualAreas, _nextCounter, _migrateVisualLayers,
-         syncLinkedObstacles } from '../state/visual.js';
+import { _loadVisual, _nextCounter, syncLinkedObstacles, VISUAL_MODEL_VERSION } from '../state/visual.js';
 
 // ── Serialisera state till spara-objekt ──────────────────────────────────────
 // Exporteras som _buildSnapshot för tester; saveProject() använder den internt.
@@ -39,6 +40,9 @@ export function _buildSnapshot() {
     // Etapp 1: lagerlistan. Filer utan fältet laddas med allt i "Handritat".
     visualLayers:        JSON.parse(JSON.stringify(s.visualLayers || [])),
     activeVisualLayerId: s.activeVisualLayerId ?? null,
+    // Polylinjer Etapp 1: modellversionen. Saknas den slås linjesegmenten
+    // ihop vid laddning och visuella punkter med H = 0 får H = null.
+    visualVer: VISUAL_MODEL_VERSION,
     activeCRS:      s.activeCRS      || "sweref99tm",
     activeLayerKey: s.activeLayerKey || "osm",
     centerErr:      s.centerErr      ?? 1.0,
@@ -114,13 +118,11 @@ export function _applySnapshot(s) {
   _syncObstacleCounter(obstacles);
 
   // Etapp D: fältet saknas i äldre filer → tomt visuellt lager.
-  const sanitized = _sanitizeVisual(s.visualPts, s.visualLines);
   // Etapp 1: objekt utan giltigt layerId hamnar i "Handritat", så att en
   // projektfil sparad före lagren laddas med allt innehåll i behåll.
+  // Polylinjer Etapp 1: segment ur äldre filer slås ihop till polylinjer.
   const { visualPts, visualLines, visualAreas, visualLayers, activeVisualLayerId, nVlyid } =
-    _migrateVisualLayers(sanitized.visualPts, sanitized.visualLines,
-                         s.visualLayers, s.activeVisualLayerId,
-                         _sanitizeVisualAreas(s.visualAreas));
+    _loadVisual(s);
 
   setState({
     pts,

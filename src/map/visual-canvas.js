@@ -2,7 +2,7 @@
 // Stilen är medvetet skild från nätpunkter och mätningar: ihåliga cirklar och
 // streckade linjer, så att visuella objekt aldrig förväxlas med mätdata.
 // Tar kart-hjälpfunktioner som parameter för att undvika cirkulär import.
-import { visualLineCoords, visualAreaCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
+import { visualLineSegments, visualAreaCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
          visualPtShowsLabel } from '../state/visual.js';
 import { areaStats, polygonCentroid, formatPlanArea } from '../state/area-geometry.js';
 import { hexToRgba } from '../core/colors.js';
@@ -98,35 +98,40 @@ export function drawVisualLayer(ctx, state, helpers) {
   }
 
   // ── Linjer (streckade) ──
+  // Varje segment stryks för sig, så att streckmönstret börjar om vid varje
+  // hörn – precis som när varje segment var en egen linje. En polylinje som
+  // migrerats från segment ser då exakt likadan ut.
   for (const line of lines) {
-    const coords = visualLineCoords(line, state);
-    if (!coords) continue;
-    const a = xy(coords[0][0], coords[0][1]);
-    const b = xy(coords[1][0], coords[1][1]);
+    const segs = visualLineSegments(line, state);
+    if (!segs?.length) continue;
+    const px = segs.map(([p, q]) => [xy(p[0], p[1]), xy(q[0], q[1])]);
     const isSel = line.id === sel;
+    const col = visualColor(line, state);
 
-    ctx.beginPath();
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.strokeStyle = visualColor(line, state);
+    ctx.strokeStyle = col;
     ctx.lineWidth   = isSel ? 3 : 1.8;
     ctx.setLineDash(DASH);
-    ctx.stroke();
+    for (const [a, b] of px) {
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
     ctx.setLineDash([]);
 
-    // Kopplad till ett hinder → liten markör mitt på linjen.
-    if (line.linkedObsId) {
+    // Kopplad till hinder → liten markör mitt på varje segment (ett hinder
+    // per segment).
+    if (line.linkedObsIds?.length) {
       ctx.font = '12px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = visualColor(line, state);
-      ctx.fillText('▨', (a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.fillStyle = col;
+      for (const [a, b] of px) ctx.fillText('▨', (a.x + b.x) / 2, (a.y + b.y) / 2);
     }
 
     if (isSel || marked.has(line.id)) {
       ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
+      for (const [a, b] of px) { ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); }
       ctx.strokeStyle = marked.has(line.id) ? HALO : 'rgba(255,255,255,0.35)';
       ctx.lineWidth   = 6;
       ctx.stroke();
@@ -212,21 +217,20 @@ export function hitTestVisualPt(px, py, state, map, ENtoLatLng) {
   return null;
 }
 
+// Avståndet i pixlar från (px,py) till segmentet a–b.
+function segDistPx(px, py, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
+  const t = l2 < 1 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / l2));
+  return Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy));
+}
+
+// Träff på något av polylinjens segment ger hela polylinjen.
 export function hitTestVisualLine(px, py, state, map, ENtoLatLng) {
+  const pix = ([E, N]) => map.latLngToContainerPoint(ENtoLatLng(E, N));
   for (const line of state.visualLines || []) {
     if (!isVisualObjVisible(line, state)) continue;
-    const coords = visualLineCoords(line, state);
-    if (!coords) continue;
-    const a = map.latLngToContainerPoint(ENtoLatLng(coords[0][0], coords[0][1]));
-    const b = map.latLngToContainerPoint(ENtoLatLng(coords[1][0], coords[1][1]));
-    const dx = b.x - a.x, dy = b.y - a.y;
-    const len2 = dx * dx + dy * dy;
-    if (len2 < 1) {
-      if (Math.hypot(px - a.x, py - a.y) <= LINE_HIT_PX) return line;
-      continue;
-    }
-    const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / len2));
-    if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) <= LINE_HIT_PX) return line;
+    const segs = visualLineSegments(line, state);
+    if (segs?.some(([p, q]) => segDistPx(px, py, pix(p), pix(q)) <= LINE_HIT_PX)) return line;
   }
   return null;
 }
@@ -244,9 +248,7 @@ export function hitTestVisualArea(px, py, state, map, ENtoLatLng) {
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
       const a = pts[i], b = pts[j];
       if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y) + a.x) inne = !inne;
-      const dx = b.x - a.x, dy = b.y - a.y, l2 = dx * dx + dy * dy;
-      const t = l2 < 1 ? 0 : Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / l2));
-      if (Math.hypot(px - (a.x + t * dx), py - (a.y + t * dy)) <= LINE_HIT_PX) return areas[k];
+      if (segDistPx(px, py, a, b) <= LINE_HIT_PX) return areas[k];
     }
     if (inne) return areas[k];
   }

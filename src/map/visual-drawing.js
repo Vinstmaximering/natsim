@@ -1,7 +1,16 @@
 // Ritläges-tillståndsmaskin för det visuella lagret.
 // Speglar obstacle-drawing.js men skiljer sig på en punkt: läget avslutas inte
-// automatiskt efter ett objekt. Användaren klickar ut flera punkter respektive
-// en kedja av linjesegment, och avslutar med Escape eller högerklick.
+// automatiskt efter ett objekt. Användaren klickar ut flera punkter, linjer
+// eller ytor i följd och lämnar läget med Escape eller högerklick.
+//
+// Linje (Polylinjer Etapp 1): hörnen samlas i minnet medan man ritar, som för
+// ytan, och linjen sparas först när den avslutas – dubbelklick, Enter,
+// högerklick, klick på sista hörnet igen (pekskärm: tryck på det, eller
+// "✓ Klar"). Klick på första hörnet sluter linjen (minst tre hörn). En färdig
+// linje är ett ångra-steg. Esc kastar en påbörjad linje; utan påbörjad linje
+// lämnar Esc läget. Backspace och "↶ Hörn" tar bort senaste hörnet. Eftersom
+// inget sparas förrän linjen är klar lämnar en avbruten linje inga punkter
+// efter sig, och en punkt som klicket snappade mot rörs aldrig.
 //
 // Yta (Lager-verktyg Etapp 3): hörnen samlas i minnet medan man ritar och
 // sparas först när ytan sluts – dubbelklick, eller klick på första hörnet.
@@ -21,7 +30,7 @@ import { map, ENtoLatLng, latLngToEN, draw } from './leaflet-setup.js';
 import { getState, setState }          from '../state/store.js';
 import { saveUndo }                    from '../state/undo.js';
 import { addVisualPt, addVisualLine, addVisualArea, makeEndpoint,
-         ensureActiveVisualLayer, removeVisualLine, removeVisualPt } from '../state/visual.js';
+         ensureActiveVisualLayer } from '../state/visual.js';
 import { isSelfIntersecting } from '../state/area-geometry.js';
 import { findSnapTarget, snapActive, snapRadius, drawSnapMarker } from './snap.js';
 
@@ -38,10 +47,7 @@ const closePx = () => (typeof window !== 'undefined' && window.matchMedia?.('(po
 const AREA_DUP_PX = 3;
 
 let _mode    = 'idle';  // 'idle' | 'point' | 'line' | 'area'
-let _pending = null;    // {ref,id} – linjens startpunkt när ett segment påbörjats
-// Linjekedjans historik, för att kunna ta bort senaste hörnet ("↶ Hörn" på
-// pekskärm): { lineId, createdPtId, prev } per klick i kedjan.
-let _chain   = [];
+let _line    = [];      // linjens hörn under ritning: {ref,id,E,N} eller {E,N}
 let _mouseEN = null;
 let _snap    = null;    // snappmål (map/snap.js) eller null
 let _mouseCP = null;    // senaste muspositionen i skärmpixlar
@@ -52,19 +58,19 @@ export const getVisualDrawMode = () => _mode;
 export const isDrawingVisual   = () => _mode !== 'idle';
 
 export function startVisualPointDraw() {
-  _mode = 'point'; _pending = null; _mouseEN = null; _snap = null;
+  _mode = 'point'; _mouseEN = null; _snap = null;
 }
 
 export function startVisualLineDraw() {
-  _mode = 'line';  _pending = null; _mouseEN = null; _snap = null; _chain = [];
+  _mode = 'line';  _mouseEN = null; _snap = null; _line = [];
 }
 
 export function startVisualAreaDraw() {
-  _mode = 'area';  _pending = null; _mouseEN = null; _snap = null; _area = [];
+  _mode = 'area';  _mouseEN = null; _snap = null; _area = [];
 }
 
 export function cancelVisualDraw() {
-  _mode = 'idle';  _pending = null; _mouseEN = null; _snap = null; _area = []; _chain = [];
+  _mode = 'idle';  _mouseEN = null; _snap = null; _area = []; _line = [];
 }
 
 // ── Yta ──────────────────────────────────────────────────────────────────────
@@ -115,37 +121,76 @@ export function completeVisualArea() {
   return { ok: true, id, selfIntersecting: isSelfIntersecting(coords) };
 }
 
-// Avslutar en påbörjad linjekedja men stannar kvar i ritläget.
-export function breakVisualChain() {
-  _pending = null;
-  _chain = [];
+// ── Linje ────────────────────────────────────────────────────────────────────
+
+export const getPendingLineVertices = () => _line.map(v => ({ ...v }));
+export const hasPendingLine = () => _mode === 'line' && _line.length > 0;
+
+/** Kastar den påbörjade linjen men stannar i linjeläget. */
+export function discardPendingLine() { _line = []; }
+
+/** Backspace: tar bort senaste hörnet. Returnerar true om det fanns något. */
+export function undoLastLineVertex() {
+  if (_mode !== 'line' || !_line.length) return false;
+  _line.pop();
+  return true;
 }
 
-export const hasPendingChain = () => _pending !== null;
+/** Är musen/klicket nära första hörnet, så att ett klick sluter linjen? */
+export function nearFirstLineVertex(en) {
+  if (_mode !== 'line' || _line.length < 3 || !en || !map) return false;
+  return _pxDist(_line[0], en) <= closePx();
+}
+
+// Samma hörn som det senaste: samma punkt vid punktsnapp, annars inom
+// träffradien på skärmen. Ett klick där avslutar linjen – så blir ett
+// dubbelklicks andra klick aldrig ett extra hörn. Snappar klicket mot en
+// annan befintlig punkt är det ett nytt hörn, hur nära det än ligger.
+function _onLastLineVertex(v) {
+  const last = _line[_line.length - 1];
+  if (!last) return false;
+  if (v.ref) return last.ref === v.ref && last.id === v.id;
+  return !!map && _pxDist(last, v) <= closePx();
+}
 
 /**
- * Tar bort senaste hörnet i linjekedjan: senaste segmentet och den punkt som
- * klicket skapade (inte en punkt som klicket snappade mot), och kedjan
- * fortsätter från föregående hörn. Utan segment släpps startpunkten.
- * Returnerar true om det fanns något att ta bort.
+ * Sparar linjen: skapar hörnpunkterna (role 'vertex', i aktivt lager) för hörn
+ * som inte snappade mot en befintlig punkt, och polylinjen själv – ett
+ * ångra-steg. closed sluter linjen (kräver minst tre hörn).
+ * Returnerar { ok, id } eller { ok:false, reason }.
  */
-export function undoLastLineVertex() {
-  if (_mode !== 'line' || !_chain.length) return false;
-  const e = _chain.pop();
-  if (e.lineId) removeVisualLine(e.lineId);
-  if (e.createdPtId) {
-    const { visualLines = [], visualAreas = [] } = getState();
-    const används = visualLines.some(l => [l.from, l.to].some(ep => ep?.ref === 'visual' && ep.id === e.createdPtId))
-      || visualAreas.some(a => (a.vertices || []).some(ep => ep?.ref === 'visual' && ep.id === e.createdPtId));
-    if (!används) removeVisualPt(e.createdPtId);
-  }
-  _pending = e.prev;
+export function completeVisualLine({ closed = false } = {}) {
+  if (_mode !== 'line') return { ok: false, reason: 'mode' };
+  if (_line.length < 2) return { ok: false, reason: 'few' };
+  saveUndo('Ny linje');
+  const layerId = ensureActiveVisualLayer();
+  const vertices = _line.map(v => v.ref
+    ? makeEndpoint(v.ref, v.id)
+    : makeEndpoint('visual', addVisualPt({ E: v.E, N: v.N, layerId, role: 'vertex' })));
+  const id = addVisualLine({ vertices, closed: closed && _line.length >= 3, layerId });
+  _line = [];
+  setState({ selVisualId: id });
+  return { ok: true, id };
+}
+
+/**
+ * Högerklick i linjeläget: en linje med minst två hörn sparas, ett ensamt
+ * första hörn kastas. Returnerar false när ingen linje var påbörjad – då ska
+ * läget lämnas.
+ */
+export function finishOrDiscardLine() {
+  if (!hasPendingLine()) return false;
+  if (_line.length >= 2) completeVisualLine();
+  else _line = [];
   return true;
 }
 
 /** Finns det ett hörn att ta bort i pågående linje eller yta? */
 export const hasUndoableVertex = () =>
-  (_mode === 'line' && _chain.length > 0) || (_mode === 'area' && _area.length > 0);
+  (_mode === 'line' && _line.length > 0) || (_mode === 'area' && _area.length > 0);
+
+/** Kan "✓ Klar" avsluta en pågående linje (minst två hörn)? */
+export const canFinishLine = () => _mode === 'line' && _line.length >= 2;
 
 /** "↶ Hörn": senaste hörnet i pågående linje eller yta (motsvarar Backspace). */
 export function undoLastDrawVertex() {
@@ -192,24 +237,19 @@ const _posFor = (snap, latlng) => (snap ? { E: snap.E, N: snap.N } : latLngToEN(
 
 // ── Klickhantering ───────────────────────────────────────────────────────────
 
-// Ger endpoint för ett klick: en befintlig punkt vid punktsnapp (ref:'net' för
-// en nätpunkt), annars en ny visuell punkt – på linjen vid kantsnapp, annars på
+// Hörnet för ett klick: en befintlig punkt vid punktsnapp (ref:'net' för en
+// nätpunkt), annars en position – på linjen vid kantsnapp, annars på
 // kartkoordinaten.
-function _endpointAt(latlng, snap) {
-  if (snap?.ref) return { ep: makeEndpoint(snap.ref, snap.id), created: null };
-  const en = _posFor(snap, latlng);
-  const id = addVisualPt({ E: en.E, N: en.N });
-  return { ep: makeEndpoint('visual', id), created: id };
-}
+const _vertexAt = (snap, latlng) => (snap?.ref
+  ? { ref: snap.ref, id: snap.id, E: snap.E, N: snap.N }
+  : { ..._posFor(snap, latlng) });
 
 // Returnerar {created} – vad klicket resulterade i, för toast/hint.
 export function handleVisualMapClick(latlng) {
   const snap = _snapForClick(latlng);
 
   if (_mode === 'area') {
-    const v = snap?.ref
-      ? { ref: snap.ref, id: snap.id, E: snap.E, N: snap.N }
-      : { ..._posFor(snap, latlng) };
+    const v = _vertexAt(snap, latlng);
     if (nearFirstAreaVertex(v)) {
       const r = completeVisualArea();
       return { created: r.ok ? 'area' : null, ...r };
@@ -229,27 +269,25 @@ export function handleVisualMapClick(latlng) {
     if (snap?.ref === 'net' && (getState().visualPts || []).some(p =>
         _pxDist(p, snap) <= 1)) return { created: null };
     const en = _posFor(snap, latlng);
+    saveUndo('Ny visuell punkt');
     return { created: 'point', id: addVisualPt({ E: en.E, N: en.N }) };
   }
 
   if (_mode === 'line') {
-    const { ep, created } = _endpointAt(latlng, snap);
-    if (!_pending) {
-      _pending = ep;
-      _chain = [{ lineId: null, createdPtId: created, prev: null }];
-      return { created: null };
+    const v = _vertexAt(snap, latlng);
+    if (nearFirstLineVertex(v)) {
+      const r = completeVisualLine({ closed: true });
+      return { created: r.ok ? 'line' : null, ...r };
     }
-    // Klick på samma punkt igen bryter kedjan i stället för att skapa en
-    // nollängdslinje.
-    if (_pending.ref === ep.ref && _pending.id === ep.id) {
-      _pending = null;
-      _chain = [];
-      return { created: null };
+    // Klick på senaste hörnet igen avslutar linjen (ett ensamt första hörn
+    // blir kvar – en linje behöver två).
+    if (_onLastLineVertex(v)) {
+      if (_line.length < 2) return { created: null };
+      const r = completeVisualLine();
+      return { created: r.ok ? 'line' : null, ...r };
     }
-    const id = addVisualLine({ from: _pending, to: ep });
-    _chain.push({ lineId: id, createdPtId: created, prev: _pending });
-    _pending = ep;   // kedjan fortsätter från senaste punkten
-    return { created: 'line', id };
+    _line.push(v);
+    return { created: null, vertices: _line.length };
   }
 
   return { created: null };
@@ -265,27 +303,27 @@ export function drawVisualPreview(ctx) {
     return { x: p.x, y: p.y };
   };
 
-  // Gummiband från kedjans senaste punkt till musen
-  if (_mode === 'line' && _pending) {
-    const state = getState();
-    const src = _pending.ref === 'net'
-      ? (state.pts || []).find(p => p.id === _pending.id)
-      : (state.visualPts || []).find(p => p.id === _pending.id);
+  // Linje under ritning: hörnen hittills och ett gummiband till musen. Kan
+  // ett klick sluta linjen ringas första hörnet in.
+  if (_mode === 'line' && _line.length) {
     const target = _snap || _mouseEN;
-    if (src && target) {
-      const a = toPixel(src), b = toPixel(target);
+    const pts = _line.map(toPixel);
+    const closing = target && nearFirstLineVertex(target);
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts.slice(1)) ctx.lineTo(p.x, p.y);
+    if (closing) ctx.lineTo(pts[0].x, pts[0].y);
+    else if (target) { const t = toPixel(target); ctx.lineTo(t.x, t.y); }
+    ctx.strokeStyle = 'rgba(207,216,220,0.7)';
+    ctx.lineWidth   = 1.8;
+    ctx.setLineDash([7, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    for (const [i, p] of pts.entries()) {
+      const ring = i === 0 && closing;
       ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = 'rgba(207,216,220,0.7)';
-      ctx.lineWidth   = 1.8;
-      ctx.setLineDash([7, 5]);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.beginPath();
-      ctx.arc(a.x, a.y, 5, 0, Math.PI * 2);
-      ctx.strokeStyle = '#cfd8dc';
+      ctx.arc(p.x, p.y, ring ? 8 : (i === pts.length - 1 ? 5 : 4), 0, Math.PI * 2);
+      ctx.strokeStyle = ring ? '#00ff88' : '#cfd8dc';
       ctx.lineWidth   = 2;
       ctx.stroke();
     }

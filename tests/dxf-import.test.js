@@ -11,7 +11,7 @@ import {
 import { VERTEX_DEDUP_TOL_M } from '../src/io/vertex-index.js';
 import { getState, setState } from '../src/state/store.js';
 import {
-  getVisualLayers, findVisualLayer, visualLineCoords, findVisualPt,
+  getVisualLayers, findVisualLayer, visualLineCoords, visualLineSegments, findVisualPt,
 } from '../src/state/visual.js';
 import { undo, getUndoStack } from '../src/state/undo.js';
 import { runSimulation } from '../src/core/simulation.js';
@@ -128,7 +128,8 @@ describe('enhetsomräkning', () => {
 
     reset();
     applyDxfImport(p, opts(p, { useZ: false }));
-    expect(findVisualPt(getState().visualPts[0].id).H).toBe(0);
+    // Polylinjer Etapp 1: utan Z saknar punkten höjd (null), den är inte 0.
+    expect(findVisualPt(getState().visualPts[0].id).H).toBeNull();
   });
 });
 
@@ -137,14 +138,14 @@ describe('axelordning', () => {
 
   it('X → E, Y → N (förval)', () => {
     expect(dxfToEN({ x: 10, y: 20, z: 0 }, { factor: 1, axisOrder: 'xe', useZ: false }))
-      .toEqual({ E: 10, N: 20, H: 0 });
+      .toEqual({ E: 10, N: 20, H: null });
     applyDxfImport(p(), opts(p(), { axisOrder: 'xe' }));
     expect(visualLineCoords(getState().visualLines[0])).toEqual([[10, 20], [30, 40]]);
   });
 
   it('X → N, Y → E kastar om axlarna', () => {
     expect(dxfToEN({ x: 10, y: 20, z: 0 }, { factor: 1, axisOrder: 'xn', useZ: false }))
-      .toEqual({ E: 20, N: 10, H: 0 });
+      .toEqual({ E: 20, N: 10, H: null });
     applyDxfImport(p(), opts(p(), { axisOrder: 'xn' }));
     expect(visualLineCoords(getState().visualLines[0])).toEqual([[20, 10], [40, 30]]);
   });
@@ -294,20 +295,23 @@ describe('geometri', () => {
     expect(getState().visualLines).toEqual([]);
   });
 
-  it('LWPOLYLINE blir hörn med role vertex plus segment', () => {
+  it('LWPOLYLINE blir hörn med role vertex plus en polylinje', () => {
     const p = parseDxf(entities(...LW('A', 0, [0, 0], [10, 0], [10, 10])));
     const r = applyDxfImport(p, opts(p));
     expect(r.verticesCreated).toBe(3);
-    expect(r.linesCreated).toBe(2);
+    expect(r.linesCreated).toBe(1);
+    expect(getState().visualLines[0]).toMatchObject({ closed: false });
+    expect(visualLineCoords(getState().visualLines[0])).toEqual([[0, 0], [10, 0], [10, 10]]);
     expect(getState().visualPts.every(v => v.role === 'vertex')).toBe(true);
   });
 
-  it('sluten LWPOLYLINE (flagga 1) sluts med segmentet sista → första', () => {
+  it('sluten LWPOLYLINE (flagga 1) blir en sluten polylinje med segmentet sista → första', () => {
     const p = parseDxf(entities(...LW('A', 1, [0, 0], [10, 0], [10, 10], [0, 10])));
     const r = applyDxfImport(p, opts(p));
     expect(r.verticesCreated).toBe(4);
-    expect(r.linesCreated).toBe(4);
-    expect(visualLineCoords(getState().visualLines[3])).toEqual([[0, 10], [0, 0]]);
+    expect(r.linesCreated).toBe(1);
+    expect(getState().visualLines[0].closed).toBe(true);
+    expect(visualLineSegments(getState().visualLines[0])[3]).toEqual([[0, 10], [0, 0]]);
   });
 
   it('POLYLINE med VERTEX ger samma resultat som LWPOLYLINE', () => {
@@ -336,8 +340,8 @@ describe('geometri', () => {
       [10, 10], [20, 0],
       [10, 10], [20, 10]));
     const r = applyDxfImport(p, opts(p));
-    expect(r.linesCreated).toBe(2);
-    expect(visualLineCoords(getState().visualLines[0])).toEqual([[0, 0], [10, 0]]);
+    expect(r.linesCreated).toBe(1);
+    expect(visualLineCoords(getState().visualLines[0])).toEqual([[0, 0], [10, 0], [10, 10]]);
   });
 
   it('sammanfallande hörn delas inom ett lager', () => {

@@ -201,7 +201,7 @@ describe('åtgärder på markeringen', () => {
     const { saveUndo } = await import('../src/state/undo.js');
     saveUndo('ta bort');
     const n = V.removeVisualObjects([P, L, A]);
-    expect(n).toEqual({ pts: 1, lines: 1, areas: 1, extraLines: 0 });
+    expect(n).toEqual({ pts: 1, lines: 1, areas: 1, extraLines: 0, changedLines: 0 });
     expect(getState().visualPts).toEqual([]);
     expect(getState().obstacles).toEqual([]);
     undo();

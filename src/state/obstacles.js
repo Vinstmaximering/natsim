@@ -34,6 +34,13 @@ export function addObstacle(obs) {
   return id;
 }
 
+// Nästa lediga hinder-id, för hinder som byggs utan addObstacle – de kopplade
+// segmenthindren till en polylinje (state/visual.js), som läggs in i ett svep
+// och inte ska ändra markeringen.
+export function nextObstacleId() {
+  return `obs_${_nObs++}`;
+}
+
 export function removeObstacle(id) {
   const { obstacles, selObsId } = getState();
   setState({

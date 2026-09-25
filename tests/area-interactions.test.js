@@ -133,18 +133,17 @@ describe('ritning av yta', () => {
 });
 
 // Efter STOPP 1 inför 0.6.0: Backspace tar bort senaste hörnet även i linjer,
-// med samma regler som pekskärmens "↶ Hörn".
+// med samma regler som pekskärmens "↶ Hörn". Polylinjer Etapp 1: linjen
+// sparas först när den avslutas, så Backspace rör bara hörnen under ritning.
 describe('Backspace i linjer', () => {
-  it('tar bort senaste segmentet och punkten klicket skapade; kedjan fortsätter', () => {
+  it('tar bort senaste hörnet; linjen fortsätter från föregående', () => {
     setTool('visual-line');
     klick(0, 0); klick(100, 0); klick(100, 100);
     key('Backspace');
-    expect(getState().visualLines).toHaveLength(1);
-    expect(getState().visualPts.map(p => [p.E, p.N])).toEqual([[0, 0], [100, 0]]);
+    expect(D.getPendingLineVertices().map(v => [v.E, v.N])).toEqual([[0, 0], [100, 0]]);
     klick(0, 100);
-    const sista = getState().visualLines.at(-1);
-    const från = getState().visualPts.find(p => p.id === sista.from.id);
-    expect([från.E, från.N]).toEqual([100, 0]);
+    D.completeVisualLine();
+    expect(V.visualLineCoords(getState().visualLines[0])).toEqual([[0, 0], [100, 0], [0, 100]]);
   });
 
   it('snappade punkter och nätpunkter tas aldrig bort', () => {
@@ -159,7 +158,7 @@ describe('Backspace i linjer', () => {
     expect(getState().visualLines).toEqual([]);
     expect(getState().pts.map(p => p.id)).toEqual(['N1']);
     expect(getState().visualPts.map(p => p.id)).toEqual([fri]);
-    expect(D.hasPendingChain()).toBe(false);
+    expect(D.hasPendingLine()).toBe(false);
   });
 
   it('inte när fokus är i ett fält', () => {
@@ -169,16 +168,130 @@ describe('Backspace i linjer', () => {
     document.body.appendChild(inp);
     inp.focus();
     key('Backspace');
-    expect(getState().visualLines).toHaveLength(1);
+    expect(D.getPendingLineVertices()).toHaveLength(2);
     inp.blur();
     key('Backspace');
-    expect(getState().visualLines).toEqual([]);
+    expect(D.getPendingLineVertices()).toHaveLength(1);
   });
 
-  it('utan påbörjad kedja gör Backspace ingenting (och stoppas inte)', () => {
+  it('utan påbörjad linje gör Backspace ingenting (och stoppas inte)', () => {
     setTool('visual-line');
     const e = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
     document.dispatchEvent(e);
     expect(e.defaultPrevented).toBe(false);
+  });
+});
+
+// Polylinjer Etapp 1: hur en linje avslutas, avbryts och sluts.
+describe('polylinje: avsluta, avbryta, sluta', () => {
+  it('dubbelklick avslutar linjen utan ett extra hörn', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    // Ett dubbelklick är två klick på samma ställe följda av dblclick.
+    klick(100, 100); klick(100, 100); handlers.dblclick(at(100, 100));
+    expect(getState().visualLines).toHaveLength(1);
+    const l = getState().visualLines[0];
+    expect(V.visualLineCoords(l)).toEqual([[0, 0], [100, 0], [100, 100]]);
+    expect(l.closed).toBe(false);
+    expect(getState().visualPts).toHaveLength(3);
+    expect(D.hasPendingLine()).toBe(false);
+    expect(getState().tool).toBe('visual-line');      // läget står kvar
+  });
+
+  it('nya hörn får role vertex; linjen markeras', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0); handlers.dblclick(at(100, 0));
+    expect(getState().visualPts.every(p => p.role === 'vertex' && p.H === null)).toBe(true);
+    expect(getState().selVisualId).toBe(getState().visualLines[0].id);
+  });
+
+  it('en färdig linje är ett ångra-steg', async () => {
+    const { undo, getUndoStack } = await import('../src/state/undo.js');
+    const före = getUndoStack().length;
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0); klick(100, 100);
+    expect(getUndoStack().length).toBe(före);          // inget sparat under ritning
+    key('Enter');
+    expect(getUndoStack().length).toBe(före + 1);
+    expect(getState().visualLines).toHaveLength(1);
+    undo();
+    expect(getState().visualLines).toEqual([]);
+    expect(getState().visualPts).toEqual([]);
+  });
+
+  it('Enter avslutar linjen', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    key('Enter');
+    expect(getState().visualLines).toHaveLength(1);
+  });
+
+  it('Esc kastar en påbörjad linje; nästa Esc lämnar linjeläget', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    key('Escape');
+    expect(D.getPendingLineVertices()).toEqual([]);
+    expect(getState().visualLines).toEqual([]);
+    expect(getState().visualPts).toEqual([]);
+    expect(getState().tool).toBe('visual-line');
+    key('Escape');
+    expect(getState().tool).toBe('pan');
+  });
+
+  it('högerklick avslutar linjen; ett ensamt hörn kastas; tomt läge lämnas', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    handlers.contextmenu(at(50, 50));
+    expect(getState().visualLines).toHaveLength(1);
+    klick(0, 50);
+    handlers.contextmenu(at(50, 50));
+    expect(getState().visualLines).toHaveLength(1);
+    expect(D.hasPendingLine()).toBe(false);
+    handlers.contextmenu(at(50, 50));
+    expect(getState().tool).toBe('pan');
+  });
+
+  it('klick på första hörnet sluter linjen (minst tre hörn); den blir ingen yta', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0); klick(100, 100);
+    klick(2, 1);
+    const [l] = getState().visualLines;
+    expect(l.closed).toBe(true);
+    expect(l.vertices).toHaveLength(3);
+    expect(getState().visualAreas).toEqual([]);
+  });
+
+  it('med två hörn sluter ett klick på första hörnet inte linjen', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    klick(1, 1);
+    expect(getState().visualLines).toEqual([]);
+    expect(D.getPendingLineVertices()).toHaveLength(3);
+  });
+
+  it('byte av verktyg avbryter linjen', () => {
+    setTool('visual-line');
+    klick(0, 0); klick(100, 0);
+    setTool('pan');
+    expect(getState().visualLines).toEqual([]);
+    expect(getState().visualPts).toEqual([]);
+  });
+
+  it('en handritad visuell punkt är ett ångra-steg', async () => {
+    const { undo, getUndoStack } = await import('../src/state/undo.js');
+    const före = getUndoStack().length;
+    setTool('visual-point');
+    klick(10, 10); klick(20, 20);
+    expect(getUndoStack().length).toBe(före + 2);
+    expect(getState().visualPts[0].H).toBeNull();
+    undo();
+    expect(getState().visualPts).toHaveLength(1);
+  });
+
+  it('dubbelklick zoomar inte i linjeläget', () => {
+    setTool('visual-line');
+    fakeMap.doubleClickZoom.disable.mockClear();
+    setState({ tool: 'visual-line' });
+    expect(fakeMap.doubleClickZoom.disable).toHaveBeenCalled();
   });
 });

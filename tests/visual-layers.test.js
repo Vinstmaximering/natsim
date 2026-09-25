@@ -207,7 +207,7 @@ describe('radering av lager', () => {
     const obsId = addObstacle({
       type: 'line', source: 'visual', points: visualLineCoords(findVisualLine(lineId)),
     });
-    setState({ visualLines: getState().visualLines.map(l => l.id === lineId ? { ...l, linkedObsId: obsId } : l) });
+    setState({ visualLines: getState().visualLines.map(l => l.id === lineId ? { ...l, linkedObsIds: [obsId] } : l) });
 
     removeVisualLayer(a);
     expect(getState().obstacles.find(o => o.id === obsId)).toBeUndefined();

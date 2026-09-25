@@ -44,7 +44,10 @@ describe('bekräftelsen vid radering av nätpunkt', () => {
     const t = delPtConfirmText('N1');
     expect(t).toContain('Ta bort punkt N1?');
     expect(t).toContain('1 mätning tas bort');
-    expect(t).toMatch(/1 visuell linje tas bort helt – de saknar då en ändpunkt: VL1/);
+    // Polylinjer Etapp 1: linjer tappar hörnet; en linje med färre än två
+    // hörn kvar tas bort helt.
+    expect(t).toContain('1 visuell linje påverkas');
+    expect(t).toContain('1 tas bort helt – färre än två hörn kvar: VL1');
     expect(t).toContain('2 ytor påverkas');
     expect(t).toContain('1 tappar hörnet: Platta');
     expect(t).toContain('1 tas bort helt – färre än tre hörn kvar: Kil');

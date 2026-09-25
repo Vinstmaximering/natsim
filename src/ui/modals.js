@@ -216,9 +216,14 @@ export function delPtConfirmText(id, state = getState()) {
   const namn = xs => xs.map(x => x.name || x.id).join(', ');
   const rader = [];
   if (nMeas) rader.push(`• ${nMeas} ${nMeas === 1 ? 'mätning' : 'mätningar'} tas bort.`);
-  if (v.linesRemoved.length)
-    rader.push(`• ${v.linesRemoved.length} visuell${v.linesRemoved.length === 1 ? '' : 'a'} linje${v.linesRemoved.length === 1 ? '' : 'r'} ` +
-      `tas bort helt – de saknar då en ändpunkt: ${namn(v.linesRemoved)}.`);
+  const nLinjer = v.linesChanged.length + v.linesRemoved.length;
+  if (nLinjer) {
+    rader.push(`• ${nLinjer} visuell${nLinjer === 1 ? '' : 'a'} linje${nLinjer === 1 ? '' : 'r'} påverkas:`);
+    if (v.linesChanged.length)
+      rader.push(`   – ${v.linesChanged.length} tappar hörnet och sluter gapet: ${namn(v.linesChanged)}.`);
+    if (v.linesRemoved.length)
+      rader.push(`   – ${v.linesRemoved.length} tas bort helt – färre än två hörn kvar: ${namn(v.linesRemoved)}.`);
+  }
   const nYtor = v.areasChanged.length + v.areasRemoved.length;
   if (nYtor) {
     rader.push(`• ${nYtor} ${nYtor === 1 ? 'yta påverkas' : 'ytor påverkas'}:`);
@@ -237,9 +242,9 @@ export function delPt(id) {
   const fråga = delPtConfirmText(id);
   if (fråga && !confirm(fråga)) return;
   saveUndo(`Ta bort punkt ${id}`);
-  // Visuella linjer som hängde i punkten kan inte längre ritas och tas bort,
-  // med sina hinder. Ytor tappar hörnet; en yta med färre än tre hörn kvar tas
-  // bort. Se dropNetPointFromVisual() i state/visual.js.
+  // Visuella linjer och ytor tappar hörnet och sluter gapet; en linje med
+  // färre än två hörn kvar, eller en yta med färre än tre, tas bort med sina
+  // hinder. Se dropNetPointFromVisual() i state/visual.js.
   dropNetPointFromVisual(id);
   const { selId } = getState();
   setState({

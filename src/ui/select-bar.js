@@ -20,6 +20,7 @@ import { getTouchSelectOp, setTouchSelectOp } from '../map/select-area.js';
 import {
   VISUAL_DEFAULT_COLOR, getVisualLayers, visualLineCoords, visualAreaCoords,
   removeVisualObjects, moveVisualToLayer, setVisualLabelsHidden, anyVisualLabelShown,
+  linesAfterPointRemoval,
 } from '../state/visual.js';
 
 const esc = v => String(v ?? '')
@@ -131,15 +132,17 @@ function onClick(e) {
       break;
     }
     case 'delete': {
-      const hinder = [...sum.lines, ...sum.areas].filter(o => o.linkedObsId).length;
-      const ptSet = new Set(sum.pts.map(p => p.id));
-      const valda = new Set(sum.ids);
-      const följer = (st.visualLines || []).filter(l => !valda.has(l.id)
-        && [l.from, l.to].some(ep => ep?.ref === 'visual' && ptSet.has(ep.id))).length;
+      const hinder = sum.lines.reduce((n, l) => n + (l.linkedObsIds?.length || 0), 0)
+        + sum.areas.filter(o => o.linkedObsId).length;
+      // Markerade punkter som är hörn i andra linjer: linjen tappar hörnet,
+      // eller tas bort om färre än två hörn återstår.
+      const följd = linesAfterPointRemoval(sum.pts.map(p => `visual:${p.id}`), st, new Set(sum.ids));
+      const följer = följd.linesRemoved.length, ändras = följd.linesChanged.length;
       const rader = [
         `Ta bort ${sum.total} markerade objekt?`,
         `${antalPunkter(sum.pts.length)}, ${antalLinjer(sum.lines.length)} och ${antalYtor(sum.areas.length)}.`,
-        ...(följer ? [`${antalLinjer(följer)} som hänger i de markerade punkterna tas också bort.`] : []),
+        ...(ändras ? [`${antalLinjer(ändras)} tappar ett hörn i de markerade punkterna.`] : []),
+        ...(följer ? [`${antalLinjer(följer)} som hänger i de markerade punkterna tas också bort – färre än två hörn kvar.`] : []),
         ...(hinder ? [`${hinder} ${hinder === 1 ? 'kopplat hinder' : 'kopplade hinder'} försvinner – siktberäkningen ändras.`] : []),
         'Nätpunkter påverkas inte. Går att ångra.',
       ];

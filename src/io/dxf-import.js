@@ -8,6 +8,8 @@
 //
 // Skild från parsern (io/parse-dxf.js, ingen state) och dialogen
 // (ui/dxf-import-modal.js, all DOM). Hela importen är EN ångra-åtgärd.
+// Varje LINE, LWPOLYLINE och POLYLINE blir en polylinje (Polylinjer Etapp 1);
+// en LINE ger en polylinje med två hörn.
 import { getState } from '../state/store.js';
 import { saveUndo } from '../state/undo.js';
 import { addVisualLayer, addVisualPt, addVisualLine, addVisualArea, makeEndpoint } from '../state/visual.js';
@@ -35,7 +37,8 @@ export function dxfToEN({ x, y, z }, { factor, axisOrder, useZ }) {
   const f = factor;
   const E = (axisOrder === 'xn' ? y : x) * f;
   const N = (axisOrder === 'xn' ? x : y) * f;
-  const H = useZ ? (z ?? 0) * f : 0;
+  // Utan Z har punkten ingen höjd (null), inte höjden noll.
+  const H = useZ ? (z ?? 0) * f : null;
   return { E, N, H };
 }
 
@@ -199,10 +202,9 @@ export function applyDxfImport(parsed, opts) {
     return id;
   };
 
-  const segment = (lid, a, b) => {
-    if (a === b) return;
-    addVisualLine({ from: makeEndpoint('visual', a), to: makeEndpoint('visual', b), layerId: lid });
-    result.linesCreated++;
+  const linje = (lid, ids, closed) => {
+    if (addVisualLine({ vertices: ids.map(id => makeEndpoint('visual', id)), closed, layerId: lid }))
+      result.linesCreated++;
   };
 
   for (const e of ritbara) {
@@ -217,25 +219,25 @@ export function applyDxfImport(parsed, opts) {
     }
 
     if (e.type === 'LINE') {
-      segment(lid, hörn(lid, e.a, 'vertex'), hörn(lid, e.b, 'vertex'));
+      linje(lid, [hörn(lid, e.a, 'vertex'), hörn(lid, e.b, 'vertex')], false);
       continue;
     }
 
-    // LWPOLYLINE och POLYLINE: hörn + segment, sluten linje sluts med
-    // segmentet sista → första. Bågsegment (bulge) ritas som raka linjer;
-    // parsern har redan varnat för dem.
+    // LWPOLYLINE och POLYLINE: en polylinje, sluten om grupp 70 bit 1 är satt
+    // eller första hörnet upprepas sist. Bågsegment (bulge) ritas som raka
+    // linjer; parsern har redan varnat för dem.
     const vs = e.vertices || [];
     if (vs.length < 2) continue;
     const ids = vs.map(v => hörn(lid, v, 'vertex'));
     // Sluten polylinje (grupp 70 bit 1, eller första hörnet upprepat sist)
     // som yta, om det valts.
-    const ring = opts.closedAs === 'areas' ? closedRing(ids, e.closed) : null;
-    if (ring && addVisualArea({ vertices: ring.map(id => makeEndpoint('visual', id)), layerId: lid })) {
+    const ring = closedRing(ids, e.closed);
+    if (ring && opts.closedAs === 'areas'
+        && addVisualArea({ vertices: ring.map(id => makeEndpoint('visual', id)), layerId: lid })) {
       result.areasCreated++;
       continue;
     }
-    for (let i = 0; i < ids.length - 1; i++) segment(lid, ids[i], ids[i + 1]);
-    if (e.closed && ids.length > 2) segment(lid, ids[ids.length - 1], ids[0]);
+    linje(lid, ring || ids, !!ring);
   }
 
   if (Number.isFinite(minE)) result.bounds = { minE, maxE, minN, maxN };

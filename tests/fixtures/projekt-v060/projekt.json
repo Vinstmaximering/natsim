@@ -1,0 +1,1965 @@
+{
+ "ver": 3,
+ "pts": [
+  {
+   "id": "FP1",
+   "type": "known",
+   "E": 0,
+   "N": 0,
+   "H": 10.5
+  },
+  {
+   "id": "FP2",
+   "type": "known",
+   "E": 200,
+   "N": 0,
+   "H": 0
+  },
+  {
+   "id": "FP3",
+   "type": "known",
+   "E": 0,
+   "N": 200,
+   "H": 11
+  },
+  {
+   "id": "S1",
+   "type": "station",
+   "E": 100,
+   "N": 100,
+   "H": 12
+  },
+  {
+   "id": "P1",
+   "type": "new",
+   "E": 150,
+   "N": 60,
+   "H": 0
+  }
+ ],
+ "meas": [
+  {
+   "id": "M1",
+   "from": "S1",
+   "to": "FP1",
+   "obsType": "both",
+   "sigDist_mm": 1,
+   "sigDist_ppm": 1,
+   "sigHz_mgon": 0.3,
+   "numSatser": 3
+  },
+  {
+   "id": "M2",
+   "from": "S1",
+   "to": "FP2",
+   "obsType": "both",
+   "sigDist_mm": 1,
+   "sigDist_ppm": 1,
+   "sigHz_mgon": 0.3,
+   "numSatser": 3
+  },
+  {
+   "id": "M3",
+   "from": "S1",
+   "to": "FP3",
+   "obsType": "both",
+   "sigDist_mm": 1,
+   "sigDist_ppm": 1,
+   "sigHz_mgon": 0.3,
+   "numSatser": 3
+  },
+  {
+   "id": "M4",
+   "from": "S1",
+   "to": "P1",
+   "obsType": "both",
+   "sigDist_mm": 1,
+   "sigDist_ppm": 1,
+   "sigHz_mgon": 0.3,
+   "numSatser": 3
+  }
+ ],
+ "obstacles": [
+  {
+   "type": "line",
+   "label": "Vägg (VL16)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     125,
+     60
+    ],
+    [
+     125,
+     100
+    ]
+   ],
+   "id": "obs_1"
+  },
+  {
+   "type": "polygon",
+   "label": "Yta (Hus)",
+   "color": "#cfd8dc",
+   "source": "visual",
+   "points": [
+    [
+     160,
+     160
+    ],
+    [
+     180,
+     160
+    ],
+    [
+     180,
+     180
+    ],
+    [
+     160,
+     180
+    ]
+   ],
+   "id": "obs_2"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL28)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247391.315114616,
+     6165573.71859769
+    ],
+    [
+     247388.207682382,
+     6165573.10064875
+    ]
+   ],
+   "id": "obs_3"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL29)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247388.207682382,
+     6165573.10064875
+    ],
+    [
+     247384.347293601,
+     6165572.33493287
+    ]
+   ],
+   "id": "obs_4"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL30)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247391.217748265,
+     6165574.90670958
+    ],
+    [
+     247391.462314619,
+     6165573.7449252
+    ]
+   ],
+   "id": "obs_5"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL31)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247391.462314619,
+     6165573.7449252
+    ],
+    [
+     247391.315114616,
+     6165573.71859769
+    ]
+   ],
+   "id": "obs_6"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL32)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247383.152213234,
+     6165573.65161202
+    ],
+    [
+     247383.462611552,
+     6165572.0878394
+    ]
+   ],
+   "id": "obs_7"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL33)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247384.656124048,
+     6165572.31319645
+    ],
+    [
+     247383.482894709,
+     6165572.08601275
+    ]
+   ],
+   "id": "obs_8"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL34)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247384.656124048,
+     6165572.31319645
+    ],
+    [
+     247386.307569602,
+     6165572.63135448
+    ]
+   ],
+   "id": "obs_9"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL35)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247386.307569602,
+     6165572.63135448
+    ],
+    [
+     247391.366185732,
+     6165573.634414
+    ]
+   ],
+   "id": "obs_10"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL36)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247391.366185732,
+     6165573.634414
+    ],
+    [
+     247391.569783417,
+     6165573.67626795
+    ]
+   ],
+   "id": "obs_11"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL37)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247391.363550435,
+     6165574.67289318
+    ],
+    [
+     247391.569783417,
+     6165573.67626795
+    ]
+   ],
+   "id": "obs_12"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL38)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247396.476079032,
+     6165506.95209969
+    ],
+    [
+     247396.145557728,
+     6165508.48906751
+    ]
+   ],
+   "id": "obs_13"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL39)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247396.166584048,
+     6165508.52464118
+    ],
+    [
+     247404.246032547,
+     6165510.14118357
+    ]
+   ],
+   "id": "obs_14"
+  },
+  {
+   "type": "line",
+   "label": "Vägg (VL40)",
+   "color": "#8aa8c0",
+   "source": "visual",
+   "points": [
+    [
+     247404.270505232,
+     6165510.1265301
+    ],
+    [
+     247404.583881132,
+     6165508.57991457
+    ]
+   ],
+   "id": "obs_15"
+  }
+ ],
+ "visualPts": [
+  {
+   "id": "V1",
+   "layerId": "VLY1",
+   "E": 10,
+   "N": 10,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V2",
+   "layerId": "VLY1",
+   "E": 50,
+   "N": 10,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V3",
+   "layerId": "VLY1",
+   "E": 50,
+   "N": 50,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V4",
+   "layerId": "VLY1",
+   "E": 90,
+   "N": 50,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V5",
+   "layerId": "VLY1",
+   "E": 300,
+   "N": 300,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V6",
+   "layerId": "VLY1",
+   "E": 400,
+   "N": 300,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V7",
+   "layerId": "VLY1",
+   "E": 400,
+   "N": 400,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V8",
+   "layerId": "VLY1",
+   "E": 300,
+   "N": 400,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V9",
+   "layerId": "VLY1",
+   "E": 10,
+   "N": 150,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V10",
+   "layerId": "VLY1",
+   "E": 60,
+   "N": 150,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V11",
+   "layerId": "VLY1",
+   "E": 110,
+   "N": 150,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V12",
+   "layerId": "VLY1",
+   "E": 60,
+   "N": 190,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V13",
+   "layerId": "VLY1",
+   "E": 250,
+   "N": 5,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V14",
+   "layerId": "VLY1",
+   "E": 200,
+   "N": -50,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V15",
+   "layerId": "VLY1",
+   "E": 500,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V16",
+   "layerId": "VLY1",
+   "E": 550,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V17",
+   "layerId": "VLY1",
+   "E": 600,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V18",
+   "layerId": "VLY1",
+   "E": 650,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V19",
+   "layerId": "VLY1",
+   "E": 125,
+   "N": 60,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V20",
+   "layerId": "VLY1",
+   "E": 125,
+   "N": 100,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V21",
+   "layerId": "VLY1",
+   "E": 125,
+   "N": 130,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V22",
+   "layerId": "VLY1",
+   "E": 700,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V23",
+   "layerId": "VLY1",
+   "E": 750,
+   "N": 0,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V24",
+   "layerId": "VLY1",
+   "E": 20,
+   "N": 80,
+   "H": 0,
+   "color": null
+  },
+  {
+   "id": "V25",
+   "layerId": "VLY1",
+   "E": 30,
+   "N": 80,
+   "H": 7.25,
+   "color": null
+  },
+  {
+   "id": "V26",
+   "layerId": "VLY1",
+   "E": 160,
+   "N": 160,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V27",
+   "layerId": "VLY1",
+   "E": 180,
+   "N": 160,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V28",
+   "layerId": "VLY1",
+   "E": 180,
+   "N": 180,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V29",
+   "layerId": "VLY1",
+   "E": 160,
+   "N": 180,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V30",
+   "layerId": "VLY2",
+   "E": 247396.460425554,
+   "N": 6165503.83542382,
+   "H": 341.922536874338,
+   "color": null,
+   "name": "201",
+   "attrs": {
+    "UB": "20200101.100600",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2",
+    "SH": "0.100",
+    "sourceFile": "exempel_2.plm",
+    "sourceStation": "exempel_2",
+    "sourceRecord": "201"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V31",
+   "layerId": "VLY2",
+   "E": 247404.160819618,
+   "N": 6165510.01041439,
+   "H": 341.940620517011,
+   "color": null,
+   "name": "202",
+   "attrs": {
+    "UB": "20200101.100500",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2",
+    "SH": "0.100",
+    "sourceFile": "exempel_1.plm",
+    "sourceStation": "exempel_1",
+    "sourceRecord": "202"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V32",
+   "layerId": "VLY2",
+   "E": 247405.870567345,
+   "N": 6165505.71168198,
+   "H": 341.926027669966,
+   "color": null,
+   "name": "203",
+   "attrs": {
+    "UB": "20200101.100700",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2",
+    "SH": "0.100",
+    "sourceFile": "exempel_2.plm",
+    "sourceStation": "exempel_2",
+    "sourceRecord": "203"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V33",
+   "layerId": "VLY2",
+   "E": 247397.066745425,
+   "N": 6165509.80593066,
+   "H": 341.932715539319,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V34",
+   "layerId": "VLY2",
+   "E": 247404.567846071,
+   "N": 6165511.30690778,
+   "H": 341.932143867232,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V35",
+   "layerId": "VLY2",
+   "E": 247405.243135229,
+   "N": 6165509.70461555,
+   "H": 341.938069276192,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V36",
+   "layerId": "VLY2",
+   "E": 247406.402246562,
+   "N": 6165503.95475182,
+   "H": 341.922208875304,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V37",
+   "layerId": "VLY2",
+   "E": 247406.208438608,
+   "N": 6165503.70717946,
+   "H": 341.923351153284,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V38",
+   "layerId": "VLY2",
+   "E": 247396.87752461,
+   "N": 6165501.84876306,
+   "H": 341.928143212403,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V39",
+   "layerId": "VLY2",
+   "E": 247395.73807305,
+   "N": 6165506.18570742,
+   "H": 341.93111800109,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V40",
+   "layerId": "VLY2",
+   "E": 247395.174891203,
+   "N": 6165508.98847285,
+   "H": 341.936532899381,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V41",
+   "layerId": "VLY3",
+   "E": 247391.00528623,
+   "N": 6165575.70688826,
+   "H": 341.936695977131,
+   "color": null,
+   "name": "101",
+   "attrs": {
+    "UB": "20200101.100100",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V42",
+   "layerId": "VLY3",
+   "E": 247387.348083132,
+   "N": 6165577.96083756,
+   "H": 341.93223828579,
+   "color": null,
+   "name": "102",
+   "attrs": {
+    "UB": "20200101.100300",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V43",
+   "layerId": "VLY3",
+   "E": 247386.880468957,
+   "N": 6165577.22426117,
+   "H": 341.939021752593,
+   "color": null,
+   "name": "103",
+   "attrs": {
+    "UB": "20200101.100400",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V44",
+   "layerId": "VLY3",
+   "E": 247386.186745223,
+   "N": 6165577.72986204,
+   "H": 341.937290794521,
+   "color": null,
+   "name": "101",
+   "attrs": {
+    "UB": "20200101.100200",
+    "reference_model": "exempel.geo",
+    "GP_LM": "7",
+    "GP_PR": "2"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V45",
+   "layerId": "VLY3",
+   "E": 247383.297651354,
+   "N": 6165573.65940597,
+   "H": 341.929549596031,
+   "color": null,
+   "name": "104",
+   "attrs": {
+    "UB": "20200101.100000",
+    "GP_LM": "7",
+    "GP_PR": "2",
+    "reference_model": "exempel.geo"
+   },
+   "role": "point"
+  },
+  {
+   "id": "V46",
+   "layerId": "VLY3",
+   "E": 247382.84418388,
+   "N": 6165570.8162459,
+   "H": 341.94,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V47",
+   "layerId": "VLY3",
+   "E": 247381.31989944,
+   "N": 6165578.4665756,
+   "H": 341.937,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V48",
+   "layerId": "VLY3",
+   "E": 247391.14598724,
+   "N": 6165580.4241292,
+   "H": 341.932,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V49",
+   "layerId": "VLY3",
+   "E": 247392.67216182,
+   "N": 6165572.7755063,
+   "H": 341.939,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V50",
+   "layerId": "VLY4",
+   "E": 247391.315114616,
+   "N": 6165573.71859769,
+   "H": 345.223626094359,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V51",
+   "layerId": "VLY4",
+   "E": 247388.207682382,
+   "N": 6165573.10064875,
+   "H": 345.219986114245,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V52",
+   "layerId": "VLY4",
+   "E": 247384.347293601,
+   "N": 6165572.33493287,
+   "H": 345.22592011854,
+   "color": null,
+   "name": "03",
+   "role": "vertex"
+  },
+  {
+   "id": "V53",
+   "layerId": "VLY4",
+   "E": 247391.217748265,
+   "N": 6165574.90670958,
+   "H": 345.221105949464,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V54",
+   "layerId": "VLY4",
+   "E": 247391.462314619,
+   "N": 6165573.7449252,
+   "H": 345.212985301173,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V55",
+   "layerId": "VLY4",
+   "E": 247383.152213234,
+   "N": 6165573.65161202,
+   "H": 345.466542545294,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V56",
+   "layerId": "VLY4",
+   "E": 247383.462611552,
+   "N": 6165572.0878394,
+   "H": 345.388255463796,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V57",
+   "layerId": "VLY4",
+   "E": 247384.656124048,
+   "N": 6165572.31319645,
+   "H": 345.404490250207,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V58",
+   "layerId": "VLY4",
+   "E": 247383.482894709,
+   "N": 6165572.08601275,
+   "H": 345.405288267915,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V59",
+   "layerId": "VLY4",
+   "E": 247386.307569602,
+   "N": 6165572.63135448,
+   "H": 345.406250641232,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V60",
+   "layerId": "VLY4",
+   "E": 247391.366185732,
+   "N": 6165573.634414,
+   "H": 345.410150720088,
+   "color": null,
+   "name": "03",
+   "role": "vertex"
+  },
+  {
+   "id": "V61",
+   "layerId": "VLY4",
+   "E": 247391.569783417,
+   "N": 6165573.67626795,
+   "H": 345.396609274339,
+   "color": null,
+   "name": "04",
+   "role": "vertex"
+  },
+  {
+   "id": "V62",
+   "layerId": "VLY4",
+   "E": 247391.363550435,
+   "N": 6165574.67289318,
+   "H": 345.455041937144,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V63",
+   "layerId": "VLY4",
+   "E": 247396.476079032,
+   "N": 6165506.95209969,
+   "H": 345.485842008739,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V64",
+   "layerId": "VLY4",
+   "E": 247396.145557728,
+   "N": 6165508.48906751,
+   "H": 345.386547996771,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V65",
+   "layerId": "VLY4",
+   "E": 247396.166584048,
+   "N": 6165508.52464118,
+   "H": 345.384428685802,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V66",
+   "layerId": "VLY4",
+   "E": 247404.246032547,
+   "N": 6165510.14118357,
+   "H": 345.399948816206,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V67",
+   "layerId": "VLY4",
+   "E": 247404.270505232,
+   "N": 6165510.1265301,
+   "H": 345.404932782245,
+   "color": null,
+   "name": "01",
+   "role": "vertex"
+  },
+  {
+   "id": "V68",
+   "layerId": "VLY4",
+   "E": 247404.583881132,
+   "N": 6165508.57991457,
+   "H": 345.471311211469,
+   "color": null,
+   "name": "02",
+   "role": "vertex"
+  },
+  {
+   "id": "V69",
+   "layerId": "VLY5",
+   "E": 1000,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V70",
+   "layerId": "VLY5",
+   "E": 1010,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V71",
+   "layerId": "VLY5",
+   "E": 1010,
+   "N": 10,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V72",
+   "layerId": "VLY5",
+   "E": 1020,
+   "N": 20,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V73",
+   "layerId": "VLY5",
+   "E": 1030,
+   "N": 20,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V74",
+   "layerId": "VLY6",
+   "E": 1100,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V75",
+   "layerId": "VLY6",
+   "E": 1110,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V76",
+   "layerId": "VLY6",
+   "E": 1110,
+   "N": 10,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V77",
+   "layerId": "VLY6",
+   "E": 1100,
+   "N": 10,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V78",
+   "layerId": "VLY6",
+   "E": 1200,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V79",
+   "layerId": "VLY6",
+   "E": 1210,
+   "N": 0,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  },
+  {
+   "id": "V80",
+   "layerId": "VLY6",
+   "E": 1210,
+   "N": 10,
+   "H": 0,
+   "color": null,
+   "role": "vertex"
+  }
+ ],
+ "visualLines": [
+  {
+   "id": "VL1",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V1"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V2"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL2",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V2"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V3"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL3",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V3"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V4"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL4",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V5"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V6"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL5",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V6"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V7"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL6",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V7"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V8"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL7",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V8"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V5"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL8",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V9"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V10"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL9",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V10"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V11"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL10",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V10"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V12"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL11",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V13"
+   },
+   "to": {
+    "ref": "net",
+    "id": "FP2"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL12",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "net",
+    "id": "FP2"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V14"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL13",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V15"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V16"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL14",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V16"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V17"
+   },
+   "color": "#f06292",
+   "linkedObsId": null
+  },
+  {
+   "id": "VL15",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V17"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V18"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL16",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V19"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V20"
+   },
+   "color": null,
+   "linkedObsId": "obs_1"
+  },
+  {
+   "id": "VL17",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V20"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V21"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL18",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V22"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V23"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL19",
+   "layerId": "VLY1",
+   "from": {
+    "ref": "visual",
+    "id": "V23"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V22"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL20",
+   "layerId": "VLY2",
+   "from": {
+    "ref": "visual",
+    "id": "V33"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V34"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL21",
+   "layerId": "VLY2",
+   "from": {
+    "ref": "visual",
+    "id": "V35"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V36"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL22",
+   "layerId": "VLY2",
+   "from": {
+    "ref": "visual",
+    "id": "V37"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V38"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL23",
+   "layerId": "VLY2",
+   "from": {
+    "ref": "visual",
+    "id": "V39"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V40"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL24",
+   "layerId": "VLY3",
+   "from": {
+    "ref": "visual",
+    "id": "V46"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V47"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL25",
+   "layerId": "VLY3",
+   "from": {
+    "ref": "visual",
+    "id": "V47"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V48"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL26",
+   "layerId": "VLY3",
+   "from": {
+    "ref": "visual",
+    "id": "V48"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V49"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL27",
+   "layerId": "VLY3",
+   "from": {
+    "ref": "visual",
+    "id": "V49"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V46"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL28",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V50"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V51"
+   },
+   "color": null,
+   "linkedObsId": "obs_3"
+  },
+  {
+   "id": "VL29",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V51"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V52"
+   },
+   "color": null,
+   "linkedObsId": "obs_4"
+  },
+  {
+   "id": "VL30",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V53"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V54"
+   },
+   "color": null,
+   "linkedObsId": "obs_5"
+  },
+  {
+   "id": "VL31",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V54"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V50"
+   },
+   "color": null,
+   "linkedObsId": "obs_6"
+  },
+  {
+   "id": "VL32",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V55"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V56"
+   },
+   "color": null,
+   "linkedObsId": "obs_7"
+  },
+  {
+   "id": "VL33",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V57"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V58"
+   },
+   "color": null,
+   "linkedObsId": "obs_8"
+  },
+  {
+   "id": "VL34",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V57"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V59"
+   },
+   "color": null,
+   "linkedObsId": "obs_9"
+  },
+  {
+   "id": "VL35",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V59"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V60"
+   },
+   "color": null,
+   "linkedObsId": "obs_10"
+  },
+  {
+   "id": "VL36",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V60"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V61"
+   },
+   "color": null,
+   "linkedObsId": "obs_11"
+  },
+  {
+   "id": "VL37",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V62"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V61"
+   },
+   "color": null,
+   "linkedObsId": "obs_12"
+  },
+  {
+   "id": "VL38",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V63"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V64"
+   },
+   "color": null,
+   "linkedObsId": "obs_13"
+  },
+  {
+   "id": "VL39",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V65"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V66"
+   },
+   "color": null,
+   "linkedObsId": "obs_14"
+  },
+  {
+   "id": "VL40",
+   "layerId": "VLY4",
+   "from": {
+    "ref": "visual",
+    "id": "V67"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V68"
+   },
+   "color": null,
+   "linkedObsId": "obs_15"
+  },
+  {
+   "id": "VL41",
+   "layerId": "VLY5",
+   "from": {
+    "ref": "visual",
+    "id": "V69"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V70"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL42",
+   "layerId": "VLY5",
+   "from": {
+    "ref": "visual",
+    "id": "V70"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V71"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL43",
+   "layerId": "VLY5",
+   "from": {
+    "ref": "visual",
+    "id": "V72"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V73"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL44",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V74"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V75"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL45",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V75"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V76"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL46",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V76"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V77"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL47",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V77"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V74"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL48",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V78"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V79"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL49",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V79"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V80"
+   },
+   "color": null,
+   "linkedObsId": null
+  }
+ ],
+ "visualAreas": [
+  {
+   "id": "VA1",
+   "layerId": "VLY1",
+   "vertices": [
+    {
+     "ref": "visual",
+     "id": "V26"
+    },
+    {
+     "ref": "visual",
+     "id": "V27"
+    },
+    {
+     "ref": "visual",
+     "id": "V28"
+    },
+    {
+     "ref": "visual",
+     "id": "V29"
+    }
+   ],
+   "color": null,
+   "fillOpacity": 0.25,
+   "pattern": "none",
+   "blocksSight": true,
+   "linkedObsId": "obs_2",
+   "name": "Hus"
+  }
+ ],
+ "visualLayers": [
+  {
+   "id": "VLY1",
+   "name": "Handritat",
+   "color": null,
+   "visible": true,
+   "source": {
+    "kind": "manual",
+    "filename": null,
+    "crs": null
+   },
+   "labels": true,
+   "vertexLabels": false
+  },
+  {
+   "id": "VLY2",
+   "name": "exempel_punkter_oppna_linjer",
+   "color": null,
+   "visible": true,
+   "source": {
+    "kind": "geo",
+    "filename": "exempel_punkter_oppna_linjer.geo",
+    "crs": "sweref991545"
+   },
+   "labels": true,
+   "vertexLabels": false
+  },
+  {
+   "id": "VLY3",
+   "name": "exempel_punkter_sluten_linje",
+   "color": null,
+   "visible": true,
+   "source": {
+    "kind": "geo",
+    "filename": "exempel_punkter_sluten_linje.geo",
+    "crs": "sweref991545"
+   },
+   "labels": true,
+   "vertexLabels": false
+  },
+  {
+   "id": "VLY4",
+   "name": "exempel_tom_punktlista",
+   "color": null,
+   "visible": true,
+   "source": {
+    "kind": "geo",
+    "filename": "exempel_tom_punktlista.geo",
+    "crs": "sweref991545"
+   },
+   "labels": true,
+   "vertexLabels": false
+  },
+  {
+   "id": "VLY5",
+   "name": "Kant",
+   "color": "#ffd54f",
+   "visible": true,
+   "source": {
+    "kind": "dxf",
+    "filename": "Ritning.dxf",
+    "crs": "sweref991545"
+   },
+   "labels": true,
+   "vertexLabels": false
+  },
+  {
+   "id": "VLY6",
+   "name": "Hus",
+   "color": "#cfd8dc",
+   "visible": true,
+   "source": {
+    "kind": "dxf",
+    "filename": "Ritning.dxf",
+    "crs": "sweref991545"
+   },
+   "labels": true,
+   "vertexLabels": false
+  }
+ ],
+ "activeVisualLayerId": "VLY1",
+ "activeCRS": "sweref991545",
+ "activeLayerKey": "osm",
+ "centerErr": 1,
+ "maxSuggestDist": null,
+ "defaultInstr": "ts16_1",
+ "optimizerConfig": {
+  "weightSigma": 0.5,
+  "weightR": 0.5,
+  "sigma_max_mm": null
+ },
+ "symSize": 10,
+ "ellScale": 50,
+ "ellipsMode": "1sig",
+ "nMid": 5,
+ "nVid": 81,
+ "nVlid": 50,
+ "nVaid": 2,
+ "nVlyid": 7,
+ "mapCenter": {
+  "lat": 59.33,
+  "lng": 18.07
+ },
+ "mapZoom": 14
+}

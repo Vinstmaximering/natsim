@@ -599,7 +599,11 @@ describe('import av slutna linjer som ytor', () => {
     const r = applyGeoImport(geo(), defaultGeoImportOptions(geo(), 'a.geo', 'sweref99tm'));
     expect(r.areasCreated).toBe(0);
     expect(getState().visualAreas).toEqual([]);
-    expect(r.linesCreated).toBe(4 + 3 + 1);
+    // Polylinjer Etapp 1: tre linjer i filen ger tre polylinjer, varav två
+    // slutna – med 4 + 3 + 1 segment som förut.
+    expect(r.linesCreated).toBe(3);
+    expect(getState().visualLines.map(l => l.closed)).toEqual([true, true, false]);
+    expect(getState().visualLines.map(l => V.visualLineSegments(l).length)).toEqual([4, 3, 1]);
   });
 
   it('.geo: ytor – flagga 1 och upprepat första hörn blir ytor, öppna linjer förblir linjer', () => {
@@ -637,7 +641,9 @@ describe('import av slutna linjer som ytor', () => {
   it('DXF: förval linjer – som förut', () => {
     const r = applyDxfImport(dxf(), defaultDxfImportOptions(dxf(), 'a.dxf'));
     expect(r.areasCreated).toBe(0);
-    expect(r.linesCreated).toBe(4 + 1);
+    // En sluten polylinje med fyra segment och en LINE.
+    expect(r.linesCreated).toBe(2);
+    expect(getState().visualLines.map(l => V.visualLineSegments(l).length)).toEqual([4, 1]);
   });
 
   it('DXF: slutna polylinjer som ytor', () => {

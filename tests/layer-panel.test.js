@@ -427,7 +427,7 @@ describe('radera lager', () => {
     const obsId = addObstacle({
       type: 'line', source: 'visual', points: visualLineCoords(findVisualLine(lineId)),
     });
-    setState({ visualLines: getState().visualLines.map(l => l.id === lineId ? { ...l, linkedObsId: obsId } : l) });
+    setState({ visualLines: getState().visualLines.map(l => l.id === lineId ? { ...l, linkedObsIds: [obsId] } : l) });
     renderLayerPanel();
     return { a, obsId };
   }

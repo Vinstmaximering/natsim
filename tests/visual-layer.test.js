@@ -40,7 +40,8 @@ describe('datamodell', () => {
     expect(a).toBe('V1');
     expect(b).toBe('V2');
     expect(findVisualPt('V1')).toMatchObject({ E: 10, N: 20, H: 5, color: null });
-    expect(findVisualPt('V2').H).toBe(0);
+    // Polylinjer Etapp 1: saknad höjd är null, inte 0.
+    expect(findVisualPt('V2').H).toBeNull();
   });
 
   it('addVisualLine ger löpande id och saknar koppling från början', () => {
@@ -48,7 +49,7 @@ describe('datamodell', () => {
     const b = addVisualPt({ E: 10, N: 0 });
     const id = addVisualLine({ from: makeEndpoint('visual', a), to: makeEndpoint('visual', b) });
     expect(id).toBe('VL1');
-    expect(findVisualLine(id).linkedObsId).toBeNull();
+    expect(findVisualLine(id).linkedObsIds).toEqual([]);
   });
 
   it('färger normaliseras och kan nollställas', () => {
@@ -207,7 +208,7 @@ describe('koppling till hinder-systemet', () => {
       type: 'line', label: 'Vägg (VL1)', color: '#8aa8c0', source: 'visual',
       points: visualLineCoords(findVisualLine(lineId)),
     });
-    updateVisualLine(lineId, { linkedObsId: obsId });
+    updateVisualLine(lineId, { linkedObsIds: [obsId] });
     return { a, b, lineId, obsId };
   }
 
@@ -231,7 +232,7 @@ describe('koppling till hinder-systemet', () => {
     const obsId = addObstacle({
       type: 'line', points: visualLineCoords(findVisualLine(lineId)), source: 'visual',
     });
-    updateVisualLine(lineId, { linkedObsId: obsId });
+    updateVisualLine(lineId, { linkedObsIds: [obsId] });
 
     setState({ pts: [{ id: 'S1', type: 'station', E: 7, N: 9 }] });
     syncLinkedObstacles();
@@ -251,7 +252,7 @@ describe('koppling till hinder-systemet', () => {
     const obsId = addObstacle({
       type: 'line', source: 'visual', points: visualLineCoords(findVisualLine(lineId)),
     });
-    updateVisualLine(lineId, { linkedObsId: obsId });
+    updateVisualLine(lineId, { linkedObsIds: [obsId] });
 
     const meas = [{ id: 'M1', from: 'S1', to: 'P1' }];
     expect(findBlockedMeasurements(meas, pts, getState().obstacles)).toHaveLength(1);
@@ -279,7 +280,7 @@ describe('koppling till hinder-systemet', () => {
     const { lineId, obsId } = linkedLine();
     setState({ obstacles: getState().obstacles.filter(o => o.id !== obsId) });
     syncLinkedObstacles();
-    expect(findVisualLine(lineId).linkedObsId).toBeNull();
+    expect(findVisualLine(lineId).linkedObsIds).toEqual([]);
   });
 
   it('oupplöslig källa tar bort spökväggen och nollställer kopplingen', () => {
@@ -289,7 +290,7 @@ describe('koppling till hinder-systemet', () => {
     setState({ visualPts: getState().visualPts.filter(p => p.id !== a) });
     syncLinkedObstacles();
     expect(getState().obstacles.find(o => o.id === obsId)).toBeUndefined();
-    expect(findVisualLine(lineId).linkedObsId).toBeNull();
+    expect(findVisualLine(lineId).linkedObsIds).toEqual([]);
   });
 
   it('okopplade hinder rörs inte av synkningen', () => {
@@ -315,10 +316,10 @@ describe('nätpunkt som ändpunkt', () => {
     const remap = ep => (ep?.ref === 'net' && ep.id === 'S1') ? { ...ep, id: 'NY' } : ep;
     setState({
       pts: [{ id: 'NY', type: 'station', E: 0, N: 0 }],
-      visualLines: getState().visualLines.map(l => ({ ...l, from: remap(l.from), to: remap(l.to) })),
+      visualLines: getState().visualLines.map(l => ({ ...l, vertices: l.vertices.map(remap) })),
     });
 
-    expect(findVisualLine(lineId).from.id).toBe('NY');
+    expect(findVisualLine(lineId).vertices[0].id).toBe('NY');
     expect(visualLineCoords(findVisualLine(lineId))).toEqual([[0, 0], [10, 0]]);
   });
 
@@ -351,14 +352,14 @@ describe('serialisering', () => {
     const obsId = addObstacle({
       type: 'line', source: 'visual', points: visualLineCoords(findVisualLine(lineId)),
     });
-    updateVisualLine(lineId, { linkedObsId: obsId });
+    updateVisualLine(lineId, { linkedObsIds: [obsId] });
 
     const snap = JSON.parse(JSON.stringify(_buildSnapshot()));
     reset();
     _applySnapshot(snap);
 
     expect(getState().visualPts).toHaveLength(2);
-    expect(findVisualLine(lineId).linkedObsId).toBe(obsId);
+    expect(findVisualLine(lineId).linkedObsIds).toEqual([obsId]);
     expect(getState().obstacles.find(o => o.id === obsId).points).toEqual([[0, 0], [10, 0]]);
   });
 
@@ -417,8 +418,7 @@ describe('_sanitizeVisual', () => {
     const { visualLines } = _sanitizeVisual([], [
       { id: 'VL1', from: { ref: 'hittepå', id: 'V1' }, to: { ref: 'net', id: 'S1' } },
     ]);
-    expect(visualLines[0].from.ref).toBe('visual');
-    expect(visualLines[0].to.ref).toBe('net');
+    expect(visualLines[0].vertices.map(v => v.ref)).toEqual(['visual', 'net']);
   });
 
   it('tål undefined', () => {

@@ -287,8 +287,9 @@ export function openLayerDelete(layerId) {
   // Hinder som är kopplade till lagrets linjer försvinner med dem – säg det
   // rakt ut, eftersom hindren påverkar siktberäkningen.
   const st = getState();
-  const nObs = [...(st.visualLines || []), ...(st.visualAreas || [])]
-    .filter(x => x.layerId === layerId && x.linkedObsId).length;
+  const nObs = (st.visualLines || []).filter(l => l.layerId === layerId)
+      .reduce((n, l) => n + (l.linkedObsIds?.length || 0), 0)
+    + (st.visualAreas || []).filter(a => a.layerId === layerId && a.linkedObsId).length;
 
   mi().innerHTML = `
     <div style="font-size:14px;color:var(--color-danger);font-weight:bold;margin-bottom:8px;">

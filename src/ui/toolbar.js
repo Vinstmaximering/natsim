@@ -4,7 +4,8 @@ import { PT, INSTRUMENTS, ptLabel } from '../core/constants.js';
 import { draw, resize, toggleMapLayer } from '../map/leaflet-setup.js';
 import { isDrawing, cancelDraw, startPolygonDraw, startLineDraw } from '../map/obstacle-drawing.js';
 import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLineDraw,
-         startVisualAreaDraw, hasUndoableVertex, undoLastDrawVertex } from '../map/visual-drawing.js';
+         startVisualAreaDraw, hasUndoableVertex, undoLastDrawVertex,
+         canFinishLine, completeVisualLine } from '../map/visual-drawing.js';
 import { isSnapEnabled } from '../map/snap.js';
 
 export { toggleMapLayer };
@@ -64,7 +65,9 @@ export function buildTools() {
     // Pekskärmens Backspace: ta bort senaste hörnet i pågående linje eller
     // yta. Visas bara när det finns ett hörn att ta bort – se
     // syncMobileDrawButtons(), som körs vid varje omritning av kartan.
-    `<button class="mtbb" id="mtb-undo-vertex" style="--c:#ffb74d" title="Ta bort senaste hörnet" aria-label="Ta bort senaste hörnet" onclick="window._undoLastVertex()" hidden>↶ Hörn</button>`;
+    `<button class="mtbb" id="mtb-undo-vertex" style="--c:#ffb74d" title="Ta bort senaste hörnet" aria-label="Ta bort senaste hörnet" onclick="window._undoLastVertex()" hidden>↶ Hörn</button>` +
+    // Pekskärmens dubbelklick: avslutar linjen. Visas från andra hörnet.
+    `<button class="mtbb" id="mtb-finish-line" style="--c:#00ff88" title="Avsluta linjen" aria-label="Avsluta linjen" onclick="window._finishLine()" hidden>✓ Klar</button>`;
   syncMobileDrawButtons();
 
   // Uppdatera hinder-verktygsknappar
@@ -106,7 +109,7 @@ export function buildTools() {
     'obstacle-polygon': "🏢 Klicka för att lägga hörn · Dubbelklick/Enter: avsluta · Esc: avbryt",
     'obstacle-line':    "━ Klicka FRÅN-punkt → klicka TILL-punkt (vägg avslutas automatiskt)",
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
-    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Backspace: ta bort hörn · Högerklick: bryt kedjan · Esc: avsluta",
+    'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Dubbelklick/Enter: avsluta · Klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
     'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
     'select-area':      "⬚ Dra → helt inuti · Dra ← inuti eller korsade · Klick: ett objekt · Skift: lägg till · Ctrl: ta bort · Esc: avmarkera" };
   // Pekskärm: inget tangentbord och ingen högerklick – ytan sluts genom att
@@ -114,6 +117,7 @@ export function buildTools() {
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   if (touch) {
     hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
+    hints['visual-line'] = "⤺ Tryck hörn: linje i aktivt lager · ✓ Klar eller tryck på sista hörnet: avsluta · Första hörnet: slut · ⤺ Linje igen: avbryt";
     hints['select-area'] = "⬚ Ett finger: dra rektangel (→ helt inuti, ← korsade) · Två fingrar: flytta och zooma · Tryck: ett objekt";
   }
   const hint = document.getElementById("hint");
@@ -126,10 +130,23 @@ export function buildTools() {
   }
 }
 
-/** Visar "↶ Hörn" bara medan en linje eller yta har ett hörn att ta bort. */
+/**
+ * Visar "↶ Hörn" bara medan en linje eller yta har ett hörn att ta bort, och
+ * "✓ Klar" bara medan en linje har minst två hörn.
+ */
 export function syncMobileDrawButtons() {
   const b = document.getElementById('mtb-undo-vertex');
   if (b) b.hidden = !hasUndoableVertex();
+  const k = document.getElementById('mtb-finish-line');
+  if (k) k.hidden = !canFinishLine();
+}
+
+/** "✓ Klar" i den mobila raden: sparar linjen, som dubbelklick. */
+export function finishLineFromButton() {
+  if (!canFinishLine()) return false;
+  completeVisualLine();
+  draw();
+  return true;
 }
 
 /** "↶ Hörn" i den mobila raden. */
@@ -268,4 +285,5 @@ export function initToolbar() {
   window._clearAll       = clearAll;
   window._toggleMapLayer = toggleMapLayer;
   window._undoLastVertex = undoLastVertexFromButton;
+  window._finishLine     = finishLineFromButton;
 }

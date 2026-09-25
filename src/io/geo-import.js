@@ -5,14 +5,14 @@
 // vad som händer vid id-krock, och hur linjernas hörn blir visuella objekt.
 //
 // Hela importen är EN ångra-åtgärd: saveUndo körs en gång först, aldrig per
-// objekt. Allt går via de vanliga mutationsfunktionerna i state/visual.js, så
+// objekt. En Line i filen blir en polylinje (Polylinjer Etapp 1), sluten om
+// flaggan är satt eller första hörnet upprepas sist. Allt går via de vanliga mutationsfunktionerna i state/visual.js, så
 // att kopplade hinder städas på samma väg som vid handritning.
 import { getState, setState } from '../state/store.js';
 import { saveUndo } from '../state/undo.js';
-import { addObstacle } from '../state/obstacles.js';
 import {
-  addVisualLayer, addVisualPt, addVisualLine, updateVisualLine, addVisualArea,
-  makeEndpoint, findVisualLine, visualLineCoords,
+  addVisualLayer, addVisualPt, addVisualLine, addVisualArea, makeEndpoint,
+  linkVisualLineObstacles,
 } from '../state/visual.js';
 import { geoPointTypeFromId } from './import-geo.js';
 import { VertexIndex, VERTEX_DEDUP_TOL_M, closedRing } from './vertex-index.js';
@@ -20,10 +20,6 @@ import { VertexIndex, VERTEX_DEDUP_TOL_M, closedRing } from './vertex-index.js';
 // Dedupliceringen delas med DXF-importen (Etapp 6) och bor i vertex-index.js.
 // Re-exporteras här eftersom .geo-importen var först med den.
 export { VERTEX_DEDUP_TOL_M };
-
-// Färg och etikett för hinder skapade ur importerade linjer. Samma värden som
-// kontextmenyns "Använd som vägg" i ui/visual-modal.js.
-const OBSTACLE_COLOR = '#8aa8c0';
 
 // ── Val ──────────────────────────────────────────────────────────────────────
 
@@ -107,7 +103,7 @@ export function applyGeoImport(parsed, opts) {
   if (opts.target === 'visual') {
     for (const p of points) {
       addVisualPt({
-        E: p.E, N: p.N, H: p.H ?? 0,
+        E: p.E, N: p.N, H: p.H ?? null,
         layerId, name: p.name, role: 'point',
         attrs: Object.keys(p.attrs || {}).length ? p.attrs : null,
       });
@@ -160,7 +156,7 @@ export function applyGeoImport(parsed, opts) {
         let id = index.find(v.E, v.N, v.H ?? null);
         if (!id) {
           id = addVisualPt({
-            E: v.E, N: v.N, H: v.H ?? 0,
+            E: v.E, N: v.N, H: v.H ?? null,
             layerId, name: v.name, role: 'vertex',
           });
           index.add(v.E, v.N, v.H ?? null, id);
@@ -186,32 +182,24 @@ export function applyGeoImport(parsed, opts) {
         }
       }
 
-      // Sluten linje sluts med segmentet sista → första.
-      const pairs = ids.slice(0, -1).map((a, i) => [a, ids[i + 1]]);
-      if (ln.closed && ids.length > 2) pairs.push([ids[ids.length - 1], ids[0]]);
-
-      for (const [a, b] of pairs) {
-        if (a === b) continue;          // hörnen föll ihop vid dedupliceringen
-        createdLineIds.push(addVisualLine({
-          from: makeEndpoint('visual', a), to: makeEndpoint('visual', b), layerId,
-        }));
-        result.linesCreated++;
-      }
+      // En polylinje. Sluten om flaggan är satt eller första hörnet upprepas
+      // sist (dedupliceringen har då gett dem samma id). Hörn som föll ihop
+      // vid dedupliceringen slås ihop av addVisualLine.
+      const sluten = closedRing(ids, ln.closed);
+      const lineId = addVisualLine({
+        vertices: (sluten || ids).map(id => makeEndpoint('visual', id)),
+        closed: !!sluten, layerId, name: ln.name || null,
+      });
+      if (!lineId) continue;
+      createdLineIds.push(lineId);
+      result.linesCreated++;
     }
 
-    // Hinder: väggen är en projektion av den visuella linjen, precis som när
-    // den skapas ur kontextmenyn. linkedObsId håller ihop dem.
+    // Hinder: väggen är en projektion av den visuella linjen – ett linjehinder
+    // per segment, precis som när den skapas ur kontextmenyn. linkedObsIds
+    // håller ihop dem.
     if (opts.lines === 'obstacle') {
-      for (const lineId of createdLineIds) {
-        const coords = visualLineCoords(findVisualLine(lineId));
-        if (!coords) continue;
-        const obsId = addObstacle({
-          type: 'line', label: `Vägg (${lineId})`, color: OBSTACLE_COLOR,
-          source: 'visual', points: coords,
-        });
-        updateVisualLine(lineId, { linkedObsId: obsId });
-        result.obstaclesCreated++;
-      }
+      for (const lineId of createdLineIds) result.obstaclesCreated += linkVisualLineObstacles(lineId, 'wall');
     }
   }
 

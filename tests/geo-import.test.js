@@ -14,7 +14,7 @@ import {
 } from '../src/io/geo-import.js';
 import { getState, setState } from '../src/state/store.js';
 import {
-  getVisualLayers, findVisualLayer, visualLineCoords, updateVisualPt,
+  getVisualLayers, findVisualLayer, visualLineCoords, visualLineSegments, updateVisualPt,
 } from '../src/state/visual.js';
 import { undo, getUndoStack } from '../src/state/undo.js';
 import { runSimulation } from '../src/core/simulation.js';
@@ -180,9 +180,9 @@ describe('punkter till nätet', () => {
 describe('linjer som visuella linjer', () => {
   beforeEach(reset);
 
-  it('varje segment blir en visuell linje', () => {
+  it('varje linje i filen blir en polylinje', () => {
     const r = applyGeoImport(SYD, opts(SYD, { lines: 'visual' }));
-    // Fyra öppna linjer à 2 hörn = 4 segment, 8 hörn.
+    // Fyra öppna linjer à 2 hörn = 4 polylinjer, 8 hörn.
     expect(r.linesCreated).toBe(4);
     expect(r.verticesCreated).toBe(8);
     expect(getState().visualLines).toHaveLength(4);
@@ -202,15 +202,19 @@ describe('linjer som visuella linjer', () => {
       .toEqual([[first[0].E, first[0].N], [first[1].E, first[1].N]]);
   });
 
-  it('sluten linje får segmentet sista → första', () => {
+  it('sluten linje blir en sluten polylinje med segmentet sista → första', () => {
     const r = applyGeoImport(NORR, opts(NORR, { target: 'net', lines: 'visual' }));
-    // Fyra hörn, sluten ⇒ fyra segment, inte tre.
+    // Fyra hörn, sluten ⇒ en polylinje med fyra segment, inte tre.
     expect(NORR.lines[0].closed).toBe(true);
     expect(r.verticesCreated).toBe(4);
-    expect(r.linesCreated).toBe(4);
-    const last = getState().visualLines[3];
+    expect(r.linesCreated).toBe(1);
+    const line = getState().visualLines[0];
+    expect(line.closed).toBe(true);
+    expect(line.vertices).toHaveLength(4);
+    const segs = visualLineSegments(line);
     const v = NORR.lines[0].vertices;
-    expect(visualLineCoords(last)).toEqual([[v[3].E, v[3].N], [v[0].E, v[0].N]]);
+    expect(segs).toHaveLength(4);
+    expect(segs[3]).toEqual([[v[3].E, v[3].N], [v[0].E, v[0].N]]);
   });
 
   it('öppen linje sluts inte', () => {
@@ -220,7 +224,9 @@ describe('linjer som visuella linjer', () => {
       '\t\tend', '\tend', 'end',
     ].join('\n'));
     const r = applyGeoImport(parsed, opts(parsed, { lines: 'visual' }));
-    expect(r.linesCreated).toBe(2);
+    expect(r.linesCreated).toBe(1);
+    expect(getState().visualLines[0]).toMatchObject({ closed: false, name: 'A' });
+    expect(visualLineSegments(getState().visualLines[0])).toHaveLength(2);
   });
 
   it('hörn som sammanfaller mellan linjer delas', () => {
@@ -234,7 +240,9 @@ describe('linjer som visuella linjer', () => {
 
     const r = applyGeoImport(PALL, opts(PALL, { lines: 'visual' }));
     expect(r.verticesCreated).toBe(19);
-    expect(r.linesCreated).toBe(13);
+    // En polylinje per linje i filen, tillsammans 13 segment.
+    expect(r.linesCreated).toBe(PALL.lines.length);
+    expect(getState().visualLines.reduce((n, l) => n + visualLineSegments(l).length, 0)).toBe(13);
     expect(getState().visualPts).toHaveLength(19);
 
     // Varje sammanfallande par pekar på EN visualPt – kedjan hänger ihop.
@@ -297,21 +305,21 @@ describe('linjer som visuella linjer', () => {
 describe('linjer som hinder', () => {
   beforeEach(reset);
 
-  it('varje visuell linje får ett kopplat hinder', () => {
+  it('varje segment får ett kopplat hinder', () => {
     const r = applyGeoImport(SYD, opts(SYD, { target: 'net', lines: 'obstacle' }));
     expect(r.obstaclesCreated).toBe(4);
     expect(getState().obstacles).toHaveLength(4);
-    expect(getState().visualLines.every(l => l.linkedObsId)).toBe(true);
+    expect(getState().visualLines.every(l => l.linkedObsIds.length === 1)).toBe(true);
   });
 
   it('hindret är en projektion av linjen och följer med när hörnet flyttas', () => {
     applyGeoImport(SYD, opts(SYD, { target: 'net', lines: 'obstacle' }));
     const line = getState().visualLines[0];
-    const obsPoints = () => getState().obstacles.find(o => o.id === line.linkedObsId).points;
+    const obsPoints = () => getState().obstacles.find(o => o.id === line.linkedObsIds[0]).points;
     expect(obsPoints()).toEqual(visualLineCoords(line));
 
     // Flytta hörnet – väggen ska följa med, precis som när linjen ritats för hand.
-    updateVisualPt(line.from.id, { E: 999, N: 888 });
+    updateVisualPt(line.vertices[0].id, { E: 999, N: 888 });
     expect(obsPoints()[0]).toEqual([999, 888]);
   });
 

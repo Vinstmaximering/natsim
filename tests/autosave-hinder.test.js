@@ -49,7 +49,7 @@ describe('hindren i autosparningen', () => {
     const b = addVisualPt({ E: 10, N: 0, layerId: lid });
     const vl = addVisualLine({ from: makeEndpoint('visual', a), to: makeEndpoint('visual', b), layerId: lid });
     const obsId = addObstacle({ type: 'line', points: [[0, 0], [10, 0]], source: 'visual' });
-    updateVisualLine(vl, { linkedObsId: obsId });
+    updateVisualLine(vl, { linkedObsIds: [obsId] });
 
     expect(writeAutosaveNow().ok).toBe(true);
     setState({ ...BASE });
@@ -57,7 +57,7 @@ describe('hindren i autosparningen', () => {
 
     const st = getState();
     expect(st.obstacles.map(o => o.id)).toEqual([obsId]);
-    expect(st.visualLines[0].linkedObsId).toBe(obsId);
+    expect(st.visualLines[0].linkedObsIds).toEqual([obsId]);
   });
 
   it('hinderräknaren synkas – nästa hinder krockar inte med ett laddat', () => {

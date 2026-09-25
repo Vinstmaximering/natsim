@@ -10,7 +10,7 @@
 // Hörnpunkter (role 'vertex') hör till sin linje eller yta och markeras med
 // den, inte för sig. Nätpunkter, mätningar och hinder markeras inte i den här
 // versionen – de ingår i beräkningen och har egna verktyg.
-import { visualLineCoords, visualAreaCoords, isVisualObjVisible } from './visual.js';
+import { visualLineCoords, visualAreaCoords, isVisualObjVisible, lineSegments } from './visual.js';
 
 /** Dragriktningen avgör läget. Ingen horisontell rörelse räknas som 'window'. */
 export const modeFromDrag = (x0, x1) => (x1 < x0 ? 'crossing' : 'window');
@@ -79,12 +79,17 @@ export function objectsInRect(state, rect, mode, project) {
     if (inside(project(p.E, p.N), r)) out.push(p.id);
   }
 
+  // En polylinje markeras hel: window kräver alla hörn inuti, crossing att
+  // något segment ligger i eller korsar rektangeln.
   for (const l of state.visualLines || []) {
     if (!synlig(l)) continue;
     const c = visualLineCoords(l, state);
     if (!c) continue;
-    const a = project(c[0][0], c[0][1]), b = project(c[1][0], c[1][1]);
-    const träff = mode === 'window' ? inside(a, r) && inside(b, r) : segHitsRect(a, b, r);
+    const poly = c.map(([E, N]) => project(E, N));
+    const träff = mode === 'window'
+      ? poly.every(p => inside(p, r))
+      : lineSegments(poly.map(p => [p.x, p.y]), l.closed === true)
+          .some(([p, q]) => segHitsRect({ x: p[0], y: p[1] }, { x: q[0], y: q[1] }, r));
     if (träff) out.push(l.id);
   }
 

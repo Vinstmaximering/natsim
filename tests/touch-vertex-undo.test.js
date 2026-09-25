@@ -18,10 +18,11 @@ vi.mock('../src/map/leaflet-setup.js', () => ({
   draw: vi.fn(), resize: vi.fn(), toggleMapLayer: vi.fn(), fitViewToENBounds: vi.fn(),
 }));
 
-const { buildTools, setTool, syncMobileDrawButtons, undoLastVertexFromButton } = await import('../src/ui/toolbar.js');
+const { buildTools, setTool, syncMobileDrawButtons, undoLastVertexFromButton, finishLineFromButton } = await import('../src/ui/toolbar.js');
 const D = await import('../src/map/visual-drawing.js');
 const { getState, setState } = await import('../src/state/store.js');
 const S = await import('../src/map/snap.js');
+const { visualLineCoords } = await import('../src/state/visual.js');
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const btn = () => document.getElementById('mtb-undo-vertex');
@@ -85,43 +86,41 @@ describe('yta', () => {
   });
 });
 
+// Polylinjer Etapp 1: linjen sparas först när den avslutas. "↶ Hörn" tar
+// bort senaste hörnet ur den påbörjade linjen; inga punkter finns att städa.
 describe('linje', () => {
-  it('tar bort senaste segmentet och punkten klicket skapade; kedjan fortsätter', () => {
+  it('tar bort senaste hörnet; linjen fortsätter från föregående', () => {
     setTool('visual-line');
     klick(50, 50); klick(150, 50); klick(150, 150);
-    expect(getState().visualLines).toHaveLength(2);
     tryck();
-    expect(getState().visualLines).toHaveLength(1);
-    expect(getState().visualPts.map(p => [p.E, p.N])).toEqual([[50, 50], [150, 50]]);
+    expect(D.getPendingLineVertices().map(v => [v.E, v.N])).toEqual([[50, 50], [150, 50]]);
     klick(250, 50);                                   // fortsätter från (150,50)
-    const l = getState().visualLines.at(-1);
-    const from = getState().visualPts.find(p => p.id === l.from.id);
-    expect([from.E, from.N]).toEqual([150, 50]);
+    D.completeVisualLine();
+    expect(visualLineCoords(getState().visualLines[0])).toEqual([[50, 50], [150, 50], [250, 50]]);
   });
 
-  it('första hörnet: startpunkten släpps och den nya punkten tas bort', () => {
+  it('första hörnet: inga hörn kvar och knappen döljs', () => {
     setTool('visual-line');
     klick(50, 50);
     tryck();
-    expect(D.hasPendingChain()).toBe(false);
+    expect(D.hasPendingLine()).toBe(false);
     expect(getState().visualPts).toEqual([]);
     expect(btn().hidden).toBe(true);
   });
 
-  it('ett hörn som snappade mot en nätpunkt: linjen tas bort, nätpunkten rörs inte', () => {
+  it('ett hörn som snappade mot en nätpunkt tas ur linjen, nätpunkten rörs inte', () => {
     setTool('visual-line');
     klick(50, 50); klick(2, 2);                       // snappar mot FP1
-    expect(getState().visualLines[0].to).toEqual({ ref: 'net', id: 'FP1' });
+    expect(D.getPendingLineVertices()[1]).toMatchObject({ ref: 'net', id: 'FP1' });
     tryck();
-    expect(getState().visualLines).toEqual([]);
+    expect(D.getPendingLineVertices()).toHaveLength(1);
     expect(getState().pts.map(p => p.id)).toEqual(['FP1']);
-    expect(getState().visualPts).toHaveLength(1);     // startpunkten står kvar
   });
 
-  it('en punkt som en annan linje också använder tas inte bort', () => {
+  it('en punkt som en annan linje använder tas inte bort', () => {
     setTool('visual-line');
     klick(50, 50); klick(150, 50);
-    D.breakVisualChain();
+    D.completeVisualLine();
     klick(150, 150); klick(152, 52);                   // snappar mot (150,50)
     tryck();
     expect(getState().visualPts.map(p => [p.E, p.N])).toContainEqual([150, 50]);
@@ -131,5 +130,43 @@ describe('linje', () => {
   it('ingenting att ta bort: gör ingenting', () => {
     setTool('visual-line');
     expect(undoLastVertexFromButton()).toBe(false);
+  });
+});
+
+describe('✓ Klar', () => {
+  const klar = () => document.getElementById('mtb-finish-line');
+
+  it('visas från andra hörnet och avslutar linjen, som dubbelklick', () => {
+    setTool('visual-line');
+    expect(klar().hidden).toBe(true);
+    klick(50, 50);
+    syncMobileDrawButtons();
+    expect(klar().hidden).toBe(true);
+    klick(150, 50);
+    syncMobileDrawButtons();
+    expect(klar().hidden).toBe(false);
+    expect(finishLineFromButton()).toBe(true);
+    syncMobileDrawButtons();
+    expect(getState().visualLines).toHaveLength(1);
+    expect(klar().hidden).toBe(true);
+  });
+
+  it('tryck på sista hörnet igen avslutar också linjen (22 px med finger)', () => {
+    const orig = window.matchMedia;
+    window.matchMedia = q => ({ matches: q === '(pointer: coarse)' });
+    try {
+      setTool('visual-line');
+      klick(50, 50); klick(150, 50);
+      klick(165, 60);                                  // 18 px från (150,50)
+      expect(getState().visualLines).toHaveLength(1);
+      expect(visualLineCoords(getState().visualLines[0])).toEqual([[50, 50], [150, 50]]);
+    } finally { window.matchMedia = orig; }
+  });
+
+  it('dold i ytläget', () => {
+    setTool('visual-area');
+    klick(50, 50); klick(150, 50); klick(150, 150);
+    syncMobileDrawButtons();
+    expect(klar().hidden).toBe(true);
   });
 });

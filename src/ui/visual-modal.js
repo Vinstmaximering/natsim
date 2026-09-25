@@ -1,30 +1,22 @@
 // Kontextmeny och redigeringsdialog för visuella objekt (Etapp D2/D4).
 //
 // Kontextmenyn på en visuell linje erbjuder "Använd som vägg" och "Använd som
-// blockeringslinje". Båda skapar ett riktigt hinder i det befintliga
-// hinder-systemet, kopplat till linjen via linkedObsId. Hindrets koordinater är
-// en projektion av linjen – flyttas linjen följer väggen med, se
-// syncLinkedObstacles() i state/visual.js.
-import { addObstacle }        from '../state/obstacles.js';
+// blockeringslinje". Båda skapar riktiga hinder i det befintliga
+// hinder-systemet – ett linjehinder per segment i polylinjen – kopplade till
+// linjen via linkedObsIds. Hindrens koordinater är en projektion av linjen –
+// flyttas linjen följer väggen med, se syncLinkedObstacles() i state/visual.js.
 import { saveUndo }           from '../state/undo.js';
 import { draw }               from '../map/leaflet-setup.js';
 import { showToast }          from './toast.js';
 import {
   VISUAL_COLORS, visualObjColor,
-  findVisualPt, findVisualLine, findVisualArea, visualLineCoords, findVisualLayer,
+  findVisualPt, findVisualLine, findVisualArea, findVisualLayer,
   updateVisualPt, updateVisualLine, removeVisualPt, removeVisualLine,
   removeVisualArea, setVisualAreaBlocksSight,
+  LINE_OBSTACLE_ROLES, linkVisualLineObstacles, unlinkVisualLineObstacles, visualLineSegments,
 } from '../state/visual.js';
 import { setState } from '../state/store.js';
 import { normalizeHexColor } from '../core/colors.js';
-
-// Roller för hinder skapade ur en visuell linje. Båda blockerar sikt likadant –
-// hasLineOfSight skiljer inte på dem – men de får olika namn och färg så att de
-// går att hålla isär i hinder-listan.
-const OBS_ROLES = {
-  wall:    { label: 'Vägg',             color: '#8aa8c0' },
-  blocker: { label: 'Blockeringslinje', color: '#ef5350' },
-};
 
 let _editId = null;
 let _editColor = null;
@@ -97,7 +89,7 @@ export function openVisualMenu(id, clientX, clientY) {
   const obj = findVisual(id);
   if (!obj) return;
   const line = isLine(id);
-  const linked = line && obj.linkedObsId;
+  const linked = line && obj.linkedObsIds?.length;
 
   const item = (label, handler, opts = {}) => `
     <button data-act="${handler}" ${opts.disabled ? 'disabled' : ''}
@@ -112,7 +104,7 @@ export function openVisualMenu(id, clientX, clientY) {
     border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,0.5);`;
   el.innerHTML = `
     <div style="padding:5px 12px 6px;font-size:11px;color:#7090a8;border-bottom:1px solid #1e3850;">
-      ${line ? '⤺ Visuell linje' : '○ Visuell punkt'} ${esc(id)}
+      ${line ? '⤺ Visuell linje' : '○ Visuell punkt'} ${esc(obj.name || id)}
     </div>
     ${item('✎ Redigera', 'edit')}
     ${item('🗑 Ta bort', 'delete', { danger: true })}
@@ -152,8 +144,10 @@ export function openVisualMenu(id, clientX, clientY) {
 // ── Åtgärder ────────────────────────────────────────────────────────────────
 
 function _deleteVisual(id) {
-  const line = isLine(id);
-  if (!confirm(`Ta bort ${line ? 'visuell linje' : 'visuell punkt'} ${id}?`)) return;
+  const line = findVisualLine(id);
+  const hinder = line?.linkedObsIds?.length
+    ? `\nDess ${line.linkedObsIds.length === 1 ? 'hinder' : `${line.linkedObsIds.length} hinder`} försvinner också – siktberäkningen ändras.` : '';
+  if (!confirm(`Ta bort ${line ? 'visuell linje' : 'visuell punkt'} ${line?.name || id}?${hinder}`)) return;
   saveUndo(`Ta bort ${id}`);
   if (line) removeVisualLine(id);
   else {
@@ -163,35 +157,29 @@ function _deleteVisual(id) {
   draw();
 }
 
-// Skapar ett hinder som spårar den visuella linjen.
+// Skapar hinder – ett per segment – som spårar den visuella linjen.
 function _useAsObstacle(id, role) {
   const line = findVisualLine(id);
   if (!line) return;
-  const coords = visualLineCoords(line);
-  if (!coords) { showToast('⚠ Linjen saknar giltiga ändpunkter', '#ff5050'); return; }
-
-  const cfg = OBS_ROLES[role];
+  if (!visualLineSegments(line)?.length) {
+    showToast('⚠ Linjens hörn går inte att lösa upp – inget hinder skapades', '#ff5050');
+    return;
+  }
+  const cfg = LINE_OBSTACLE_ROLES[role];
   saveUndo(`${cfg.label} från ${id}`);
-  const obsId = addObstacle({
-    type: 'line',
-    label: `${cfg.label} (${id})`,
-    color: cfg.color,
-    source: 'visual',
-    points: coords,
-  });
-  updateVisualLine(id, { linkedObsId: obsId });
-  showToast(`${cfg.label} skapad från ${id} – följer linjen`, cfg.color);
+  const n = linkVisualLineObstacles(id, role);
+  showToast(`${cfg.label} skapad från ${id}${n > 1 ? ` (${n} segment)` : ''} – följer linjen`, cfg.color);
   draw();
 }
 
 function _unlink(id) {
   const line = findVisualLine(id);
-  if (!line?.linkedObsId) return;
-  const obsId = line.linkedObsId;
+  if (!line?.linkedObsIds?.length) return;
+  const n = line.linkedObsIds.length;
   saveUndo(`Koppla loss ${id}`);
-  // Hindret blir fristående och behåller sina koordinater.
-  updateVisualLine(id, { linkedObsId: null });
-  showToast(`${id} styr inte längre ${obsId}`, '#cfd8dc');
+  // Hindren blir fristående och behåller sina koordinater.
+  unlinkVisualLineObstacles(id);
+  showToast(`${id} styr inte längre ${n === 1 ? line.linkedObsIds[0] : `sina ${n} hinder`}`, '#cfd8dc');
   draw();
 }
 
@@ -225,7 +213,7 @@ export function openEditVisual(id) {
   _editColor = normalizeHexColor(obj.color);
   const line = isLine(id);
 
-  const epLabel = ep => ep.ref === 'net' ? `${ep.id} (nätpunkt)` : `${ep.id} (visuell)`;
+  const nNet = line ? obj.vertices.filter(v => v.ref === 'net').length : 0;
 
   mi().innerHTML = `
     <div style="font-size:14px;color:${visualObjColor(obj)};margin-bottom:4px;font-weight:bold;">
@@ -236,13 +224,13 @@ export function openEditVisual(id) {
     </div>
     ${line ? `
       <div style="font-size:11px;color:#7090a8;background:#091424;padding:6px;border-radius:3px;margin-bottom:8px;line-height:1.6;">
-        Från: ${esc(epLabel(obj.from))}<br>Till: ${esc(epLabel(obj.to))}
-        ${obj.linkedObsId ? `<br><span style="color:#ffd54f;">▨ Styr hindret ${esc(obj.linkedObsId)}</span>` : ''}
+        ${obj.vertices.length} hörn${nNet ? ` (varav ${nNet} nätpunkt${nNet === 1 ? '' : 'er'})` : ''} · ${obj.closed ? 'sluten' : 'öppen'}
+        ${obj.linkedObsIds?.length ? `<br><span style="color:#ffd54f;">▨ Styr ${obj.linkedObsIds.length === 1 ? 'hindret' : 'hindren'} ${esc(obj.linkedObsIds.join(', '))}</span>` : ''}
       </div>` : `
-      ${[['E', 'E-koordinat (m)', obj.E], ['N', 'N-koordinat (m)', obj.N], ['H', 'Höjd (m ö.h.)', obj.H ?? 0]]
+      ${[['E', 'E-koordinat (m)', obj.E], ['N', 'N-koordinat (m)', obj.N], ['H', 'Höjd (m ö.h.) – tomt: ingen höjd', obj.H]]
         .map(([k, l, v]) => `<div style="margin-bottom:6px;">
           <div style="font-size:11px;color:#7090a8;margin-bottom:2px;">${l}</div>
-          <input id="vis_${k}" type="number" step="0.001" value="${Number(v).toFixed(3)}"></div>`).join('')}`}
+          <input id="vis_${k}" type="number" step="0.001" value="${Number.isFinite(v) ? Number(v).toFixed(3) : ''}"></div>`).join('')}`}
     <div style="margin-bottom:8px;">
       <div style="font-size:11px;color:#7090a8;margin-bottom:4px;">Färg — ✕ ger lagrets färg</div>
       <div id="visual-color-section">${renderPalette()}</div>
@@ -275,11 +263,12 @@ export function initVisualModal() {
         const v = parseFloat(document.getElementById(`vis_${k}`)?.value);
         return Number.isFinite(v) ? v : null;
       };
-      const E = num('E'), N = num('N'), H = num('H');
+      const E = num('E'), N = num('N');
       const changes = { color: _editColor };
       if (E !== null) changes.E = E;
       if (N !== null) changes.N = N;
-      if (H !== null) changes.H = H;
+      // Tomt höjdfält betyder ingen höjd (H: null), inte 0.
+      changes.H = num('H');
       updateVisualPt(_editId, changes);
     }
     window._closeModal();

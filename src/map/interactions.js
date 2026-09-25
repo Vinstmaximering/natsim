@@ -11,9 +11,9 @@ import { isDrawing, handleMapClick, completeDraw, cancelDraw, updateMousePos } f
 import { clearObstacleSelection, getObstacles } from '../state/obstacles.js';
 import {
   isDrawingVisual, handleVisualMapClick, cancelVisualDraw,
-  updateVisualMousePos, hasPendingChain, breakVisualChain,
+  updateVisualMousePos, hasPendingLine, discardPendingLine, finishOrDiscardLine,
   getVisualDrawMode, hasPendingArea, discardPendingArea, hasUndoableVertex, undoLastDrawVertex,
-  completeVisualArea,
+  completeVisualArea, completeVisualLine,
 } from './visual-drawing.js';
 import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
 import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
@@ -53,6 +53,12 @@ function _areaDone(r) {
     cb.showToast('En yta behöver minst tre hörn', '#7090a8');
 }
 export function setInteractionCallbacks(callbacks) { Object.assign(cb, callbacks); }
+
+// Skriver användaren i ett fält? Då ska Backspace och Enter inte röra kartan.
+function _typing() {
+  const a = document.activeElement;
+  return !!a && (['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName) || a.isContentEditable);
+}
 
 // ── near – hitta närmaste punkt inom pixelradie – rad 587–589 exakt ──
 export function near(cx, cy, t = 20) {
@@ -97,7 +103,7 @@ export function initInteractions(map) {
   // ytritning (Lager-verktyg Etapp 3): dubbelklicket sluter ytan och ska inte
   // samtidigt zooma kartan.
   subscribe(state => {
-    if (state.selObsId || state.tool === 'visual-area') { map.doubleClickZoom?.disable(); }
+    if (state.selObsId || state.tool === 'visual-area' || state.tool === 'visual-line') { map.doubleClickZoom?.disable(); }
     else                                                 { map.doubleClickZoom?.enable();  }
   });
 
@@ -401,9 +407,12 @@ export function initInteractions(map) {
 
   // ── Dubbelklick → infoga hörn på kant, avsluta ritning, eller openEditPt ──
   map.on("dblclick", e => {
-    // Dubbelklick sluter en yta under ritning.
+    // Dubbelklick sluter en yta och avslutar en linje under ritning. Linjens
+    // dubbelklick har oftast redan avslutats av sitt andra klick (klick på
+    // senaste hörnet), och då finns inget kvar att göra här.
     if (isDrawingVisual()) {
       if (getVisualDrawMode() === 'area') { _areaDone(completeVisualArea()); draw(); }
+      if (getVisualDrawMode() === 'line' && hasPendingLine()) { completeVisualLine(); draw(); }
       return;
     }
     if (isDrawing()) {
@@ -445,11 +454,12 @@ export function initInteractions(map) {
   map.on("contextmenu", e => {
     if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
 
-    // Högerklick avslutar ritläget för visuella objekt. Har en linjekedja
-    // påbörjats bryts först kedjan, så att ett andra högerklick lämnar läget.
+    // Högerklick avslutar ritläget för visuella objekt. En påbörjad linje
+    // avslutas först (ett ensamt första hörn kastas), så att ett andra
+    // högerklick lämnar läget.
     if (isDrawingVisual()) {
       e.originalEvent.preventDefault();
-      if (hasPendingChain()) { breakVisualChain(); draw(); return; }
+      if (finishOrDiscardLine()) { draw(); return; }
       if (hasPendingArea())  { discardPendingArea(); draw(); return; }
       cancelVisualDraw();
       setState({ tool: 'pan' });
@@ -496,20 +506,19 @@ export function initInteractions(map) {
     // klicket skapade tas bort, snappade punkter och nätpunkter aldrig. Inte
     // när man skriver i ett fält, där Backspace ska sudda text.
     if (e.key === 'Backspace' && hasUndoableVertex()) {
-      const a = document.activeElement;
-      if (a && (['INPUT', 'TEXTAREA', 'SELECT'].includes(a.tagName) || a.isContentEditable)) return;
+      if (_typing()) return;
       e.preventDefault();
       undoLastDrawVertex();
       draw();
       return;
     }
     if (e.key === 'Escape') {
-      // En påbörjad yta kastas först; nästa Escape lämnar ytläget.
+      // Påbörjad yta/linje kastas först; nästa Escape lämnar läget.
       if (isSelectDragging()) {
         cancelSelectDrag();
         draw();
-      } else if (hasPendingArea()) {
-        discardPendingArea();
+      } else if (hasPendingArea() || hasPendingLine()) {
+        discardPendingArea(); discardPendingLine();
         draw();
       } else if (isDrawingVisual()) {
         cancelVisualDraw();
@@ -537,6 +546,11 @@ export function initInteractions(map) {
         if (cb.renderTab) cb.renderTab();
         draw();
       }
+    } else if (e.key === 'Enter' && hasPendingLine() && !_typing()) {
+      // Enter avslutar en linje under ritning, som dubbelklick.
+      e.preventDefault();
+      completeVisualLine();
+      draw();
     } else if (e.key === 'Enter' && isDrawing()) {
       const ok = completeDraw();
       if (ok) { setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }

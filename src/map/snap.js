@@ -5,7 +5,8 @@
 //      (närmaste inom radien vinner, oavsett sort – men ligger en nätpunkt och
 //      en visuell punkt inom 1 px från varandra på skärmen vinner nätpunkten,
 //      så att hörnet fäster i nätet med ref:'net')
-//   2. närmaste punkt på en visuell linje eller en ytas kant
+//   2. närmaste punkt på en visuell linje (närmaste segment i polylinjen)
+//      eller en ytas kant
 // En punkt vinner alltid över en linje, även om linjen ligger närmare pekaren –
 // annars går det inte att träffa ett hörn där två kanter möts.
 //
@@ -19,7 +20,7 @@
 //
 // Av/på sparas per användare (localStorage), förval på. Alt nedtryckt stänger
 // av tillfälligt.
-import { visualLineCoords, visualAreaCoords, isVisualObjVisible, visualPtLabel } from '../state/visual.js';
+import { visualLineSegments, visualAreaCoords, isVisualObjVisible, visualPtLabel } from '../state/visual.js';
 
 export const SNAP_PX = 10;
 export const SNAP_PX_TOUCH = 22;
@@ -106,12 +107,11 @@ export function findSnapTarget(state, px, py, project, radius) {
     // Kartprojektionen är lokalt affin, så samma t gäller i plan.
     pröva(d, { kind, ref: null, id: null, objId: obj.id,
       E: a[0] + t * (b[0] - a[0]), N: a[1] + t * (b[1] - a[1]),
-      label: kind === 'line' ? `på linje ${obj.id}` : `på ytkant ${obj.name || obj.id}` });
+      label: kind === 'line' ? `på linje ${obj.name || obj.id}` : `på ytkant ${obj.name || obj.id}` });
   };
   for (const l of state.visualLines || []) {
     if (!isVisualObjVisible(l, state)) continue;
-    const c = visualLineCoords(l, state);
-    if (c) segment(c[0], c[1], 'line', l);
+    for (const [a, b] of visualLineSegments(l, state) || []) segment(a, b, 'line', l);
   }
   for (const a of state.visualAreas || []) {
     if (!isVisualObjVisible(a, state)) continue;
