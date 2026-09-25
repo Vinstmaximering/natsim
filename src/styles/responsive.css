@@ -207,6 +207,10 @@
 
   /* Ytans egenskapskort: hela bredden, ovanför FAB-knapparna. */
   .area-card { left: 8px; right: 60px; width: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); max-height: 55dvh; }
+  /* Linjens kort (Polylinjer Etapp 2): knapparna går att träffa med finger. */
+  .lc-btn { min-height: 40px; }
+  /* Mätrutan: hela bredden ovanför FAB-knapparna. */
+  .measure-box { left: 8px; right: 60px; transform: none; min-width: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 80px); }
   .zb   { top: 92px !important; right: 8px; font-size: 12px; }
 
   /* ── Kvalitetspanel: kompakt, uppe till höger ── */

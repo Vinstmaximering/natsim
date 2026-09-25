@@ -7,6 +7,7 @@ import { isDrawingVisual, cancelVisualDraw, startVisualPointDraw, startVisualLin
          startVisualAreaDraw, hasUndoableVertex, undoLastDrawVertex,
          canFinishLine, completeVisualLine } from '../map/visual-drawing.js';
 import { isSnapEnabled } from '../map/snap.js';
+import { startMeasure, cancelMeasure } from '../map/measure-tool.js';
 
 export { toggleMapLayer };
 
@@ -16,6 +17,8 @@ export { toggleMapLayer };
 export const MAP_TOOLS = [
   { btn: 'btn-select-area', tool: 'select-area', key: 'm', mobile: '⬚ Markera',
     title: 'Markera område – dra en rektangel' },
+  { btn: 'btn-measure-dist', tool: 'measure-dist', key: 'd', mobile: '📐 Mät',
+    title: 'Mät avstånd – klicka två punkter' },
   { btn: 'btn-visual-point', tool: 'visual-point', key: 'p', mobile: '○ Pkt',
     title: 'Visuell punkt – ritas i aktivt lager' },
   { btn: 'btn-visual-line',  tool: 'visual-line',  key: 'l', mobile: '⤺ Linje',
@@ -111,12 +114,14 @@ export function buildTools() {
     'visual-point':     "○ Klicka: visuell punkt i aktivt lager · Esc/högerklick: avsluta",
     'visual-line':      "⤺ Klicka hörn: visuell linje i aktivt lager · Dubbelklick/Enter: avsluta · Klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
     'visual-area':      "▱ Klicka hörn: yta i aktivt lager · Dubbelklick eller klick på första hörnet: slut · Backspace: ta bort hörn · Esc: avbryt",
+    'measure-dist':     "📐 Klicka två punkter: avstånd och riktning (plan) · Snappar mot punkter och linjer · Esc: börja om",
     'select-area':      "⬚ Dra → helt inuti · Dra ← inuti eller korsade · Klick: ett objekt · Skift: lägg till · Ctrl: ta bort · Esc: avmarkera" };
   // Pekskärm: inget tangentbord och ingen högerklick – ytan sluts genom att
   // trycka på första hörnet, och verktygsknappen igen avbryter.
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
   if (touch) {
     hints['visual-area'] = "▱ Tryck hörn: yta i aktivt lager · Tryck på första hörnet: slut · ▱ Yta igen: avbryt";
+    hints['measure-dist'] = "📐 Tryck två punkter: avstånd och riktning (plan) · Nytt tryck: börja om";
     hints['visual-line'] = "⤺ Tryck hörn: linje i aktivt lager · ✓ Klar eller tryck på sista hörnet: avsluta · Första hörnet: slut · ⤺ Linje igen: avbryt";
     hints['select-area'] = "⬚ Ett finger: dra rektangel (→ helt inuti, ← korsade) · Två fingrar: flytta och zooma · Tryck: ett objekt";
   }
@@ -160,6 +165,7 @@ export function setTool(t) {
   // Avbryt pågående ritning om verktyget byts
   if (isDrawing()) cancelDraw();
   if (isDrawingVisual()) cancelVisualDraw();
+  cancelMeasure();
 
   if (t !== "measure") setState({ measFrom: null });
   setState({ tool: t });
@@ -170,6 +176,7 @@ export function setTool(t) {
   else if (t === 'visual-point') startVisualPointDraw();
   else if (t === 'visual-line')  startVisualLineDraw();
   else if (t === 'visual-area')  startVisualAreaDraw();
+  else if (t === 'measure-dist') startMeasure();
 
   // Markera område: ett drag med musen eller ett finger ritar rektangeln, så
   // kartans panorering med ett drag är av så länge verktyget är valt. Två

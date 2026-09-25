@@ -16,6 +16,9 @@ import {
   completeVisualArea, completeVisualLine,
 } from './visual-drawing.js';
 import { syncLinkedObstacles, isVisualObjVisible } from '../state/visual.js';
+import { isMeasuring, handleMeasureClick, updateMeasureMouse, resetMeasure,
+         cancelMeasure } from './measure-tool.js';
+import { renderMeasureBox } from '../ui/measure-box.js';
 import { hitTestVisualPt, hitTestVisualLine, hitTestVisualArea } from './visual-canvas.js';
 import {
   beginSelectDrag, updateSelectDrag, endSelectDrag, cancelSelectDrag,
@@ -159,6 +162,11 @@ export function initInteractions(map) {
       return;
     }
 
+    if (isMeasuring()) {
+      updateMeasureMouse(e.latlng);
+      draw();
+    }
+
     // Uppdatera förhandsvisning under hinder-ritning
     if (isDrawing()) {
       const px = map.latLngToContainerPoint(e.latlng);
@@ -253,6 +261,14 @@ export function initInteractions(map) {
   // ── Klick – rad 1293–1356 ──
   map.on("click", e => {
     if (dragMoved) { dragMoved = false; return; }
+
+    // Mätverktyget D: klicket är en mätpunkt, inget annat.
+    if (isMeasuring()) {
+      handleMeasureClick(e.latlng);
+      renderMeasureBox();
+      draw();
+      return;
+    }
 
     // Ritning av visuella objekt: intercepta klick. Läget står kvar tills
     // användaren avslutar med Esc eller högerklick.
@@ -410,6 +426,7 @@ export function initInteractions(map) {
     // Dubbelklick sluter en yta och avslutar en linje under ritning. Linjens
     // dubbelklick har oftast redan avslutats av sitt andra klick (klick på
     // senaste hörnet), och då finns inget kvar att göra här.
+    if (isMeasuring()) return;
     if (isDrawingVisual()) {
       if (getVisualDrawMode() === 'area') { _areaDone(completeVisualArea()); draw(); }
       if (getVisualDrawMode() === 'line' && hasPendingLine()) { completeVisualLine(); draw(); }
@@ -453,6 +470,14 @@ export function initInteractions(map) {
   // ── Högerklick → ta bort hörn på hinder, annars openEditPt ──
   map.on("contextmenu", e => {
     if (isDrawing()) { cancelDraw(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); draw(); return; }
+    // Mätverktyget: högerklick börjar om, som Esc.
+    if (isMeasuring()) {
+      e.originalEvent.preventDefault();
+      if (!resetMeasure()) { cancelMeasure(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+      renderMeasureBox();
+      draw();
+      return;
+    }
 
     // Högerklick avslutar ritläget för visuella objekt. En påbörjad linje
     // avslutas först (ett ensamt första hörn kastas), så att ett andra
@@ -524,6 +549,11 @@ export function initInteractions(map) {
         cancelVisualDraw();
         setState({ tool: 'pan' });
         if (cb.buildTools) cb.buildTools();
+        draw();
+      } else if (isMeasuring()) {
+        // Mätverktyget: Esc börjar om; utan påbörjad mätning lämnas verktyget.
+        if (!resetMeasure()) { cancelMeasure(); setState({ tool: 'pan' }); if (cb.buildTools) cb.buildTools(); }
+        renderMeasureBox();
         draw();
       } else if (isDrawing()) {
         cancelDraw();

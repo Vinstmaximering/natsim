@@ -445,6 +445,38 @@ export function linkVisualLineObstacles(id, role = 'wall') {
   return nya.length;
 }
 
+/**
+ * Hörnens namn i egenskapskortets segmenttabell: punktens namn när den har
+ * ett (nätpunktens id, en importerad punkts originalnamn), annars hörnets
+ * löpnummer i linjen (1, 2, …). En handritad hörnpunkt har bara ett internt
+ * id (V17), som inte säger användaren något.
+ */
+export function lineVertexNames(line, state = getState()) {
+  return (line?.vertices || []).map((ep, i) => {
+    if (ep.ref === 'net') return ep.id;
+    const p = (state.visualPts || []).find(x => x.id === ep.id);
+    return p?.name ?? String(i + 1);
+  });
+}
+
+/**
+ * "Slut linjen → yta": en yta med linjens hörn, namn, lager och färg, och
+ * linjen tas bort (med sina hinder). Hörnpunkterna delas och tas inte bort.
+ * Ångra-steget sparar anroparen. Returnerar ytans id, eller null när linjen
+ * har färre än tre hörn.
+ */
+export function convertLineToArea(id) {
+  const line = findVisualLine(id);
+  if (!line || (line.vertices || []).length < 3) return null;
+  const areaId = addVisualArea({
+    vertices: line.vertices, layerId: line.layerId, name: line.name ?? null, color: line.color,
+  });
+  if (!areaId) return null;
+  removeVisualLine(id);
+  setState({ selVisualId: areaId });
+  return areaId;
+}
+
 /** Kopplar loss linjen. Hindren blir fristående och behåller sina koordinater. */
 export function unlinkVisualLineObstacles(id) {
   const line = findVisualLine(id);

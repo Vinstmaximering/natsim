@@ -6,6 +6,7 @@
 //
 // Kortkommandon (en bokstav, utan Ctrl/Alt/Cmd/Skift):
 //   P visuell punkt · L visuell linje · Y yta · M markera område
+//   D mät avstånd (Polylinjer Etapp 2)
 //   S snappning av/på (en växlare, inget verktyg; sparas per användare)
 //   Esc avbryter pågående ritning (hanteras i map/interactions.js)
 //   Alt nedtryckt stänger tillfälligt av snappningen medan man ritar. Alt:s
@@ -22,6 +23,7 @@ import { getState } from '../state/store.js';
 import { setTool, buildTools, MAP_TOOLS } from './toolbar.js';
 import { toggleSnap, setAltHeld, isAltHeld } from '../map/snap.js';
 import { isDrawingVisual, refreshVisualSnap } from '../map/visual-drawing.js';
+import { isMeasuring } from '../map/measure-tool.js';
 import { draw } from '../map/leaflet-setup.js';
 
 const el = id => document.getElementById(id);
@@ -76,7 +78,7 @@ export function bindMapToolButtons(bar = el('map-tools')) {
 export function handleAltKey(e) {
   if (e.key !== 'Alt') return false;
   const ner = e.type === 'keydown';
-  if (!isDrawingVisual()) { if (!ner) setAltHeld(false); return false; }
+  if (!isDrawingVisual() && !isMeasuring()) { if (!ner) setAltHeld(false); return false; }
   e.preventDefault();
   if (isAltHeld() !== ner) { setAltHeld(ner); refreshVisualSnap(); draw(); }
   return true;

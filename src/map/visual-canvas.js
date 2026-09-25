@@ -5,6 +5,7 @@
 import { visualLineSegments, visualAreaCoords, visualObjColor, isVisualObjVisible, visualPtLabel,
          visualPtShowsLabel } from '../state/visual.js';
 import { areaStats, polygonCentroid, formatPlanArea } from '../state/area-geometry.js';
+import { planDistance, formatMeters } from '../state/line-geometry.js';
 import { hexToRgba } from '../core/colors.js';
 
 const DASH = [7, 5];
@@ -136,6 +137,12 @@ export function drawVisualLayer(ctx, state, helpers) {
       ctx.lineWidth   = 6;
       ctx.stroke();
     }
+
+    // Segmentlängder (plan) längs den markerade linjen – bara för den, så att
+    // kartan inte fylls. Dolt namn döljer också längderna.
+    if (isSel && line.hideLabel !== true) {
+      segs.forEach(([p, q], i) => drawSegmentLength(ctx, px[i][0], px[i][1], formatMeters(planDistance(p, q)), col));
+    }
   }
 
   // ── Punkter (ihåliga cirklar) ──
@@ -176,6 +183,33 @@ export function drawVisualLayer(ctx, state, helpers) {
     }
   }
 
+  ctx.restore();
+}
+
+/**
+ * Text längs segmentet a–b (skärmpixlar), mitt på och strax ovanför linjen.
+ * Texten vänds så att den aldrig står upp och ned, oavsett segmentets
+ * riktning. Exporteras för tester.
+ */
+export function segmentLabelAngle(a, b) {
+  let ang = Math.atan2(b.y - a.y, b.x - a.x);
+  if (ang > Math.PI / 2) ang -= Math.PI;
+  else if (ang < -Math.PI / 2) ang += Math.PI;
+  return ang;
+}
+
+function drawSegmentLength(ctx, a, b, text, col) {
+  ctx.save();
+  ctx.translate((a.x + b.x) / 2, (a.y + b.y) / 2);
+  ctx.rotate(segmentLabelAngle(a, b));
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(7,13,24,0.8)';
+  ctx.strokeText(text, 0, -4);
+  ctx.fillStyle = col;
+  ctx.fillText(text, 0, -4);
   ctx.restore();
 }
 

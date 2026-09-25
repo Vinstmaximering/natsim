@@ -28,6 +28,8 @@ import { initToolbar, buildTools, setTool, togglePanel, clearAll, toggleMapLayer
 import { initTopbar }                            from './ui/topbar.js';
 import { initMapTools }                          from './ui/map-tools.js';
 import { initAreaCard }                          from './ui/area-card.js';
+import { initLineCard }                          from './ui/line-card.js';
+import { initMeasureBox }                        from './ui/measure-box.js';
 import { initSelectBar }                         from './ui/select-bar.js';
 import { updatePtList, initLeftPanel }          from './ui/left-panel.js';
 import { initLayerPanel, renderLayerPanel }     from './ui/layer-panel.js';
@@ -102,6 +104,8 @@ initToolbar();
 initTopbar();
 initMapTools();
 initAreaCard();
+initLineCard();
+initMeasureBox();
 initSelectBar();
 initLayerPanel();
 initLeftPanel();

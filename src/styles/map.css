@@ -128,6 +128,35 @@ canvas { display: block; touch-action: none; }
 .ac-foot  { display:flex;justify-content:flex-end;margin-top:6px; }
 .ac-del   { padding:4px 10px;font-size:11px;background:transparent;border:1px solid var(--color-danger);color:var(--color-danger);border-radius:3px;cursor:pointer; }
 
+/* ── Egenskapskort för linje (Polylinjer Etapp 2) ──
+   Samma kort som ytans (.area-card); här bara segmenttabellen och knapparna. */
+.line-card { width:320px; }
+.lc-tabwrap { max-height:180px;overflow-y:auto;margin:6px 0;border:1px solid var(--border-default);border-radius:3px; }
+.lc-tab   { width:100%;border-collapse:collapse;font-size:11px; }
+.lc-tab th { position:sticky;top:0;background:var(--bg-card);color:var(--text-muted);font-weight:normal;text-align:left;padding:3px 6px; }
+.lc-tab td { padding:2px 6px;color:var(--text-value);font-family:monospace;white-space:nowrap; }
+.lc-tab td + td, .lc-tab th + th { text-align:right; }
+.lc-tab tbody tr:nth-child(even) td { background:color-mix(in srgb,var(--bg-card) 60%,transparent); }
+.lc-actions { display:flex;flex-wrap:wrap;gap:5px;margin-top:6px; }
+.lc-btn   { padding:4px 8px;font-size:11px;background:transparent;border:1px solid var(--border-strong);color:var(--text-value);border-radius:3px;cursor:pointer; }
+.lc-btn:hover:not(:disabled) { border-color:var(--accent);color:var(--accent); }
+.lc-btn:disabled { opacity:.45;cursor:not-allowed; }
+
+/* ── Mätverktyget D (Polylinjer Etapp 2) ── nere i mitten, som åtgärdsraden. */
+.measure-box {
+  position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:13;min-width:230px;
+  padding:7px 10px;font-size:12px;color:var(--text-secondary);
+  background:color-mix(in srgb,var(--bg-panel) 95%,transparent);
+  border:1px solid var(--border-strong);border-left:3px solid #ffd54f;border-radius:5px;box-shadow:var(--shadow-modal);
+}
+.measure-box[hidden] { display:none; }
+.mb-head { color:var(--text-value);font-weight:bold;margin-bottom:4px; }
+.mb-pts  { color:var(--text-value);margin-bottom:4px; }
+.mb-row  { display:flex;justify-content:space-between;gap:12px;margin:1px 0; }
+.mb-k    { color:var(--text-muted);font-size:11px; }
+.mb-v    { color:var(--text-value);font-family:monospace; }
+.mb-hint { color:var(--text-muted);font-size:11px;margin-top:4px; }
+
 /* Mobile toolbar (synlighet styrs av responsive.css) */
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
