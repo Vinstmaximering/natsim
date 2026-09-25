@@ -23,7 +23,6 @@ import {
   lineVertexNames, convertLineToArea,
 } from '../state/visual.js';
 import { lineStats, formatMeters, formatGon } from '../state/line-geometry.js';
-import { exportObjectGeo } from './geo-export.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -166,7 +165,9 @@ function wire(card, id) {
     commit('Slut linjen till yta:', () => convertLineToArea(id));
   });
 
-  card.querySelector('[data-lc="geo"]').addEventListener('click', () => exportObjectGeo(id));
+  // Laddas vid behov, som Data-menyns och lagermenyns export.
+  card.querySelector('[data-lc="geo"]').addEventListener('click',
+    () => import('./geo-export.js').then(m => m.exportObjectGeo(id)));
 
   card.querySelector('[data-lc="delete"]').addEventListener('click', () => {
     const l = cur();

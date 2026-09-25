@@ -20,7 +20,6 @@ import {
   updateVisualArea, setVisualAreaBlocksSight, removeVisualArea,
 } from '../state/visual.js';
 import { areaStats, formatPlanArea, formatPlanLength } from '../state/area-geometry.js';
-import { exportObjectGeo } from './geo-export.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -170,7 +169,9 @@ function wire(card, id) {
     });
   });
 
-  card.querySelector('[data-ac="geo"]').addEventListener('click', () => exportObjectGeo(id));
+  // Laddas vid behov, som Data-menyns och lagermenyns export.
+  card.querySelector('[data-ac="geo"]').addEventListener('click',
+    () => import('./geo-export.js').then(m => m.exportObjectGeo(id)));
 
   card.querySelector('[data-ac="delete"]').addEventListener('click', () => {
     const a = (getState().visualAreas || []).find(x => x.id === id);
