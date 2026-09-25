@@ -2,7 +2,8 @@
 
 `projekt.json`, `autosave.json` och `facit.json` är skapade med v0.6.0:s egen
 kod (worktree på `main`, 98d5e2b) av `skapa-fixtur.v060.js`: kopiera skriptet
-till `tests/` i en worktree på v0.6.0 och kör det med vitest. Facit innehåller
+till `tests/` i en worktree på v0.6.0, kör det med vitest och kopiera de tre
+filerna från worktreens `tests/fixtures/projekt-v060/` hit. Facit innehåller
 simuleringsresultat, sikt, hinder, ritade segment, etiketter och lägen per
 lager. `tests/polylinjer-migrering.test.js` laddar filerna med dagens kod och
 jämför mot facit.

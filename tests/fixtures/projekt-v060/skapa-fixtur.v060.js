@@ -1,9 +1,11 @@
 // Engångsskript i en worktree på main (v0.6.0): bygger ett projekt med
 // v0.6.0:s egen kod och sparar projektfil, autosparning och facit (simulering,
-// sikt, ritade segment, etiketter) till natsim/tests/fixtures/projekt-v060/.
+// sikt, ritade segment, etiketter) i tests/fixtures/projekt-v060/ bredvid
+// skriptet – i worktreen; därifrån kopieras filerna till repots mapp.
 import { it, vi } from 'vitest';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 vi.mock('../src/map/leaflet-setup.js', () => ({
   map: {
@@ -16,7 +18,8 @@ vi.mock('../src/map/leaflet-setup.js', () => ({
   draw: vi.fn(), resize: vi.fn(), toggleMapLayer: vi.fn(), fitViewToENBounds: vi.fn(),
 }));
 
-const OUT = 'C:/Users/sjost/Documents/natsim/tests/fixtures/projekt-v060';
+// Relativt skriptet (som ligger i tests/), så att ingen lokal sökväg följer med.
+const OUT = fileURLToPath(new URL('./fixtures/projekt-v060/', import.meta.url));
 
 // Påhittade .geo-filer: koordinater på jämna tal kring E 150 000, N 6 600 000
 // (Sweref 99 15 45), punktnamn och lagernamn utan koppling till verkliga
