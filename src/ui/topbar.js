@@ -158,6 +158,8 @@ const ACTIONS = {
   'import-xl':  () => el('xl-fi')?.click(),
   'import-osm': () => import('../io/osm-import.js').then(m => m.importOSMForCurrentView()),
   'export-geo': () => import('../io/import-geo.js').then(m => m.exportGeoFile()),
+  // Polylinjer Etapp 3: visuella lager, med dialog.
+  'export-visual-geo': () => import('./geo-export.js').then(m => m.openVisualGeoExport()),
   'save':       () => import('../io/export-project.js').then(m => m.saveProject()),
   'load':       () => el('load-fi')?.click(),
   'template':   () => import('../io/import-csv.js').then(m => m.showExcelTemplate()),

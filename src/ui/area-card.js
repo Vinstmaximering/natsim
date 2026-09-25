@@ -20,6 +20,7 @@ import {
   updateVisualArea, setVisualAreaBlocksSight, removeVisualArea,
 } from '../state/visual.js';
 import { areaStats, formatPlanArea, formatPlanLength } from '../state/area-geometry.js';
+import { exportObjectGeo } from './geo-export.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -81,6 +82,9 @@ function build(card, area) {
         `<option value="${p}">${PATTERN_LABELS[p]}</option>`).join('')}</select></label>
     <label class="ac-block"><input type="checkbox" class="ac-bs">
       <span>Blockerar sikt (hinder)<span class="ac-hint">Ytan blir ett byggnadshinder i siktberäkningen.</span></span></label>
+    <div class="lc-actions">
+      <button type="button" class="lc-btn" data-ac="geo" title="Ytan som en sluten linje i en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
+    </div>
     <div class="ac-foot">
       <button type="button" class="ac-del" data-ac="delete">🗑 Ta bort</button>
     </div>`;
@@ -165,6 +169,8 @@ function wire(card, id) {
       }
     });
   });
+
+  card.querySelector('[data-ac="geo"]').addEventListener('click', () => exportObjectGeo(id));
 
   card.querySelector('[data-ac="delete"]').addEventListener('click', () => {
     const a = (getState().visualAreas || []).find(x => x.id === id);

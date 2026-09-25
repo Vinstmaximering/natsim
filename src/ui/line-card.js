@@ -23,6 +23,7 @@ import {
   lineVertexNames, convertLineToArea,
 } from '../state/visual.js';
 import { lineStats, formatMeters, formatGon } from '../state/line-geometry.js';
+import { exportObjectGeo } from './geo-export.js';
 
 const esc = v => String(v ?? '')
   .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -94,6 +95,7 @@ function build(card, line) {
     <div class="lc-actions">
       <button type="button" class="lc-btn" data-lc="wall"></button>
       <button type="button" class="lc-btn" data-lc="area" title="Skapar en yta med samma hörn och tar bort linjen">▱ Slut linjen → yta</button>
+      <button type="button" class="lc-btn" data-lc="geo" title="Linjen som en .geo-fil (SBG Object Text)">📤 Exportera (.geo)</button>
     </div>
     <div class="ac-foot">
       <button type="button" class="ac-del" data-lc="delete">🗑 Ta bort</button>
@@ -163,6 +165,8 @@ function wire(card, id) {
         !confirm(`Slut ${label()} till en yta?\nLinjens ${l.linkedObsIds.length} hinder försvinner – siktberäkningen ändras.`)) return;
     commit('Slut linjen till yta:', () => convertLineToArea(id));
   });
+
+  card.querySelector('[data-lc="geo"]').addEventListener('click', () => exportObjectGeo(id));
 
   card.querySelector('[data-lc="delete"]').addEventListener('click', () => {
     const l = cur();

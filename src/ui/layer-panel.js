@@ -148,6 +148,7 @@ function openLayerMenu(layerId, btn) {
             aria-checked="${labelsOn}">${labelsOn ? '☑' : '☐'} Namn på punkter och ytor</button>
     ${item('active', '◉ Gör aktivt')}
     ${item('zoom',   '⌖ Zooma till')}
+    ${item('export', '📤 Exportera lager (.geo)')}
     <div class="lyr-pop-sep"></div>
     ${item('delete', '<span class="lyr-danger">🗑 Radera</span>')}`;
   document.body.appendChild(m);
@@ -171,6 +172,7 @@ function openLayerMenu(layerId, btn) {
     }
     if (act === 'active') { setActiveVisualLayer(layerId); renderLayerPanel(); draw(); }
     if (act === 'zoom')   zoomToLayer(layerId);
+    if (act === 'export') import('./geo-export.js').then(m => m.exportLayerGeo(layerId));
     if (act === 'delete') openLayerDelete(layerId);
   });
   document.addEventListener('mousedown', _onDocDown, true);

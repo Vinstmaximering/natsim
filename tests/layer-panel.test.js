@@ -307,12 +307,13 @@ describe('radmenyn', () => {
   const openMenu = i => { rows()[i].querySelector('[data-menu]').click(); return document.querySelector('.lyr-pop'); };
 
   // Ändrat i Lager-verktyg Etapp 1: valet "Namn på punkter" (labels) tillkom.
-  it('har alla sex valen', () => {
+  // Polylinjer Etapp 3: Exportera lager (.geo) före Radera.
+  it('har alla sju valen', () => {
     addVisualLayer({ name: 'A' });
     renderLayerPanel();
     const m = openMenu(0);
     expect([...m.querySelectorAll('[data-act]')].map(b => b.dataset.act))
-      .toEqual(['rename', 'color', 'labels', 'active', 'zoom', 'delete']);
+      .toEqual(['rename', 'color', 'labels', 'active', 'zoom', 'export', 'delete']);
   });
 
   it('Namn på punkter slår av och på lagrets labels, går att ångra', () => {

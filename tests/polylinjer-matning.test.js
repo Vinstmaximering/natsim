@@ -304,6 +304,19 @@ describe('mätverktyget D', () => {
     expect(html).toMatch(/ΔH<\/span><span class="mb-v">–</);
   });
 
+  it('ett hörn utan eget namn heter "hörn n i <linje>", aldrig sitt interna id', () => {
+    const { id } = linje();                 // FP1, hörn utan namn, K7
+    setTool('measure-dist');
+    klick(97.5, 104);                       // snappar mot hörn 2
+    const r = klick(100, 108.5);            // snappar mot K7
+    expect(r.a.name).toBe(`hörn 2 i ${id}`);
+    expect(r.b.name).toBe('K7');
+    V.updateVisualLine(id, { name: 'Kantbalk N' });
+    klick(97, 104.4);
+    expect(M.getMeasurePoints().a.name).toBe('hörn 2 i Kantbalk N');
+    expect(measureBoxHtml()).not.toMatch(/\bV\d+\b/);
+  });
+
   it('ΔH visas när båda punkterna har höjd', () => {
     const lay = V.addVisualLayer({ name: 'L' });
     V.addVisualPt({ E: 97, N: 104, H: 10.25, layerId: lay });

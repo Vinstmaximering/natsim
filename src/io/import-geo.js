@@ -1,5 +1,5 @@
 // importGeoFile: SBG Object Text v2.x (Geo Professional)
-// exportGeoFile: SBG Object Text v2.01 med CRLF och N,E,H-ordning
+// exportGeoFile: SBG Object Text v2.01 via io/write-geo.js (Polylinjer Etapp 3)
 //
 // Etapp 2: läsningen ligger i den rena parsern io/parse-geo.js. Den här filen
 // gör bara det som kräver state och DOM – punkttyp, id-krockar, CRS-byte och
@@ -10,6 +10,8 @@ import { getState, setState } from '../state/store.js';
 import { CRS_DEFS } from '../core/constants.js';
 import { showToast } from '../ui/toast.js';
 import { parseGeo } from './parse-geo.js';
+import { downloadGeo, geoCoordinateSystem, GeoWriteError } from './write-geo.js';
+import { buildNetGeo } from './export-visual-geo.js';
 
 // Punkttyp ur id-prefix – samma heuristik som före Etapp 2, oförändrad.
 // Etapp 3 gör den valbar i importdialogen; tills dess är den enda vägen.
@@ -74,40 +76,24 @@ export function importGeoFile(text, filename) {
   return parsed;
 }
 
+// Polylinjer Etapp 3: skrivs med io/write-geo.js – samma format som exporten
+// av visuella lager: fyra decimaler, "Sweref 99 <zon> / RH2000 (SWEN17)" och
+// tomt höjdfält för H = 0 (en nätpunkt med H = 0 saknar höjd).
 export function exportGeoFile() {
-  const { pts, activeCRS } = getState();
+  const state = getState();
+  const { pts } = state;
   if (pts.length === 0) { alert("Inga punkter att exportera."); return; }
-  const crsName = CRS_DEFS[activeCRS]?.name || activeCRS;
-  const now     = new Date();
-  const dateStr = now.toISOString().slice(0, 19).replace("T", " ");
-  const author  = window._geoAuthor  || "";
-  const company = window._geoCompany || "";
-
-  // SBG Object Text v2.01 – N, E, H-ordning (rad 3793–3818 exakt)
-  let out = `FileHeader "SBG Object Text v2.01","Coordinate Document","UTF-8"\r\n`;
-  out += `begin\r\n`;
-  out += `\tFileInfo "Application","Stomnätssimulering"\r\n`;
-  out += `\tFileInfo "Author","${author}"\r\n`;
-  out += `\tFileInfo "Company","${company}"\r\n`;
-  out += `\tFileInfo "Description","Exporterad ${dateStr}"\r\n`;
-  out += `\tFileInfo "Coordinate System","${crsName}"\r\n`;
-  out += `end\r\n`;
-  out += `PointList \r\n`;
-  out += `begin\r\n`;
-  pts.forEach(p => {
-    const N = (p.N || 0).toFixed(3);
-    const E = (p.E || 0).toFixed(3);
-    const H = p.H != null && p.H !== 0 ? p.H.toFixed(3) : "";
-    out += `\tPoint "${p.id}",${N},${E},${H},,,\r\n`;
-  });
-  out += `end\r\n`;
-  out += `LineList \r\n`;
-  out += `AttributeList \r\n`;
-
-  const fname = `stomnät_${now.toISOString().slice(0, 10)}.geo`;
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([out], { type:"text/plain;charset=utf-8" }));
-  a.download = fname;
-  a.click();
-  showToast(`✓ Exporterade ${pts.length} punkter som ${fname}`, "#00ff88");
+  let text;
+  try {
+    text = buildNetGeo(state);
+  } catch (e) {
+    if (!(e instanceof GeoWriteError)) throw e;
+    alert(`Exporten stoppades.\n\n${e.message}`);
+    return;
+  }
+  const fname = `stomnät_${new Date().toISOString().slice(0, 10)}.geo`;
+  downloadGeo(fname, text);
+  const verifierad = geoCoordinateSystem(state.activeCRS).verified;
+  showToast(`✓ Exporterade ${pts.length} punkter som ${fname}` +
+    (verifierad ? '' : ' · ⚠ koordinatsystemets namn ej verifierat'), verifierad ? "#00ff88" : "#ffb74d");
 }

@@ -17,7 +17,7 @@ import { map, ENtoLatLng, latLngToEN } from './leaflet-setup.js';
 import { getState } from '../state/store.js';
 import { findSnapTarget, snapActive, snapRadius, drawSnapMarker } from './snap.js';
 import { measureBetween } from '../state/line-geometry.js';
-import { visualPtLabel } from '../state/visual.js';
+import { visualPtDisplayName } from '../state/visual.js';
 
 let _on = false;
 let _a = null, _b = null;     // mätpunkter: { E, N, H, name, kind }
@@ -63,7 +63,7 @@ export function measurePointFor(snap, en, state = getState()) {
       E: snap.E, N: snap.N, H: targetHeight(snap, state),
       // Namnet visas bara när snappningen träffat en punkt.
       name: snap.ref === 'net' ? snap.id
-        : snap.ref ? visualPtLabel((state.visualPts || []).find(x => x.id === snap.id)) || snap.id : null,
+        : snap.ref ? visualPtDisplayName((state.visualPts || []).find(x => x.id === snap.id), state) : null,
       kind: snap.kind,
     };
   }

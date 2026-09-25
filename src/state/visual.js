@@ -201,6 +201,26 @@ export function visualObjColor(obj, state = getState()) {
 // Etiketten visar originalnamnet ur importfilen när det finns.
 export const visualPtLabel = p => p?.name ?? p?.id ?? '';
 
+/**
+ * Punktens namn i texter (mätrutan): punktens eget namn när det finns. Ett hörn
+ * utan eget namn beskrivs med sin plats – "hörn 3 i Kantbalk N", eller
+ * "hörn 3 i VL12" om linjen saknar namn – med samma löpnummer som i
+ * egenskapskortets tabell. Ett internt punkt-id som V65 visas aldrig för ett
+ * hörn. En fri punkt utan namn heter det som står vid den på kartan.
+ */
+export function visualPtDisplayName(p, state = getState()) {
+  if (!p) return null;
+  if (typeof p.name === 'string' && p.name !== '') return p.name;
+  if (p.role === 'vertex') {
+    const hit = ep => ep?.ref === 'visual' && ep.id === p.id;
+    for (const o of [...(state.visualLines || []), ...(state.visualAreas || [])]) {
+      const i = (o.vertices || []).findIndex(hit);
+      if (i >= 0) return `hörn ${i + 1} i ${o.name || o.id}`;
+    }
+  }
+  return visualPtLabel(p);
+}
+
 // Ska punktens namn ritas? Hörn styrs av lagrets vertexLabels, övriga punkter
 // av labels. Ett objekt utan känt lager ritas som förut: namn på fria punkter,
 // inte på hörn.

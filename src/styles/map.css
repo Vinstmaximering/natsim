@@ -157,6 +157,19 @@ canvas { display: block; touch-action: none; }
 .mb-v    { color:var(--text-value);font-family:monospace; }
 .mb-hint { color:var(--text-muted);font-size:11px;margin-top:4px; }
 
+/* ── Export av visuella lager (Polylinjer Etapp 3) ── dialogen i #modal. */
+.gx-row    { display:flex;align-items:center;justify-content:flex-start;gap:6px;margin:3px 0;font-size:12px;color:var(--text-value);cursor:pointer; }
+/* Dialogens .mo input ger fältbredd 100 % – inte för kryssrutor och radioknappar. */
+.mo .gx-row input { width:auto;flex:none;padding:0;accent-color:var(--accent); }
+.gx-layers { margin:2px 0 6px 20px;max-height:160px;overflow-y:auto; }
+.gx-layers.gx-off { opacity:.45;pointer-events:none; }
+.gx-sub    { color:var(--text-muted);font-size:11px;margin:8px 0 2px; }
+.gx-inc    { display:flex;gap:14px;flex-wrap:wrap; }
+.gx-crs    { font-family:monospace;font-size:12px;color:var(--text-value); }
+.gx-warn   { margin:5px 0;font-size:11px;line-height:1.45; }
+.gx-note   { font-size:11px;margin:8px 0 4px;line-height:1.45; }
+.gx-sum    { font-size:12px;color:var(--text-value);margin:6px 0; }
+
 /* Mobile toolbar (synlighet styrs av responsive.css) */
 .mtb  { display:none;position:absolute;top:0;left:0;right:0;z-index:10;background:color-mix(in srgb,var(--bg-panel) 87%,transparent);border-bottom:1px solid var(--border-default);padding:4px 6px;gap:3px;overflow-x:auto; }
 .mtbb { padding:5px 8px;font-size:12px;border:1px solid var(--border-default);background:transparent;color:var(--text-secondary);border-radius:3px;white-space:nowrap;flex-shrink:0;cursor:pointer; }
