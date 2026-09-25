@@ -427,6 +427,7 @@ som att den saknar höjd (så har nätets punkter alltid lagrats). ΔH i
 mätverktyget visas bara när båda punkterna har höjd, annars "–". I .geo-exporten
 skrivs saknad höjd som ett tomt fält. Projekt sparade före polylinjerna hade 0
 för "ingen höjd" på visuella punkter; de får null när projektet laddas.
+Nätpunkternas höjder ändras inte.
 
 ### Offset
 
