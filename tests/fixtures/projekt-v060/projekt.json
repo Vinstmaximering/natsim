@@ -129,12 +129,12 @@
    "source": "visual",
    "points": [
     [
-     247391.315114616,
-     6165573.71859769
+     150100,
+     6600000
     ],
     [
-     247388.207682382,
-     6165573.10064875
+     150110,
+     6600000
     ]
    ],
    "id": "obs_3"
@@ -146,12 +146,12 @@
    "source": "visual",
    "points": [
     [
-     247388.207682382,
-     6165573.10064875
+     150110,
+     6600000
     ],
     [
-     247384.347293601,
-     6165572.33493287
+     150110,
+     6600010
     ]
    ],
    "id": "obs_4"
@@ -163,12 +163,12 @@
    "source": "visual",
    "points": [
     [
-     247391.217748265,
-     6165574.90670958
+     150110,
+     6600010
     ],
     [
-     247391.462314619,
-     6165573.7449252
+     150120,
+     6600010
     ]
    ],
    "id": "obs_5"
@@ -180,12 +180,12 @@
    "source": "visual",
    "points": [
     [
-     247391.462314619,
-     6165573.7449252
+     150100,
+     6600030
     ],
     [
-     247391.315114616,
-     6165573.71859769
+     150110,
+     6600030
     ]
    ],
    "id": "obs_6"
@@ -197,12 +197,12 @@
    "source": "visual",
    "points": [
     [
-     247383.152213234,
-     6165573.65161202
+     150110,
+     6600030
     ],
     [
-     247383.462611552,
-     6165572.0878394
+     150120,
+     6600030
     ]
    ],
    "id": "obs_7"
@@ -214,134 +214,15 @@
    "source": "visual",
    "points": [
     [
-     247384.656124048,
-     6165572.31319645
+     150120,
+     6600030
     ],
     [
-     247383.482894709,
-     6165572.08601275
+     150120,
+     6600040
     ]
    ],
    "id": "obs_8"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL34)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247384.656124048,
-     6165572.31319645
-    ],
-    [
-     247386.307569602,
-     6165572.63135448
-    ]
-   ],
-   "id": "obs_9"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL35)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247386.307569602,
-     6165572.63135448
-    ],
-    [
-     247391.366185732,
-     6165573.634414
-    ]
-   ],
-   "id": "obs_10"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL36)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247391.366185732,
-     6165573.634414
-    ],
-    [
-     247391.569783417,
-     6165573.67626795
-    ]
-   ],
-   "id": "obs_11"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL37)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247391.363550435,
-     6165574.67289318
-    ],
-    [
-     247391.569783417,
-     6165573.67626795
-    ]
-   ],
-   "id": "obs_12"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL38)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247396.476079032,
-     6165506.95209969
-    ],
-    [
-     247396.145557728,
-     6165508.48906751
-    ]
-   ],
-   "id": "obs_13"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL39)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247396.166584048,
-     6165508.52464118
-    ],
-    [
-     247404.246032547,
-     6165510.14118357
-    ]
-   ],
-   "id": "obs_14"
-  },
-  {
-   "type": "line",
-   "label": "Vägg (VL40)",
-   "color": "#8aa8c0",
-   "source": "visual",
-   "points": [
-    [
-     247404.270505232,
-     6165510.1265301
-    ],
-    [
-     247404.583881132,
-     6165508.57991457
-    ]
-   ],
-   "id": "obs_15"
   }
  ],
  "visualPts": [
@@ -584,69 +465,39 @@
   {
    "id": "V30",
    "layerId": "VLY2",
-   "E": 247396.460425554,
-   "N": 6165503.83542382,
-   "H": 341.922536874338,
+   "E": 150000,
+   "N": 6600000,
+   "H": 10,
    "color": null,
-   "name": "201",
-   "attrs": {
-    "UB": "20200101.100600",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2",
-    "SH": "0.100",
-    "sourceFile": "exempel_2.plm",
-    "sourceStation": "exempel_2",
-    "sourceRecord": "201"
-   },
+   "name": "T1",
    "role": "point"
   },
   {
    "id": "V31",
    "layerId": "VLY2",
-   "E": 247404.160819618,
-   "N": 6165510.01041439,
-   "H": 341.940620517011,
+   "E": 150010,
+   "N": 6600000,
+   "H": 0,
    "color": null,
-   "name": "202",
-   "attrs": {
-    "UB": "20200101.100500",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2",
-    "SH": "0.100",
-    "sourceFile": "exempel_1.plm",
-    "sourceStation": "exempel_1",
-    "sourceRecord": "202"
-   },
+   "name": "T2",
    "role": "point"
   },
   {
    "id": "V32",
    "layerId": "VLY2",
-   "E": 247405.870567345,
-   "N": 6165505.71168198,
-   "H": 341.926027669966,
+   "E": 150020,
+   "N": 6600000,
+   "H": 12.5,
    "color": null,
-   "name": "203",
-   "attrs": {
-    "UB": "20200101.100700",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2",
-    "SH": "0.100",
-    "sourceFile": "exempel_2.plm",
-    "sourceStation": "exempel_2",
-    "sourceRecord": "203"
-   },
+   "name": "T3",
    "role": "point"
   },
   {
    "id": "V33",
    "layerId": "VLY2",
-   "E": 247397.066745425,
-   "N": 6165509.80593066,
-   "H": 341.932715539319,
+   "E": 150000,
+   "N": 6600005,
+   "H": 10,
    "color": null,
    "name": "01",
    "role": "vertex"
@@ -654,9 +505,9 @@
   {
    "id": "V34",
    "layerId": "VLY2",
-   "E": 247404.567846071,
-   "N": 6165511.30690778,
-   "H": 341.932143867232,
+   "E": 150010,
+   "N": 6600005,
+   "H": 10,
    "color": null,
    "name": "02",
    "role": "vertex"
@@ -664,9 +515,9 @@
   {
    "id": "V35",
    "layerId": "VLY2",
-   "E": 247405.243135229,
-   "N": 6165509.70461555,
-   "H": 341.938069276192,
+   "E": 150020,
+   "N": 6600005,
+   "H": 0,
    "color": null,
    "name": "01",
    "role": "vertex"
@@ -674,9 +525,9 @@
   {
    "id": "V36",
    "layerId": "VLY2",
-   "E": 247406.402246562,
-   "N": 6165503.95475182,
-   "H": 341.922208875304,
+   "E": 150030,
+   "N": 6600005,
+   "H": 0,
    "color": null,
    "name": "02",
    "role": "vertex"
@@ -684,9 +535,9 @@
   {
    "id": "V37",
    "layerId": "VLY2",
-   "E": 247406.208438608,
-   "N": 6165503.70717946,
-   "H": 341.923351153284,
+   "E": 150000,
+   "N": 6600015,
+   "H": 11,
    "color": null,
    "name": "01",
    "role": "vertex"
@@ -694,9 +545,9 @@
   {
    "id": "V38",
    "layerId": "VLY2",
-   "E": 247396.87752461,
-   "N": 6165501.84876306,
-   "H": 341.928143212403,
+   "E": 150010,
+   "N": 6600025,
+   "H": 11,
    "color": null,
    "name": "02",
    "role": "vertex"
@@ -704,9 +555,9 @@
   {
    "id": "V39",
    "layerId": "VLY2",
-   "E": 247395.73807305,
-   "N": 6165506.18570742,
-   "H": 341.93111800109,
+   "E": 150020,
+   "N": 6600015,
+   "H": 0,
    "color": null,
    "name": "01",
    "role": "vertex"
@@ -714,9 +565,9 @@
   {
    "id": "V40",
    "layerId": "VLY2",
-   "E": 247395.174891203,
-   "N": 6165508.98847285,
-   "H": 341.936532899381,
+   "E": 150030,
+   "N": 6600025,
+   "H": 0,
    "color": null,
    "name": "02",
    "role": "vertex"
@@ -724,139 +575,109 @@
   {
    "id": "V41",
    "layerId": "VLY3",
-   "E": 247391.00528623,
-   "N": 6165575.70688826,
-   "H": 341.936695977131,
+   "E": 150050,
+   "N": 6600000,
+   "H": 9,
    "color": null,
-   "name": "101",
-   "attrs": {
-    "UB": "20200101.100100",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2"
-   },
-   "role": "point"
+   "name": "01",
+   "role": "vertex"
   },
   {
    "id": "V42",
    "layerId": "VLY3",
-   "E": 247387.348083132,
-   "N": 6165577.96083756,
-   "H": 341.93223828579,
+   "E": 150060,
+   "N": 6600000,
+   "H": 9,
    "color": null,
-   "name": "102",
-   "attrs": {
-    "UB": "20200101.100300",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2"
-   },
-   "role": "point"
+   "name": "02",
+   "role": "vertex"
   },
   {
    "id": "V43",
    "layerId": "VLY3",
-   "E": 247386.880468957,
-   "N": 6165577.22426117,
-   "H": 341.939021752593,
+   "E": 150060,
+   "N": 6600010,
+   "H": 9,
    "color": null,
-   "name": "103",
-   "attrs": {
-    "UB": "20200101.100400",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2"
-   },
-   "role": "point"
+   "name": "03",
+   "role": "vertex"
   },
   {
    "id": "V44",
    "layerId": "VLY3",
-   "E": 247386.186745223,
-   "N": 6165577.72986204,
-   "H": 341.937290794521,
+   "E": 150050,
+   "N": 6600010,
+   "H": 9,
    "color": null,
-   "name": "101",
-   "attrs": {
-    "UB": "20200101.100200",
-    "reference_model": "exempel.geo",
-    "GP_LM": "7",
-    "GP_PR": "2"
-   },
-   "role": "point"
+   "name": "04",
+   "role": "vertex"
   },
   {
    "id": "V45",
-   "layerId": "VLY3",
-   "E": 247383.297651354,
-   "N": 6165573.65940597,
-   "H": 341.929549596031,
+   "layerId": "VLY4",
+   "E": 150100,
+   "N": 6600000,
+   "H": 0,
    "color": null,
-   "name": "104",
-   "attrs": {
-    "UB": "20200101.100000",
-    "GP_LM": "7",
-    "GP_PR": "2",
-    "reference_model": "exempel.geo"
-   },
-   "role": "point"
+   "name": "01",
+   "role": "vertex"
   },
   {
    "id": "V46",
-   "layerId": "VLY3",
-   "E": 247382.84418388,
-   "N": 6165570.8162459,
-   "H": 341.94,
+   "layerId": "VLY4",
+   "E": 150110,
+   "N": 6600000,
+   "H": 0,
    "color": null,
-   "name": "01",
+   "name": "02",
    "role": "vertex"
   },
   {
    "id": "V47",
-   "layerId": "VLY3",
-   "E": 247381.31989944,
-   "N": 6165578.4665756,
-   "H": 341.937,
+   "layerId": "VLY4",
+   "E": 150110,
+   "N": 6600010,
+   "H": 0,
    "color": null,
-   "name": "02",
+   "name": "03",
    "role": "vertex"
   },
   {
    "id": "V48",
-   "layerId": "VLY3",
-   "E": 247391.14598724,
-   "N": 6165580.4241292,
-   "H": 341.932,
+   "layerId": "VLY4",
+   "E": 150120,
+   "N": 6600010,
+   "H": 0,
    "color": null,
-   "name": "01",
+   "name": "02",
    "role": "vertex"
   },
   {
    "id": "V49",
-   "layerId": "VLY3",
-   "E": 247392.67216182,
-   "N": 6165572.7755063,
-   "H": 341.939,
+   "layerId": "VLY4",
+   "E": 150100,
+   "N": 6600030,
+   "H": 0,
    "color": null,
-   "name": "02",
+   "name": "01",
    "role": "vertex"
   },
   {
    "id": "V50",
    "layerId": "VLY4",
-   "E": 247391.315114616,
-   "N": 6165573.71859769,
-   "H": 345.223626094359,
+   "E": 150110,
+   "N": 6600030,
+   "H": 0,
    "color": null,
-   "name": "01",
+   "name": "02",
    "role": "vertex"
   },
   {
    "id": "V51",
    "layerId": "VLY4",
-   "E": 247388.207682382,
-   "N": 6165573.10064875,
-   "H": 345.219986114245,
+   "E": 150120,
+   "N": 6600030,
+   "H": 0,
    "color": null,
    "name": "02",
    "role": "vertex"
@@ -864,175 +685,15 @@
   {
    "id": "V52",
    "layerId": "VLY4",
-   "E": 247384.347293601,
-   "N": 6165572.33493287,
-   "H": 345.22592011854,
+   "E": 150120,
+   "N": 6600040,
+   "H": 0,
    "color": null,
    "name": "03",
    "role": "vertex"
   },
   {
    "id": "V53",
-   "layerId": "VLY4",
-   "E": 247391.217748265,
-   "N": 6165574.90670958,
-   "H": 345.221105949464,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V54",
-   "layerId": "VLY4",
-   "E": 247391.462314619,
-   "N": 6165573.7449252,
-   "H": 345.212985301173,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V55",
-   "layerId": "VLY4",
-   "E": 247383.152213234,
-   "N": 6165573.65161202,
-   "H": 345.466542545294,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V56",
-   "layerId": "VLY4",
-   "E": 247383.462611552,
-   "N": 6165572.0878394,
-   "H": 345.388255463796,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V57",
-   "layerId": "VLY4",
-   "E": 247384.656124048,
-   "N": 6165572.31319645,
-   "H": 345.404490250207,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V58",
-   "layerId": "VLY4",
-   "E": 247383.482894709,
-   "N": 6165572.08601275,
-   "H": 345.405288267915,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V59",
-   "layerId": "VLY4",
-   "E": 247386.307569602,
-   "N": 6165572.63135448,
-   "H": 345.406250641232,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V60",
-   "layerId": "VLY4",
-   "E": 247391.366185732,
-   "N": 6165573.634414,
-   "H": 345.410150720088,
-   "color": null,
-   "name": "03",
-   "role": "vertex"
-  },
-  {
-   "id": "V61",
-   "layerId": "VLY4",
-   "E": 247391.569783417,
-   "N": 6165573.67626795,
-   "H": 345.396609274339,
-   "color": null,
-   "name": "04",
-   "role": "vertex"
-  },
-  {
-   "id": "V62",
-   "layerId": "VLY4",
-   "E": 247391.363550435,
-   "N": 6165574.67289318,
-   "H": 345.455041937144,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V63",
-   "layerId": "VLY4",
-   "E": 247396.476079032,
-   "N": 6165506.95209969,
-   "H": 345.485842008739,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V64",
-   "layerId": "VLY4",
-   "E": 247396.145557728,
-   "N": 6165508.48906751,
-   "H": 345.386547996771,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V65",
-   "layerId": "VLY4",
-   "E": 247396.166584048,
-   "N": 6165508.52464118,
-   "H": 345.384428685802,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V66",
-   "layerId": "VLY4",
-   "E": 247404.246032547,
-   "N": 6165510.14118357,
-   "H": 345.399948816206,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V67",
-   "layerId": "VLY4",
-   "E": 247404.270505232,
-   "N": 6165510.1265301,
-   "H": 345.404932782245,
-   "color": null,
-   "name": "01",
-   "role": "vertex"
-  },
-  {
-   "id": "V68",
-   "layerId": "VLY4",
-   "E": 247404.583881132,
-   "N": 6165508.57991457,
-   "H": 345.471311211469,
-   "color": null,
-   "name": "02",
-   "role": "vertex"
-  },
-  {
-   "id": "V69",
    "layerId": "VLY5",
    "E": 1000,
    "N": 0,
@@ -1041,7 +702,7 @@
    "role": "vertex"
   },
   {
-   "id": "V70",
+   "id": "V54",
    "layerId": "VLY5",
    "E": 1010,
    "N": 0,
@@ -1050,7 +711,7 @@
    "role": "vertex"
   },
   {
-   "id": "V71",
+   "id": "V55",
    "layerId": "VLY5",
    "E": 1010,
    "N": 10,
@@ -1059,7 +720,7 @@
    "role": "vertex"
   },
   {
-   "id": "V72",
+   "id": "V56",
    "layerId": "VLY5",
    "E": 1020,
    "N": 20,
@@ -1068,7 +729,7 @@
    "role": "vertex"
   },
   {
-   "id": "V73",
+   "id": "V57",
    "layerId": "VLY5",
    "E": 1030,
    "N": 20,
@@ -1077,7 +738,7 @@
    "role": "vertex"
   },
   {
-   "id": "V74",
+   "id": "V58",
    "layerId": "VLY6",
    "E": 1100,
    "N": 0,
@@ -1086,7 +747,7 @@
    "role": "vertex"
   },
   {
-   "id": "V75",
+   "id": "V59",
    "layerId": "VLY6",
    "E": 1110,
    "N": 0,
@@ -1095,7 +756,7 @@
    "role": "vertex"
   },
   {
-   "id": "V76",
+   "id": "V60",
    "layerId": "VLY6",
    "E": 1110,
    "N": 10,
@@ -1104,7 +765,7 @@
    "role": "vertex"
   },
   {
-   "id": "V77",
+   "id": "V61",
    "layerId": "VLY6",
    "E": 1100,
    "N": 10,
@@ -1113,7 +774,7 @@
    "role": "vertex"
   },
   {
-   "id": "V78",
+   "id": "V62",
    "layerId": "VLY6",
    "E": 1200,
    "N": 0,
@@ -1122,7 +783,7 @@
    "role": "vertex"
   },
   {
-   "id": "V79",
+   "id": "V63",
    "layerId": "VLY6",
    "E": 1210,
    "N": 0,
@@ -1131,7 +792,7 @@
    "role": "vertex"
   },
   {
-   "id": "V80",
+   "id": "V64",
    "layerId": "VLY6",
    "E": 1210,
    "N": 10,
@@ -1468,11 +1129,11 @@
    "layerId": "VLY3",
    "from": {
     "ref": "visual",
-    "id": "V46"
+    "id": "V41"
    },
    "to": {
     "ref": "visual",
-    "id": "V47"
+    "id": "V42"
    },
    "color": null,
    "linkedObsId": null
@@ -1482,11 +1143,11 @@
    "layerId": "VLY3",
    "from": {
     "ref": "visual",
-    "id": "V47"
+    "id": "V42"
    },
    "to": {
     "ref": "visual",
-    "id": "V48"
+    "id": "V43"
    },
    "color": null,
    "linkedObsId": null
@@ -1496,11 +1157,11 @@
    "layerId": "VLY3",
    "from": {
     "ref": "visual",
-    "id": "V48"
+    "id": "V43"
    },
    "to": {
     "ref": "visual",
-    "id": "V49"
+    "id": "V44"
    },
    "color": null,
    "linkedObsId": null
@@ -1510,11 +1171,11 @@
    "layerId": "VLY3",
    "from": {
     "ref": "visual",
-    "id": "V49"
+    "id": "V44"
    },
    "to": {
     "ref": "visual",
-    "id": "V46"
+    "id": "V41"
    },
    "color": null,
    "linkedObsId": null
@@ -1524,11 +1185,11 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V50"
+    "id": "V45"
    },
    "to": {
     "ref": "visual",
-    "id": "V51"
+    "id": "V46"
    },
    "color": null,
    "linkedObsId": "obs_3"
@@ -1538,11 +1199,11 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V51"
+    "id": "V46"
    },
    "to": {
     "ref": "visual",
-    "id": "V52"
+    "id": "V47"
    },
    "color": null,
    "linkedObsId": "obs_4"
@@ -1552,11 +1213,11 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V53"
+    "id": "V47"
    },
    "to": {
     "ref": "visual",
-    "id": "V54"
+    "id": "V48"
    },
    "color": null,
    "linkedObsId": "obs_5"
@@ -1566,7 +1227,7 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V54"
+    "id": "V49"
    },
    "to": {
     "ref": "visual",
@@ -1580,11 +1241,11 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V55"
+    "id": "V50"
    },
    "to": {
     "ref": "visual",
-    "id": "V56"
+    "id": "V51"
    },
    "color": null,
    "linkedObsId": "obs_7"
@@ -1594,32 +1255,74 @@
    "layerId": "VLY4",
    "from": {
     "ref": "visual",
-    "id": "V57"
+    "id": "V51"
    },
    "to": {
     "ref": "visual",
-    "id": "V58"
+    "id": "V52"
    },
    "color": null,
    "linkedObsId": "obs_8"
   },
   {
    "id": "VL34",
-   "layerId": "VLY4",
+   "layerId": "VLY5",
    "from": {
     "ref": "visual",
+    "id": "V53"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V54"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL35",
+   "layerId": "VLY5",
+   "from": {
+    "ref": "visual",
+    "id": "V54"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V55"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL36",
+   "layerId": "VLY5",
+   "from": {
+    "ref": "visual",
+    "id": "V56"
+   },
+   "to": {
+    "ref": "visual",
     "id": "V57"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL37",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V58"
    },
    "to": {
     "ref": "visual",
     "id": "V59"
    },
    "color": null,
-   "linkedObsId": "obs_9"
+   "linkedObsId": null
   },
   {
-   "id": "VL35",
-   "layerId": "VLY4",
+   "id": "VL38",
+   "layerId": "VLY6",
    "from": {
     "ref": "visual",
     "id": "V59"
@@ -1629,11 +1332,11 @@
     "id": "V60"
    },
    "color": null,
-   "linkedObsId": "obs_10"
+   "linkedObsId": null
   },
   {
-   "id": "VL36",
-   "layerId": "VLY4",
+   "id": "VL39",
+   "layerId": "VLY6",
    "from": {
     "ref": "visual",
     "id": "V60"
@@ -1643,25 +1346,39 @@
     "id": "V61"
    },
    "color": null,
-   "linkedObsId": "obs_11"
+   "linkedObsId": null
   },
   {
-   "id": "VL37",
-   "layerId": "VLY4",
+   "id": "VL40",
+   "layerId": "VLY6",
+   "from": {
+    "ref": "visual",
+    "id": "V61"
+   },
+   "to": {
+    "ref": "visual",
+    "id": "V58"
+   },
+   "color": null,
+   "linkedObsId": null
+  },
+  {
+   "id": "VL41",
+   "layerId": "VLY6",
    "from": {
     "ref": "visual",
     "id": "V62"
    },
    "to": {
     "ref": "visual",
-    "id": "V61"
+    "id": "V63"
    },
    "color": null,
-   "linkedObsId": "obs_12"
+   "linkedObsId": null
   },
   {
-   "id": "VL38",
-   "layerId": "VLY4",
+   "id": "VL42",
+   "layerId": "VLY6",
    "from": {
     "ref": "visual",
     "id": "V63"
@@ -1669,160 +1386,6 @@
    "to": {
     "ref": "visual",
     "id": "V64"
-   },
-   "color": null,
-   "linkedObsId": "obs_13"
-  },
-  {
-   "id": "VL39",
-   "layerId": "VLY4",
-   "from": {
-    "ref": "visual",
-    "id": "V65"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V66"
-   },
-   "color": null,
-   "linkedObsId": "obs_14"
-  },
-  {
-   "id": "VL40",
-   "layerId": "VLY4",
-   "from": {
-    "ref": "visual",
-    "id": "V67"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V68"
-   },
-   "color": null,
-   "linkedObsId": "obs_15"
-  },
-  {
-   "id": "VL41",
-   "layerId": "VLY5",
-   "from": {
-    "ref": "visual",
-    "id": "V69"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V70"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL42",
-   "layerId": "VLY5",
-   "from": {
-    "ref": "visual",
-    "id": "V70"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V71"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL43",
-   "layerId": "VLY5",
-   "from": {
-    "ref": "visual",
-    "id": "V72"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V73"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL44",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V74"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V75"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL45",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V75"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V76"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL46",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V76"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V77"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL47",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V77"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V74"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL48",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V78"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V79"
-   },
-   "color": null,
-   "linkedObsId": null
-  },
-  {
-   "id": "VL49",
-   "layerId": "VLY6",
-   "from": {
-    "ref": "visual",
-    "id": "V79"
-   },
-   "to": {
-    "ref": "visual",
-    "id": "V80"
    },
    "color": null,
    "linkedObsId": null
@@ -1874,12 +1437,12 @@
   },
   {
    "id": "VLY2",
-   "name": "exempel_punkter_oppna_linjer",
+   "name": "test_oppna_linjer",
    "color": null,
    "visible": true,
    "source": {
     "kind": "geo",
-    "filename": "exempel_punkter_oppna_linjer.geo",
+    "filename": "test_oppna_linjer.geo",
     "crs": "sweref991545"
    },
    "labels": true,
@@ -1887,12 +1450,12 @@
   },
   {
    "id": "VLY3",
-   "name": "exempel_punkter_sluten_linje",
+   "name": "test_sluten_linje",
    "color": null,
    "visible": true,
    "source": {
     "kind": "geo",
-    "filename": "exempel_punkter_sluten_linje.geo",
+    "filename": "test_sluten_linje.geo",
     "crs": "sweref991545"
    },
    "labels": true,
@@ -1900,12 +1463,12 @@
   },
   {
    "id": "VLY4",
-   "name": "exempel_tom_punktlista",
+   "name": "test_vaggar",
    "color": null,
    "visible": true,
    "source": {
     "kind": "geo",
-    "filename": "exempel_tom_punktlista.geo",
+    "filename": "test_vaggar.geo",
     "crs": "sweref991545"
    },
    "labels": true,
@@ -1953,8 +1516,8 @@
  "ellScale": 50,
  "ellipsMode": "1sig",
  "nMid": 5,
- "nVid": 81,
- "nVlid": 50,
+ "nVid": 65,
+ "nVlid": 43,
  "nVaid": 2,
  "nVlyid": 7,
  "mapCenter": {

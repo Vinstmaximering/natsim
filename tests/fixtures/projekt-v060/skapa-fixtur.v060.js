@@ -2,7 +2,7 @@
 // v0.6.0:s egen kod och sparar projektfil, autosparning och facit (simulering,
 // sikt, ritade segment, etiketter) till natsim/tests/fixtures/projekt-v060/.
 import { it, vi } from 'vitest';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 vi.mock('../src/map/leaflet-setup.js', () => ({
@@ -17,7 +17,37 @@ vi.mock('../src/map/leaflet-setup.js', () => ({
 }));
 
 const OUT = 'C:/Users/sjost/Documents/natsim/tests/fixtures/projekt-v060';
-const GEO = 'C:/Users/sjost/Documents/natsim-v060/tests/fixtures/geo';
+
+// Påhittade .geo-filer: koordinater på jämna tal kring E 150 000, N 6 600 000
+// (Sweref 99 15 45), punktnamn och lagernamn utan koppling till verkliga
+// mätningar.
+const E0 = 150000, N0 = 6600000;
+const pkt = (namn, dE, dN, H = null) =>
+  `Point "${namn}",${(N0 + dN).toFixed(3)},${(E0 + dE).toFixed(3)},${H === null ? '' : H.toFixed(3)},,,`;
+const linje = (namn, flagga, ...hörn) =>
+  [`	Line "${namn}",${flagga},`, '	begin', '		PointList', '		begin',
+   ...hörn.map(([n, dE, dN, H]) => `			${pkt(n, dE, dN, H)}`), '		end', '	end'];
+const geoFil = (punkter, linjer) => [
+  'FileHeader "SBG Object Text v2.01","Coordinate Document","UTF-8"', 'begin',
+  '	FileInfo "Application","Påhittad testfil"',
+  '	FileInfo "Coordinate System","Sweref 99 15 45 / RH2000 (SWEN17)"', 'end',
+  'PointList', 'begin', ...punkter.map(p => `	${pkt(...p)}`), 'end',
+  'LineList', 'begin', ...linjer.flat(), 'end', 'AttributeList', ''].join('\r\n');
+const GEO_FILER = [
+  ['test_oppna_linjer.geo', 'visual', geoFil(
+    [['T1', 0, 0, 10], ['T2', 10, 0], ['T3', 20, 0, 12.5]],
+    [linje('A', '', ['01', 0, 5, 10], ['02', 10, 5, 10]),
+     linje('B', '', ['01', 20, 5], ['02', 30, 5]),
+     linje('C', '', ['01', 0, 15, 11], ['02', 10, 25, 11]),
+     linje('D', '', ['01', 20, 15], ['02', 30, 25])])],
+  ['test_sluten_linje.geo', 'visual', geoFil([],
+    [linje('Platta', '1', ['01', 50, 0, 9], ['02', 60, 0, 9], ['03', 60, 10, 9], ['04', 50, 10, 9])])],
+  ['test_vaggar.geo', 'obstacle', geoFil([],
+    [linje('V1', '', ['01', 100, 0], ['02', 110, 0], ['03', 110, 10]),
+     linje('V2', '', ['01', 110, 10], ['02', 120, 10]),
+     linje('V3', '', ['01', 100, 30], ['02', 110, 30]),
+     linje('V4', '', ['01', 110, 30], ['02', 120, 30], ['03', 120, 40])])],
+];
 
 const { getState, setState } = await import('../src/state/store.js');
 const V = await import('../src/state/visual.js');
@@ -108,10 +138,7 @@ it('bygger v0.6.0-projektet', () => {
   V.addVisualArea({ vertices: h.map(x => V.makeEndpoint('visual', x)), layerId: hand, name: 'Hus', blocksSight: true });
 
   // ── Import .geo ──
-  for (const [fil, lines] of [['exempel_punkter_oppna_linjer.geo', 'visual'],
-                              ['exempel_punkter_sluten_linje.geo', 'visual'],
-                              ['exempel_tom_punktlista.geo', 'obstacle']]) {
-    const text = readFileSync(join(GEO, fil), 'utf8');
+  for (const [fil, lines, text] of GEO_FILER) {
     const parsed = parseGeo(text);
     applyGeoImport(parsed, { ...defaultGeoImportOptions(parsed, fil, 'sweref991545'), lines, changeCRS: false });
   }

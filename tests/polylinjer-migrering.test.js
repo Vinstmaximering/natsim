@@ -72,10 +72,10 @@ const linjeMed = (E, N) => getState().visualLines.find(l =>
 describe('projektfil sparad med v0.6.0', () => {
   beforeEach(() => _applySnapshot(läs('projekt.json')));
 
-  it('49 segment blir 35 polylinjer', () => {
-    expect(FACIT.antalSegment).toBe(49);
-    expect(läs('projekt.json').visualLines).toHaveLength(49);
-    expect(getState().visualLines).toHaveLength(35);
+  it('42 segment blir 28 polylinjer', () => {
+    expect(FACIT.antalSegment).toBe(42);
+    expect(läs('projekt.json').visualLines).toHaveLength(42);
+    expect(getState().visualLines).toHaveLength(28);
   });
 
   it('ser likadan ut och ger identiskt simuleringsresultat', () => {
@@ -122,12 +122,12 @@ describe('projektfil sparad med v0.6.0', () => {
   });
 
   it('importerade linjer som delar hörn slås ihop; hinderkopplade gör det inte', () => {
-    const lager = getState().visualLayers.find(l => l.name === 'exempel_punkter_sluten_linje');
+    const lager = getState().visualLayers.find(l => l.name === 'test_sluten_linje');
     const [sluten] = getState().visualLines.filter(l => l.layerId === lager.id);
     expect(sluten.closed).toBe(true);
     const dxfKant = getState().visualLayers.find(l => l.name === 'Kant');
     expect(getState().visualLines.filter(l => l.layerId === dxfKant.id).map(l => l.vertices.length)).toEqual([3, 2]);
-    const hinderLager = getState().visualLayers.find(l => l.name === 'exempel_tom_punktlista');
+    const hinderLager = getState().visualLayers.find(l => l.name === 'test_vaggar');
     expect(getState().visualLines.filter(l => l.layerId === hinderLager.id)
       .every(l => l.vertices.length === 2 && l.linkedObsIds.length === 1)).toBe(true);
   });
@@ -152,7 +152,7 @@ describe('projektfil sparad med v0.6.0', () => {
   });
 
   it('nya linjer får id efter de migrerade', () => {
-    expect(getState().nVlid).toBe(50);
+    expect(getState().nVlid).toBe(43);
   });
 });
 
@@ -160,7 +160,7 @@ describe('autosparning från v0.6.0', () => {
   it('migreras likadant som projektfilen', () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify(läs('autosave.json')));
     expect(loadAutosave()).toBe(true);
-    expect(getState().visualLines).toHaveLength(35);
+    expect(getState().visualLines).toHaveLength(28);
     const st = getState();
     expect(ritadeSegment(st).map(nyckel).sort()).toEqual(facitSegment().map(nyckel).sort());
     expect(st.obstacles).toEqual(FACIT.obstacles);
